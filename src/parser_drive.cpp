@@ -14,20 +14,9 @@ int main(int argc, char *argv[])
 
     cout << "initializing" << endl;
 
-    string teststring = "input|tecplot|gemsma_cmb_|.szplt|1|100|1";
-    string sep = "|";
-
-    vector<string> tokenlist;
-
-    tokenparse(teststring, sep, tokenlist);
-
-    for (int i = 0; i < tokenlist.size(); i++)
-        cout << tokenlist[i] << endl;
-
     inputReader file1("input.pdp");
-
     inputReader* file1p= &file1;
-
+    
     executioner exec(file1p);
     exec.init();
     exec.exec_all();

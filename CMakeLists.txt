@@ -11,11 +11,12 @@ message("${CMAKE_CXX_COMPILER_ID} detected")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 endif()
 
-include_directories(include/)
 
 
 add_library(pMat STATIC src/pMat.cpp)
+target_include_directories(pMat PRIVATE include)
 add_library(parser STATIC src/parser.cpp)
+target_include_directories(parser PRIVATE include)
 
 target_link_libraries(parser pMat)
 
@@ -24,10 +25,11 @@ target_link_libraries(pMat mkl_scalapack_lp64 mkl_intel_lp64 mkl_sequential mkl_
 target_link_options(pMat PUBLIC  ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -lpthread -lm -ldl)
 
 
-target_include_directories(pMat PUBLIC include ${MKLROOT}/include)
+target_include_directories(pMat PRIVATE include ${MKLROOT}/include)
 
 
 add_executable(parser_drive src/parser_drive.cpp)
+target_include_directories(parser_drive PRIVATE include)
 target_link_libraries(parser_drive parser)
 
 
