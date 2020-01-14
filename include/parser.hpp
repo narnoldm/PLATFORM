@@ -62,6 +62,7 @@ public:
         mat,
     };
     int type, dim;
+    bool isInput=0,isPA=0,isP0=0;
     vector<string> token;
     string name;
     vector<int> dims;

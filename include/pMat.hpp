@@ -76,7 +76,7 @@ class pMat
 	int inflate(pMat *A, std::vector<int> &ipiv);
 	int read_bins(std::string prefix, int start, int skip, int end);
 	int read_single_bin(const char *name, int col);
-	int read_bin(char *filename);
+	int read_bin(string &filename);
 	bool check_bin_size(string filename,int &mN,int &mM);
 	int matrix_Product(char tA, char tB, int n, int m, int k, pMat *A, int ia, int ja, pMat *B, int ib, int jb, double alpha, double beta, int ic, int jc);
 	int matrix_Sum(char tA, int n, int m, pMat *A, int ia, int ja, int ib, int jb, double alpha, double beta);
