@@ -72,89 +72,82 @@ void pMat::setupMat(int n, int m, int t, int b, int c, double init)
         block = b;
         cycles = c;
         printRank = pG->printRank;
-        if (M == 1)
-        {
-                dataD.resize(N);
-        }
 
-        else
+        if (printRank)
+                printf("Creating Matrix\nN=%d M=%d\n", N, M);
+        if (block == 0) //square blocks
+        {
+                nb = 1000000;
+                mb = nb;
+                if (nb > (N / pG->getDim(0)))
+                        nb = std::max(1, N / (pG->getDim(0) * cycles));
+                if (nb > (M / pG->getDim(1)))
+                        nb = std::max(1, M / (pG->getDim(1) * cycles));
+                mb = nb;
+                if (pG->printRank)
+                {
+                        printf("nb is %d\n", nb);
+                        fflush(stdout);
+                }
+                MPI_Barrier(MPI_COMM_WORLD);
+        }
+        else if (block == 1) //other blocks
+        {
+                nb = 1000000;
+                mb = nb;
+                if (nb > (N / pG->getDim(0)))
+                        nb = N / pG->getDim(0);
+                if (mb > (M / pG->getDim(1)))
+                        mb = M / pG->getDim(1);
+                if (pG->printRank)
+                {
+                        printf("nb is %d\n", nb);
+                        printf("mb is %d\n", mb);
+                        fflush(stdout);
+                }
+                MPI_Barrier(MPI_COMM_WORLD);
+        }
+        else if (block == 2) //p0 block
+        {
+                nb = N;
+                mb = M;
+                if (pG->printRank)
+                {
+                        printf("nb is %d\n", nb);
+                        printf("mb is %d\n", mb);
+                        fflush(stdout);
+                }
+                MPI_Barrier(MPI_COMM_WORLD);
+        }
+        myRC[0] = numroc_(&N, &nb, &(pG->myrow), &i_zero, &(pG->prow));
+        myRC[1] = numroc_(&M, &mb, &(pG->mycol), &i_zero, &(pG->pcol));
+        if (myRC[0] < 1)
+                myRC[0] = 1;
+        if (myRC[1] < 1)
+                myRC[1] = 1;
+        nelements = (long long)myRC[0] * (long long)myRC[1];
+        if (type == 0)
         {
                 if (printRank)
-                        printf("Creating Matrix\nN=%d M=%d\n", N, M);
-                if (block == 0) //square blocks
+                        printf("Mat is Double\n");
+                dataD.resize(nelements, init);
+        }
+        else if (type == 1)
+        {
+                if (printRank)
+                        printf("Mat is Complex\n");
+                dataC.resize(nelements);
+                for (int i = 0; i < nelements; i++)
                 {
-                        nb = 1000000;
-                        mb = nb;
-                        if (nb > (N / pG->getDim(0)))
-                                nb = std::max(1, N / (pG->getDim(0) * cycles));
-                        if (nb > (M / pG->getDim(1)))
-                                nb = std::max(1, M / (pG->getDim(1) * cycles));
-                        mb = nb;
-                        if (pG->printRank)
-                        {
-                                printf("nb is %d\n", nb);
-                                fflush(stdout);
-                        }
-                        MPI_Barrier(MPI_COMM_WORLD);
+                        dataC[i].real = init;
+                        dataC[i].imag = 0.0;
                 }
-                else if (block == 1) //other blocks
-                {
-                        nb = 1000000;
-                        mb = nb;
-                        if (nb > (N / pG->getDim(0)))
-                                nb = N / pG->getDim(0);
-                        if (mb > (M / pG->getDim(1)))
-                                mb = M / pG->getDim(1);
-                        if (pG->printRank)
-                        {
-                                printf("nb is %d\n", nb);
-                                printf("mb is %d\n", mb);
-                                fflush(stdout);
-                        }
-                        MPI_Barrier(MPI_COMM_WORLD);
-                }
-                else if (block == 2) //p0 block
-                {
-                        nb = N;
-                        mb = M;
-                        if (pG->printRank)
-                        {
-                                printf("nb is %d\n", nb);
-                                printf("mb is %d\n", mb);
-                                fflush(stdout);
-                        }
-                        MPI_Barrier(MPI_COMM_WORLD);
-                }
-                myRC[0] = numroc_(&N, &nb, &(pG->myrow), &i_zero, &(pG->prow));
-                myRC[1] = numroc_(&M, &mb, &(pG->mycol), &i_zero, &(pG->pcol));
-                if (myRC[0] < 1)
-                        myRC[0] = 1;
-                if (myRC[1] < 1)
-                        myRC[1] = 1;
-                nelements = (long long)myRC[0] * (long long)myRC[1];
-                if (type == 0)
-                {
-                        if (printRank)
-                                printf("Mat is Double\n");
-                        dataD.resize(nelements, init);
-                }
-                else if (type == 1)
-                {
-                        if (printRank)
-                                printf("Mat is Complex\n");
-                        dataC.resize(nelements);
-                        for (int i = 0; i < nelements; i++)
-                        {
-                                dataC[i].real = init;
-                                dataC[i].imag = 0.0;
-                        }
-                }
-                descinit_(desc, &N, &M, &nb, &mb, &i_zero, &i_zero, &(pG->icntxt), &myRC[0], &info);
-                if (info != 0)
-                {
-                        if (pG->printRank)
-                                printf("Error in descriptor setup in arguement %d\n", -info);
-                }
+        }
+        descinit_(desc, &N, &M, &nb, &mb, &i_zero, &i_zero, &(pG->icntxt), &myRC[0], &info);
+        if (info != 0)
+        {
+                if (pG->printRank)
+                        printf("Error in descriptor setup in arguement %d\n", -info);
         }
         if (printRank)
                 printf("Matrix Constructed\n");
@@ -397,13 +390,14 @@ int pMat::read_single_bin(const char *name, int col)
         return 1;
 }
 
-int pMat::read_bin(char *filename)
+int pMat::read_bin(string &filename)
 {
+
         int rN, rM;
         double t2, t1;
         MPI_Barrier(MPI_COMM_WORLD);
         MPI_File fH;
-        MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fH);
+        MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fH);
         MPI_File_read_all(fH, &rN, 1, MPI_INT, MPI_STATUS_IGNORE);
         MPI_File_read_all(fH, &rM, 1, MPI_INT, MPI_STATUS_IGNORE);
         MPI_File_close(&fH);
@@ -437,13 +431,13 @@ int pMat::read_bin(char *filename)
         if (printRank)
                 printf("Read Starting\n");
         t1 = MPI_Wtime();
-        MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fH);
+        MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fH);
         MPI_File_set_view(fH, disp, MPI_DOUBLE, darray, "native", MPI_INFO_NULL);
         MPI_File_read_all(fH, dataD.data(), mpiEls, MPI_DOUBLE, MPI_STATUS_IGNORE);
         MPI_File_close(&fH);
         t2 = MPI_Wtime();
         if (printRank)
-                printf("read of %s took %f seconds\n", filename, t2 - t1);
+                printf("read of %s took %f seconds\n", filename.c_str(), t2 - t1);
 
         return 1;
 }
