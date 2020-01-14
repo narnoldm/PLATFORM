@@ -45,7 +45,7 @@ public:
     bool ScanInfo(string token);
 };
 
-class matID
+class dataID
 {
 public:
     enum typeenum
@@ -57,18 +57,17 @@ public:
     };
     enum dimenum
     {
+        scal,
+        vec,
         mat,
-        vec
     };
     int type, dim;
     vector<string> token;
     string name;
-    int M, N;
+    vector<int> dims;
 
-    //ParMat mat;
-
-    matID();
-    ~matID();
+    dataID();
+    ~dataID();
     void setName(string n);
     void setInfo(string d);
     void setInfo(vector<int> &d);
@@ -90,7 +89,7 @@ public:
         vec,
         mat,
     };
-    vector<matID *> matList;
+    vector<dataID *> matList;
 
     inputInfo();
     ~inputInfo();
@@ -108,8 +107,8 @@ public:
     vector<string> output;
     vector<int> inID;
     vector<int> outID;
-    vector<matID *> inputMat;
-    vector<matID *> outputMat;
+    vector<dataID *> inputMat;
+    vector<dataID *> outputMat;
 
     string opName;
     bool operation_ident;
