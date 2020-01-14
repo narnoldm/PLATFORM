@@ -88,20 +88,20 @@ ostream &operator<<(std::ostream &os, const sysInfo &sID)
         return os;
 }
 
-matID::matID()
+dataID::dataID()
 {
 }
 
-matID::~matID()
+dataID::~dataID()
 {
 }
 
-void matID::setName(string n)
+void dataID::setName(string n)
 {
         name = n;
 }
 
-void matID::setInfo(string d)
+void dataID::setInfo(string d)
 {
         token.clear();
         tokenparse(d, "|", token);
@@ -134,18 +134,16 @@ void matID::setInfo(string d)
                 throw(-1);
         }
 }
-void matID::setInfo(vector<int> &d)
+void dataID::setInfo(vector<int> &d)
 {
         assert(d.size() > 0);
         dim = d.size();
-        if (dim >= 1)
-                M = d[0];
-        N = 1;
-        if (dim >= 2)
-                N = d[1];
+        dims.resize(d.size());
+        for(int i=0;i<d.size();i++)
+                dims[i]=d[i];
         type = defined;
 }
-ostream &operator<<(std::ostream &os, const matID &mID)
+ostream &operator<<(std::ostream &os, const dataID &mID)
 {
         cout << "Matrix " << mID.name << " is of type:" << mID.type << endl;
         if (mID.type != mID.defined)
@@ -157,8 +155,10 @@ ostream &operator<<(std::ostream &os, const matID &mID)
         }
         else
         {
-                cout << "dim is: " << mID.dim << " ";
-                cout << mID.M << " " << mID.N << endl;
+                cout << "dim is: " << mID.dim << " "<<endl;
+                for(int i=0;i<mID.dim;i++)
+                        cout<<"dim["<<i<<"]"<<mID.dims[i]<<" ";
+                cout<<endl;
         }
 
         return os;
@@ -179,9 +179,9 @@ bool inputInfo::ScanInput(string line)
         vector<string> split;
         tokenparse(line, "=", split);
         assert(split.size() == 2);
-        matID *point;
+        dataID *point;
         matList.push_back(point);
-        matList[matList.size() - 1] = new matID();
+        matList[matList.size() - 1] = new dataID();
         matList[matList.size() - 1]->setName(split[0]);
         matList[matList.size() - 1]->setInfo(split[1]);
 
@@ -216,10 +216,12 @@ void inputInfo::assignInputInfo()
                         {
                                 cout << "input type defined" << endl;
                                 pMat temp;
-                                if (temp.check_bin_size(matList[i]->token[2], matList[i]->M, matList[i]->N))
+                                if (temp.check_bin_size(matList[i]->token[2], matList[i]->dims[0], matList[i]->dims[1]))
                                 {
                                         matList[i]->type = defined;
-                                        if (matList[i]->M == 1 || matList[i]->N == 1)
+                                        if (matList[i]->dims[0] == 1 & matList[i]->dims[1] == 1)
+                                                matList[i]->dim = scal;
+                                        if (matList[i]->dims[0] == 1 & matList[i]->dims[1] == 1)        
                                                 matList[i]->dim = vec;
                                         else
                                                 matList[i]->dim = mat;
@@ -347,13 +349,13 @@ void operation::assignOutputDim()
                 }
                 vector<int> temp;
                 temp.clear();
-                temp.push_back(inputMat[0]->M);
-                temp.push_back(inputMat[0]->N);
+                temp.push_back(inputMat[0]->dims[0]);
+                temp.push_back(inputMat[0]->dims[1]);
                 outputMat[0]->setInfo(temp);
-                temp[0] = inputMat[0]->N;
+                temp[0] = inputMat[0]->dims[1];
                 outputMat[2]->setInfo(temp);
                 temp.clear();
-                temp.push_back(min(inputMat[0]->M, inputMat[0]->N));
+                temp.push_back(min(inputMat[0]->dims[0], inputMat[0]->dims[1]));
                 outputMat[1]->setInfo(temp);
                 temp.clear();
                 return;
@@ -575,7 +577,7 @@ void executioner::create_matricies()
         for (int i = 0; i < inpFile->inp.matList.size(); i++)
         {
                 cout << "allocating matrix " << *(inpFile->inp.matList[i]) << endl;
-                pointMat = new pMat(inpFile->inp.matList[i]->M, inpFile->inp.matList[i]->N, pGs[0], 0, 0, 0.0);
+                pointMat = new pMat(inpFile->inp.matList[i]->dims[0], inpFile->inp.matList[i]->dims[1], pGs[0], 0, 0, 0.0);
                 pMats.push_back(pointMat);
         }
 }
