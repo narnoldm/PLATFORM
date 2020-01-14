@@ -1,6 +1,5 @@
 
 
-
 #include "parser.hpp"
 
 template <typename T>
@@ -139,8 +138,8 @@ void dataID::setInfo(vector<int> &d)
         assert(d.size() > 0);
         dim = d.size();
         dims.resize(d.size());
-        for(int i=0;i<d.size();i++)
-                dims[i]=d[i];
+        for (int i = 0; i < d.size(); i++)
+                dims[i] = d[i];
         type = defined;
 }
 ostream &operator<<(std::ostream &os, const dataID &mID)
@@ -155,10 +154,13 @@ ostream &operator<<(std::ostream &os, const dataID &mID)
         }
         else
         {
-                cout << "dim is: " << mID.dim << " "<<endl;
-                for(int i=0;i<mID.dim;i++)
-                        cout<<"dim["<<i<<"]"<<mID.dims[i]<<" ";
-                cout<<endl;
+                cout << "dim is: " << mID.dim << " " << endl;
+                for (int i = 0; i < mID.dim; i++)
+                        cout << "dim[" << i << "]" << mID.dims[i] << " ";
+                cout << endl;
+                cout << "is Input " << mID.isInput << endl;
+                cout << "is Synched Data " << mID.isPA << endl;
+                cout << "is P0 Data " << mID.isP0 << endl;
         }
 
         return os;
@@ -216,12 +218,14 @@ void inputInfo::assignInputInfo()
                         {
                                 cout << "input type defined" << endl;
                                 pMat temp;
+                                matList[i]->dims.resize(2);
                                 if (temp.check_bin_size(matList[i]->token[2], matList[i]->dims[0], matList[i]->dims[1]))
                                 {
                                         matList[i]->type = defined;
+                                        matList[i]->isInput = true;
                                         if (matList[i]->dims[0] == 1 & matList[i]->dims[1] == 1)
                                                 matList[i]->dim = scal;
-                                        if (matList[i]->dims[0] == 1 & matList[i]->dims[1] == 1)        
+                                        if (matList[i]->dims[0] == 1 & matList[i]->dims[1] == 1)
                                                 matList[i]->dim = vec;
                                         else
                                                 matList[i]->dim = mat;
@@ -357,6 +361,7 @@ void operation::assignOutputDim()
                 temp.clear();
                 temp.push_back(min(inputMat[0]->dims[0], inputMat[0]->dims[1]));
                 outputMat[1]->setInfo(temp);
+                outputMat[1]->isPA = true;
                 temp.clear();
                 return;
         }
@@ -577,7 +582,26 @@ void executioner::create_matricies()
         for (int i = 0; i < inpFile->inp.matList.size(); i++)
         {
                 cout << "allocating matrix " << *(inpFile->inp.matList[i]) << endl;
-                pointMat = new pMat(inpFile->inp.matList[i]->dims[0], inpFile->inp.matList[i]->dims[1], pGs[0], 0, 0, 0.0);
+                if (inpFile->inp.matList[i]->isPA)
+                {
+                        cout<<"Creating Synched data"<<endl;
+                        pointMat = new pMat(inpFile->inp.matList[i]->dims[0], pGs[1]->size, pGs[1], 0, 0, 0.0);
+                }
+                else
+                        pointMat = new pMat(inpFile->inp.matList[i]->dims[0], inpFile->inp.matList[i]->dims[1], pGs[0], 0, 0, 0.0);
+                //input
+                if (inpFile->inp.matList[i]->isInput)
+                {
+                        cout << "loading " << *(inpFile->inp.matList[i]) << endl;
+                        if (inpFile->inp.matList[i]->token[1] == "binary")
+                        {
+                                pointMat->read_bin(inpFile->inp.matList[i]->token[2]);
+                        }
+                        else
+                        {
+                                cout << "load type unrecognized" << endl;
+                        }
+                }
                 pMats.push_back(pointMat);
         }
 }

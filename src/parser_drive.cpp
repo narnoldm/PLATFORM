@@ -1,8 +1,6 @@
-#include <iostream>
 
-//#include "parser.cpp"
+
 #include "parser.hpp"
-using namespace ::std;
 
 int main(int argc, char *argv[])
 {
@@ -16,7 +14,7 @@ int main(int argc, char *argv[])
 
     inputReader file1("input.pdp");
     inputReader* file1p= &file1;
-    
+ 
     executioner exec(file1p);
     exec.init();
     exec.exec_all();
