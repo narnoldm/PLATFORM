@@ -562,11 +562,27 @@ void executioner::exec(int opID)
 
 void executioner::output()
 {
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         for(int i=0;i<inpFile->out.matList.size();i++)
         {
                 if(inpFile->out.matList[i]->token[0]=="output")
                 {
                         cout<<"output detected"<<endl;
+                        if(rank==0)
+                                system(("mkdir "+inpFile->out.matList[i]->name).c_str());
+                        if(inpFile->out.matList[i]->token[1]=="binary");
+                        {
+                                cout<<"binary detected"<<endl;
+                                for(int j=0;j<inpFile->inp.matList.size();j++)
+                                {
+                                        if(inpFile->inp.matList[j]->name==inpFile->out.matList[i]->token[2])
+                                        {
+                                                cout<<inpFile->out.matList[i]->token[2]<<" found"<<endl;
+                                                pMats[j]->write_bin((inpFile->out.matList[i]->name+"/"+inpFile->out.matList[i]->name+".bin").c_str());
+                                        }
+                                }
+                        }
                 }
         }
 }
@@ -574,8 +590,8 @@ void executioner::clear()
 {
         for (int i = 0; i < pMats.size(); i++)
         {
-                cout << i << endl;
                 delete pMats[i];
+                cout << inpFile->inp.matList[i]->name << endl;
         }
 }
 void executioner::create_matricies()
