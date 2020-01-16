@@ -174,6 +174,7 @@ class executioner
     void init();
     void exec_all();
     void exec(int opID);
+    void output();
     void clear();
 
     void create_matricies();
