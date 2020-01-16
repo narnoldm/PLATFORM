@@ -559,6 +559,17 @@ void executioner::exec(int opID)
                 A->svd_run(A->N, A->M, 0, 0, U, VT, S->dataD);
         }
 }
+
+void executioner::output()
+{
+        for(int i=0;i<inpFile->out.matList.size();i++)
+        {
+                if(inpFile->out.matList[i]->token[0]=="output")
+                {
+                        cout<<"output detected"<<endl;
+                }
+        }
+}
 void executioner::clear()
 {
         for (int i = 0; i < pMats.size(); i++)
