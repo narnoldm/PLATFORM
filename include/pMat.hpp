@@ -11,14 +11,14 @@
 #include <sstream>
 #include <cmath>
 
-using namespace::std;
+using namespace ::std;
 
 extern "C" void Cblacs_pinfo(int *MYPNUM, int *NPROCS);
 extern "C" void Cblacs_get(int ICONTXT, int WHAT, int *VAL);
 extern "C" void Cblacs_gridinit(int *ICONTXT, char *ORDER, int prow, int pcol);
 extern "C" void Cblacs_gridinfo(int ICONTXT, int *nprow, int *npcol, int *myprow, int *mypcol);
 extern "C" void Cblacs_gridexit(int ICONTXT);
-extern "C" double cblas_dnrm2 (const MKL_INT n, const double *x, const MKL_INT incx);
+extern "C" double cblas_dnrm2(const MKL_INT n, const double *x, const MKL_INT incx);
 extern "C" MKL_INT numroc_(const MKL_INT *n, const MKL_INT *nb, const MKL_INT *iproc, const MKL_INT *srcproc, const MKL_INT *nprocs);
 extern "C" void descinit_(MKL_INT *desc, const MKL_INT *m, const MKL_INT *n, const MKL_INT *mb, const MKL_INT *nb, const MKL_INT *irsrc, const MKL_INT *icsrc, const MKL_INT *ictxt, const MKL_INT *lld, MKL_INT *info);
 extern "C" void pdgeadd(const char *trans, const MKL_INT *m, const MKL_INT *n, const double *alpha, const double *a, const MKL_INT *ia, const MKL_INT *ja, const MKL_INT *desca, const double *beta, double *c, const MKL_INT *ic, const MKL_INT *jc, const MKL_INT *descc);
@@ -28,26 +28,39 @@ extern "C" void pdamax(const MKL_INT *n, double *amax, MKL_INT *indx, const doub
 extern "C" void pdasum(const MKL_INT *n, double *asum, const double *x, const MKL_INT *ix, const MKL_INT *jx, const MKL_INT *descx, const MKL_INT *incx);
 extern "C" void pdtran(const MKL_INT *m, const MKL_INT *n, const double *alpha, const double *a, const MKL_INT *ia, const MKL_INT *ja, const MKL_INT *desca, const double *beta, double *c, const MKL_INT *ic, const MKL_INT *jc, const MKL_INT *descc);
 
+/* 
+pMat: This file contains the headers for the PGrid and pMat classes.
+These define how the code distributes data into the ScaLAPACK format
+ */
 
 class PGrid
 {
-
-  public:
-	int icntxt, myrow, mycol, prow, pcol;
+/* 
+	PGrid sets up the communication context needed by all PBLACS routines.
+	All pMats are built on an underlying Process Grid (PGrid). Multiple 
+	PMats can be assigned to identical PGrids. 
+ */
+public:
+	int icntxt; //context identifier
+	int myrow; //(Local)
+	int mycol; 
+	int prow;
+	int pcol;
 	int pdims[2];
-	bool printRank;
+	bool printRank; 
 	int rank, size;
 
-	PGrid(int r, int s, int type);
+	PGrid(int r, int s, int type); //Constructor
 	~PGrid();
 	int getDim(int dim);
 };
 
 class pMat
 {
-  public:
+public:
 	int myRC[2], desc[9];
 	int N, M, nb, mb;
+	long GBs;
 	std::vector<double> dataD;
 	std::vector<MKL_Complex16> dataC;
 	bool printRank;
@@ -67,20 +80,12 @@ class pMat
 	void switchType(int t);
 	void printMat();
 	int write_bin(std::string filename);
-	int write_IPIV(std::string filename, std::vector<int> &ipiv, std::vector<int> &gipiv);
-	int recon(int modes, pMat *U, pMat *VT, vector<double> &S);
-	int recon(int modess,int modes, pMat *U, pMat *VT, vector<double> &S);
-	int recon(int modes, pMat *U, pMat *VT, vector<double> &S, int pinv);
-	int pInv(pMat *A);
-	int subSet(pMat *A, std::vector<int> &cols);
-	int inflate(pMat *A, std::vector<int> &ipiv);
 	int read_bins(std::string prefix, int start, int skip, int end);
 	int read_single_bin(const char *name, int col);
 	int read_bin(string &filename);
-	bool check_bin_size(string filename,int &mN,int &mM);
+	bool check_bin_size(string filename, int &mN, int &mM);
 	int matrix_Product(char tA, char tB, int n, int m, int k, pMat *A, int ia, int ja, pMat *B, int ib, int jb, double alpha, double beta, int ic, int jc);
 	int matrix_Sum(char tA, int n, int m, pMat *A, int ia, int ja, int ib, int jb, double alpha, double beta);
-	int qr_run(int N, int M, int ia, int ja, std::vector<int> &ipiv);
 	int svd_run(int N, int M, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S);
 	int transpose(pMat *A, int N, int M, int ia, int ja);
 	int changeContext(pMat *A, int n, int m, int ia, int ja, int ib, int jb);
