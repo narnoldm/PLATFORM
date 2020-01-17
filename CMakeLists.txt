@@ -21,9 +21,8 @@ target_include_directories(parser PRIVATE include)
 target_link_libraries(parser pMat)
 
 target_link_directories(pMat PUBLIC ${MKLROOT}/lib/intel64/)
-target_link_libraries(pMat mkl_scalapack_lp64 mkl_intel_lp64 mkl_sequential mkl_core mkl_blacs_intelmpi_lp64) 
-target_link_options(pMat PUBLIC  ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -lpthread -lm -ldl)
-
+#target_link_libraries(pMat mkl_scalapack_lp64 mkl_intel_lp64 mkl_sequential mkl_core mkl_blacs_intelmpi_lp64) 
+target_link_libraries(pMat ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -lpthread -lm -ldl) 
 
 target_include_directories(pMat PRIVATE include ${MKLROOT}/include)
 
@@ -37,7 +36,6 @@ target_link_libraries(parser_drive parser)
 enable_testing()
 
 add_test(NAME test1_SVD_bin_serial WORKING_DIRECTORY tests/test1_SVD_bin COMMAND mpirun -np 1 parser_drive)
-
 
 
 
