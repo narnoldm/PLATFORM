@@ -86,8 +86,7 @@ void pMat::setupMat(int n, int m, int t, int b, int c, double init)
                 mb = nb;
                 if (pG->printRank)
                 {
-                        printf("nb is %d\n", nb);
-                        fflush(stdout);
+                        printf("mb/nb = %d\n", nb);
                 }
                 MPI_Barrier(MPI_COMM_WORLD);
         }
@@ -103,7 +102,6 @@ void pMat::setupMat(int n, int m, int t, int b, int c, double init)
                 {
                         printf("nb is %d\n", nb);
                         printf("mb is %d\n", mb);
-                        fflush(stdout);
                 }
                 MPI_Barrier(MPI_COMM_WORLD);
         }
@@ -131,6 +129,7 @@ void pMat::setupMat(int n, int m, int t, int b, int c, double init)
                 if (printRank)
                         printf("Mat is Double\n");
                 dataD.resize(nelements, init);
+                GBs=nelemets*8/(1e9);
         }
         else if (type == 1)
         {
@@ -141,8 +140,20 @@ void pMat::setupMat(int n, int m, int t, int b, int c, double init)
                 {
                         dataC[i].real = init;
                         dataC[i].imag = 0.0;
+                        GBs=nelemets*16/(1e9);
+                }
+                GBs=nelments*
+        }
+        else
+        {
+                if(printRank)
+                {
+                        printf("invalid type\n");
+                        throw(-1);
                 }
         }
+        
+        
         descinit_(desc, &N, &M, &nb, &mb, &i_zero, &i_zero, &(pG->icntxt), &myRC[0], &info);
         if (info != 0)
         {
@@ -258,78 +269,6 @@ int pMat::write_bin(std::string filename)
                 printf("Write time is %f\n", t2 - t1);
 }
 
-int pMat::write_IPIV(std::string filename, std::vector<int> &ipiv, std::vector<int> &gipiv)
-{
-        gipiv.resize(N, 0.0);
-        int i = 0;
-        int sproc = 0;
-        int loop = 0;
-        int rank = pG->rank;
-        while (i < N)
-        {
-                if (printRank)
-                {
-                        std::cout << "index " << i << " of " << N << std::endl;
-                        std::cout << "sproc:" << sproc << std::endl;
-                }
-                if ((N - i) > nb)
-                {
-                        if (sproc == 0)
-                                for (int j = 0; j < nb; j++)
-                                        gipiv[i + j] = ipiv[j + loop * nb];
-                        else
-                        {
-                                if (rank == sproc)
-                                {
-                                        MPI_Send(ipiv.data() + loop * nb, nb, MPI_INT, 0, 0, MPI_COMM_WORLD);
-                                }
-                                if (rank == 0)
-                                {
-                                        MPI_Recv(gipiv.data() + i, nb, MPI_INT, sproc, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                                }
-                                MPI_Barrier(MPI_COMM_WORLD);
-                        }
-                        i += nb;
-                }
-                else
-                {
-                        int extra = N - i;
-                        if (sproc == 0)
-                                for (int j = 0; j < extra; j++)
-                                        gipiv[i + j] = ipiv[j + loop * nb];
-                        else
-                        {
-                                if (rank == sproc)
-                                {
-                                        MPI_Send(ipiv.data() + loop * nb, extra, MPI_INT, 0, 0, MPI_COMM_WORLD);
-                                }
-                                if (rank == 0)
-                                {
-                                        MPI_Recv(gipiv.data() + i, extra, MPI_INT, sproc, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                                }
-                                MPI_Barrier(MPI_COMM_WORLD);
-                        }
-
-                        i += extra;
-                }
-                if (sproc == (pG->pdims[1] - 1))
-                {
-                        sproc = 0;
-                        loop++;
-                }
-                else
-                        sproc++;
-        }
-
-        for (int i = 0; i < N; i++)
-        {
-                gipiv[i]--; //switch to C indexing
-                            //std::cout<<gipiv[i]<<std::endl;
-        }
-        if (rank == 0)
-                std::cout << "Pivot table generated, broadcasting to cores" << std::endl;
-        MPI_Bcast(gipiv.data(), N, MPI_INT, 0, MPI_COMM_WORLD);
-}
 
 int pMat::read_bins(std::string prefix, int start, int skip, int end)
 {
@@ -501,67 +440,6 @@ int pMat::matrix_Product(char tA, char tB, int n, int m, int k, pMat *A, int ia,
         return 0;
 }
 
-int pMat::recon(int modes, pMat *U, pMat *VT, vector<double> &S)
-{
-        recon(0, modes, U, VT, S);
-}
-int pMat::recon(int modess, int modes, pMat *U, pMat *VT, vector<double> &S)
-{
-        for (int i = 0; i < nelements; i++)
-                dataD[i] = 0.0;
-        for (int i = modess; i < modes; i++)
-        {
-                this->matrix_Product('N', 'N', N, M, 1, U, 0, i, VT, i, 0, S[i], 1.0, 0, 0);
-        }
-        if (printRank)
-                std::cout << "Reconstructed with " << modes - modess << " modes" << std::endl;
-}
-
-int pMat::recon(int modes, pMat *U, pMat *VT, vector<double> &S, int pinv)
-{
-        for (int i = 0; i < nelements; i++)
-                dataD[i] = 0.0;
-        for (int i = 0; i < modes; i++)
-        {
-                if (pinv == 0)
-                        this->matrix_Product('N', 'N', N, M, 1, U, 0, i, VT, i, 0, S[i], 1, 0, 0);
-                else if (pinv == 1)
-                        this->matrix_Product('T', 'T', N, M, 1, U, i, 0, VT, 0, i, S[i], 1, 0, 0);
-                else if (printRank)
-                {
-                        std::cout << "pinv =" << pinv << "ERROR" << std::endl;
-                        throw(-1);
-                }
-        }
-        if (printRank)
-                std::cout << "Reconstructed with " << modes << " modes" << std::endl;
-}
-int pMat::pInv(pMat *A)
-{
-
-        int minMN = std::min(A->M, A->N);
-        pMat *U = new pMat(A->N, minMN, A->pG, A->type, A->block, 0.0);
-        pMat *VT = new pMat(minMN, A->M, A->pG, A->type, A->block, 0.0);
-        vector<double> S;
-        S.resize(minMN);
-        U->printDesc();
-        VT->printDesc();
-        this->printDesc();
-
-        A->svd_run(A->N, A->M, 0, 0, U, VT, S);
-        if (printRank)
-        {
-                std::cout << "Warnging:input matrix has been destroyed. this is normal" << std::endl;
-        }
-        for (int i = 0; i < minMN; i++)
-        {
-                if (S[i] != 0)
-                        S[i] = 1 / S[i];
-        }
-        this->recon(minMN, VT, U, S, 1);
-        delete U;
-        delete VT;
-}
 int pMat::matrix_Sum(char tA, int n, int m, pMat *A, int ia, int ja, int ib, int jb, double alpha, double beta)
 {
 
@@ -596,63 +474,6 @@ int pMat::matrix_Sum(char tA, int n, int m, pMat *A, int ia, int ja, int ib, int
                         printf("Other Formats not supported yet\n");
         }
         return 0;
-}
-
-int pMat::subSet(pMat *A, std::vector<int> &cols)
-{
-        if (printRank)
-        {
-                std::cout << "Pulling Rows" << std::endl;
-        }
-        for (int i = 0; i < cols.size(); i++)
-        {
-                this->changeContext(A, N, 1, 0, cols[i], 0, i);
-                //int pMat::changeContext(pMat *A,int n,int m,int ia,int ja,int ib,int jb)
-        }
-        return 0;
-}
-int pMat::inflate(pMat *A, std::vector<int> &ipiv)
-{
-        for (int i = 0; i < ipiv.size(); i++)
-        {
-                this->changeContext(A, 1, M, i, 0, ipiv[i], 0);
-        }
-        return 0;
-}
-int pMat::qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv)
-{
-        if (printRank)
-                printf("QR initializing\n");
-        double t1, t2;
-        int info;
-        int LWORK = -1;
-        int IA = ia + 1;
-        int JA = ja + 1;
-        int i_one = 1;
-        int JApN = JA + n - 1;
-        int LOCc = numroc_(&JApN, &nb, &(pG->mycol), &i_zero, &(pG->pcol));
-        if (printRank)
-                std::cout << "LOCc=" << LOCc << std::endl;
-        std::vector<double> tau;
-        std::vector<double> WORK(1);
-        pdgeqpf(&n, &m, dataD.data(), &IA, &JA, desc, ipiv.data(), tau.data(), WORK.data(), &LWORK, &info);
-        if (printRank)
-                printf("WORK=%f,LWORK=%d,info=%d\n", WORK[0], LWORK, info);
-        LWORK = WORK[0];
-        WORK.resize(LWORK);
-        ipiv.resize(LWORK);
-        tau.resize(LWORK);
-        if (printRank)
-                std::cout << "WORK allocated starting QR" << std::endl;
-        MPI_Barrier(MPI_COMM_WORLD);
-        t1 = MPI_Wtime();
-        pdgeqpf(&n, &m, dataD.data(), &IA, &JA, desc, ipiv.data(), tau.data(), WORK.data(), &LWORK, &info);
-        t2 = MPI_Wtime();
-        if (pG->rank == 0)
-        {
-                printf("QR complete in %f seconds info =%d\n", t2 - t1, info);
-        }
-        return 1;
 }
 
 int pMat::svd_run(int N, int M, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S)
@@ -785,4 +606,21 @@ void pMat::printDesc()
                 std::cout << "Process Col where first col is: " << desc[7] << std::endl;
                 std::cout << "Leading Dimension: " << desc[8] << std::endl;
         }
+}
+ostream &operator<<(std::ostream &os, const pMat &p)
+{
+        if(p.printRank)
+        {
+                std::cout << "Descriptor type: " << desc[0] << std::endl;
+                std::cout << "BLACS context: " << desc[1] << std::endl;
+                std::cout << "Global Rows: " << desc[2] << std::endl;
+                std::cout << "Global Cols: " << desc[3] << std::endl;
+                std::cout << "Row Blocking factor: " << desc[4] << std::endl;
+                std::cout << "Column Blocking factor: " << desc[5] << std::endl;
+                std::cout << "Process row where first row is: " << desc[6] << std::endl;
+                std::cout << "Process Col where first col is: " << desc[7] << std::endl;
+                std::cout << "Leading Dimension: " << desc[8] << std::endl;
+                std::cout << "Memory usage(data only) GB = "<<p.GBs<<std::endl;
+        }
+        return os;
 }

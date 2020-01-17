@@ -632,6 +632,13 @@ void executioner::create_matricies()
                 pMats.push_back(pointMat);
         }
 }
+
+ostream &operator<<(std::ostream &os, const executioner &e)
+{
+        
+}
+
+
 bool to_bool(std::string str)
 {
         std::transform(str.begin(), str.end(), str.begin(), ::tolower);
