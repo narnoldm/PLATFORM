@@ -35,7 +35,7 @@ target_link_libraries(parser_drive parser)
 
 enable_testing()
 
-add_test(NAME test1_SVD_bin_serial WORKING_DIRECTORY tests/test1_SVD_bin COMMAND mpirun -np 1 parser_drive)
+add_test(NAME test1_SVD_bin_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test1_SVD_bin COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/parser_drive)
 
 
 
