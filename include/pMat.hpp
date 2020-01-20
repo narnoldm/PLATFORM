@@ -59,7 +59,7 @@ class pMat
 {
 public:
 	int myRC[2], desc[9];
-	int N, M, nb, mb;
+	int M, N, mb, nb;
 	long GBs;
 	std::vector<double> dataD;
 	std::vector<MKL_Complex16> dataC;
@@ -73,10 +73,10 @@ public:
 	PGrid *pG;
 
 	pMat();
-	pMat(int n, int m, PGrid *pG, int t, int b, double init);
-	pMat(int n, int m, PGrid *pG, int t, int b, int c, double init);
+	pMat(int m, int n, PGrid *pG, int t, int b, double init);
+	pMat(int m, int n, PGrid *pG, int t, int b, int c, double init);
 	~pMat();
-	void setupMat(int n, int m, int t, int b, int c, double init);
+	void setupMat(int m, int n, int t, int b, int c, double init);
 	void switchType(int t);
 	void printMat();
 	int write_bin(std::string filename);
@@ -84,11 +84,11 @@ public:
 	int read_single_bin(const char *name, int col);
 	int read_bin(string &filename);
 	bool check_bin_size(string filename, int &mN, int &mM);
-	int matrix_Product(char tA, char tB, int n, int m, int k, pMat *A, int ia, int ja, pMat *B, int ib, int jb, double alpha, double beta, int ic, int jc);
-	int matrix_Sum(char tA, int n, int m, pMat *A, int ia, int ja, int ib, int jb, double alpha, double beta);
-	int svd_run(int N, int M, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S);
-	int transpose(pMat *A, int N, int M, int ia, int ja);
-	int changeContext(pMat *A, int n, int m, int ia, int ja, int ib, int jb);
+	int matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia, int ja, pMat *B, int ib, int jb, double alpha, double beta, int ic, int jc);
+	int matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int jb, double alpha, double beta);
+	int svd_run(int m, int n, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S);
+	int transpose(pMat *A, int m, int n, int ia, int ja);
+	int changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb);
 	int changeContext(pMat *A);
 	int dMax(int dim, int rc, double val);
 	int dAve(int dim, int rc, double val);
