@@ -1,7 +1,4 @@
-#ifndef P_MAT_H
-#define P_MAT_H
 #include "pMat.hpp"
-#endif
 
 PGrid::PGrid(int r, int s, int type)
 {
