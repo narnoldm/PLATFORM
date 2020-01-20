@@ -49,6 +49,11 @@ pMat::pMat()
 {
         cout << "empty pMat created" << endl;
 }
+pMat::pMat(pMat *point)
+{
+        pG = point->pG;
+        setupMat(point->N, point->M, point->type, point->block, point->cycles, 0.0);
+}
 pMat::pMat(int n, int m, PGrid *pGp, int t, int b, double init)
 {
         pG = pGp;
@@ -129,7 +134,7 @@ void pMat::setupMat(int n, int m, int t, int b, int c, double init)
                 if (printRank)
                         cout << "Mat is Double" << endl;
                 dataD.resize(nelements, init);
-                GBs = nelements * 8 / (1e9);
+                MBs = nelements * 8.0 / (1.0e6);
         }
         else if (type == 1)
         {
@@ -140,7 +145,7 @@ void pMat::setupMat(int n, int m, int t, int b, int c, double init)
                 {
                         dataC[i].real = init;
                         dataC[i].imag = 0.0;
-                        GBs = nelements * 16 / (1e9);
+                        MBs = nelements * 16.0 / (1.0e6);
                 }
         }
         else
@@ -368,7 +373,7 @@ int pMat::read_bin(string &filename)
         if (printRank)
                 cout << "MPI Allocation " << mpiEls << " , pblacs Allocation " << nelements << endl;
         if (printRank)
-                cout<<"Read Starting"<<endl;
+                cout << "Read Starting" << endl;
         t1 = MPI_Wtime();
         MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fH);
         MPI_File_set_view(fH, disp, MPI_DOUBLE, darray, "native", MPI_INFO_NULL);
@@ -376,7 +381,7 @@ int pMat::read_bin(string &filename)
         MPI_File_close(&fH);
         t2 = MPI_Wtime();
         if (printRank)
-                cout<<"read of "<<filename<<" took "<<t2-t1<<" seconds"<<endl;
+                cout << "read of " << filename << " took " << t2 - t1 << " seconds" << endl;
 
         return 1;
 }
@@ -405,8 +410,8 @@ int pMat::matrix_Product(char tA, char tB, int n, int m, int k, pMat *A, int ia,
 
         if ((A->type == 0) && (B->type == 0) && (type == 0))
         {
-                if(printRank)
-                        cout<<"Double Multiply"<<endl;
+                if (printRank)
+                        cout << "Double Multiply" << endl;
                 int IA = ia + 1;
                 int JA = ja + 1;
                 int IB = ib + 1;
@@ -418,7 +423,7 @@ int pMat::matrix_Product(char tA, char tB, int n, int m, int k, pMat *A, int ia,
         else if ((A->type == 1) && (B->type == 1) && (type == 1))
         {
                 if (printRank)
-                        cout<<"Complex Multiply"<<endl;
+                        cout << "Complex Multiply" << endl;
                 int IA = ia + 1;
                 int JA = ja + 1;
                 int IB = ib + 1;
@@ -435,7 +440,7 @@ int pMat::matrix_Product(char tA, char tB, int n, int m, int k, pMat *A, int ia,
         else
         {
                 if (printRank)
-                        cout<<"Other matrix datatypes not supported yet"<<endl;
+                        cout << "Other matrix datatypes not supported yet" << endl;
         }
         return 0;
 }
@@ -446,7 +451,7 @@ int pMat::matrix_Sum(char tA, int n, int m, pMat *A, int ia, int ja, int ib, int
         if ((A->type == 0) && (type == 0))
         {
                 if (printRank)
-                        cout<<"Double Sum"<<endl;
+                        cout << "Double Sum" << endl;
                 int IA = ia + 1;
                 int JA = ja + 1;
                 int IB = ib + 1;
@@ -456,7 +461,7 @@ int pMat::matrix_Sum(char tA, int n, int m, pMat *A, int ia, int ja, int ib, int
         else if ((A->type == 1) && (type == 1))
         {
                 if (printRank)
-                        cout<<"Complex Sum"<<endl;
+                        cout << "Complex Sum" << endl;
                 int IA = ia + 1;
                 int JA = ja + 1;
                 int IB = ib + 1;
@@ -471,7 +476,7 @@ int pMat::matrix_Sum(char tA, int n, int m, pMat *A, int ia, int ja, int ib, int
         else
         {
                 if (printRank)
-                        cout<<"Other Formats not supported yet"<<endl;
+                        cout << "Other Formats not supported yet" << endl;
         }
         return 0;
 }
@@ -488,18 +493,18 @@ int pMat::svd_run(int N, int M, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         double t2, t1;
         pdgesvd(JOBU, JOBVT, &N, &M, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
         if (printRank)
-                cout<<"WORK= "<<WORK[0]<<", LWORK= "<<LWORK<<", info= "<<info<<endl;
+                cout << "WORK= " << WORK[0] << ", LWORK= " << LWORK << ", info= " << info << endl;
         LWORK = WORK[0];
         WORK.resize(LWORK);
         if (printRank)
-                cout<<"Work Allocated: "<< LWORK / (1e6) * 8 <<" MB per processor"<<endl;
+                cout << "Work Allocated: " << LWORK / (1e6) * 8 << " MB per processor" << endl;
         //SVD run
         MPI_Barrier(MPI_COMM_WORLD);
         t1 = MPI_Wtime();
         pdgesvd(JOBU, JOBVT, &N, &M, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
         t2 = MPI_Wtime();
         if (printRank)
-                cout<<"SVD complete in "<<t2-t1<<" seconds"<<endl;
+                cout << "SVD complete in " << t2 - t1 << " seconds" << endl;
         WORK.resize(0);
         return 1;
 }
@@ -508,12 +513,12 @@ int pMat::transpose(pMat *A, int n, int m, int ia, int ja)
         int IA = ia + 1;
         int JA = ja + 1;
         if (printRank)
-                cout<<"Copying transpose"<<endl;
+                cout << "Copying transpose" << endl;
 
         if ((n != N) && (m != A->N))
                 if (printRank)
                 {
-                        cout<<"transpose dimension mismatch"<<endl;
+                        cout << "transpose dimension mismatch" << endl;
                         return -1;
                 }
         int i_one = 1;
@@ -528,18 +533,20 @@ int pMat::changeContext(pMat *A, int n, int m, int ia, int ja, int ib, int jb)
         int IB = ib + 1;
         int JB = jb + 1;
         if (printRank)
-                cout<<"Copying Matrix"<<endl<<"n= "<<n<<" , "<<"m = "<<m<<endl;
+                cout << "Copying Matrix" << endl
+                     << "n= " << n << " , "
+                     << "m = " << m << endl;
         int i_one = 1;
         if (type == 0)
         {
-                if(printRank)
-                       cout<<"Double changed pGrid"<<endl;
+                if (printRank)
+                        cout << "Double changed pGrid" << endl;
                 pdgemr2d(&n, &m, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, &(pG->icntxt));
         }
         if (type == 1)
         {
                 if (printRank)
-                        cout<<"Complex changed pGrid"<<endl;
+                        cout << "Complex changed pGrid" << endl;
                 pzgemr2d(&n, &m, A->dataC.data(), &IA, &JA, A->desc, dataC.data(), &IB, &JB, desc, &(pG->icntxt));
         }
 }
@@ -554,7 +561,7 @@ int pMat::dMax(int dim, int rc, double val)
         int index = 0;
 
         if (printRank)
-                cout<<"finding max"<<endl;
+                cout << "finding max" << endl;
         if (dim == 0)
         {
                 int IA = 1, JA = rc + 1, i_one = 1;
@@ -567,13 +574,13 @@ int pMat::dMax(int dim, int rc, double val)
         }
 
         if (printRank)
-                cout<<"max is "<<val<<" at "<< index;
+                cout << "max is " << val << " at " << index;
 }
 int pMat::dAve(int dim, int rc, double val)
 {
 
         if (printRank)
-                cout<<"finding sum"<<endl;
+                cout << "finding sum" << endl;
         if (dim == 0)
         {
                 int IA = 1, JA = rc + 1, i_one = 1;
@@ -586,11 +593,8 @@ int pMat::dAve(int dim, int rc, double val)
         }
 
         if (printRank)
-                cout<<"sum is "<< val<<endl;
+                cout << "sum is " << val << endl;
 }
-
-
-
 
 void pMat::printDesc()
 {
@@ -620,12 +624,45 @@ ostream &operator<<(std::ostream &os, const pMat &p)
                 std::cout << "Process row where first row is: " << p.desc[6] << std::endl;
                 std::cout << "Process Col where first col is: " << p.desc[7] << std::endl;
                 std::cout << "Leading Dimension: " << p.desc[8] << std::endl;
-                std::cout << "Memory usage(data only) GB = " << p.GBs << std::endl;
+                std::cout << "Memory usage(data only) MB = " << p.MBs << std::endl;
         }
         return os;
 }
 
-pMat operator ==(pMat cost &p)
+bool operator==(pMat const &p1, pMat const &p2)
 {
-        
+        if ((p1.M != p2.M) || (p1.N != p2.N))
+        {
+                cout<<"Dim mismatch"<<endl;
+                return false;
+        }
+        else if ((p1.nelements != p2.nelements))
+        {
+                cout<<"element mismatch"<<endl;
+                return false;
+        }
+        else
+        {
+                if (p1.type == 0)
+                {
+                        for (int i = 0; i < p1.nelements; i++)
+                        {
+                                if (p1.dataD[i] != p2.dataD[i])
+                                {
+                                        cout << "element " << i << " does not match" << endl;
+                                        return false;
+                                }
+                        }
+                }
+                else if (p1.type == 1)
+                {
+                        for (int i = 0; i < p1.nelements; i++)
+                        {
+                                if ((p1.dataC[i].real != p2.dataC[i].real) || (p1.dataC[i].imag != p2.dataC[i].imag))
+                                        return false;
+                        }
+                }
+        }
+
+        return true;
 }
