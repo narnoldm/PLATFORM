@@ -62,7 +62,7 @@ class pMat
 public:
 	int myRC[2], desc[9];
 	int M, N, mb, nb;
-	long GBs;
+	long MBs;
 	std::vector<double> dataD;
 	std::vector<MKL_Complex16> dataC;
 	bool printRank;
@@ -75,6 +75,7 @@ public:
 	PGrid *pG;
 
 	pMat();
+	pMat(pMat * point);
 	pMat(int m, int n, PGrid *pG, int t, int b, double init);
 	pMat(int m, int n, PGrid *pG, int t, int b, int c, double init);
 	~pMat();
@@ -96,3 +97,6 @@ public:
 	int dAve(int dim, int rc, double val);
 	void printDesc();
 };
+
+ostream &operator<<(std::ostream &os, const pMat &p);
+bool operator==(pMat const &p1, pMat const &p2);
