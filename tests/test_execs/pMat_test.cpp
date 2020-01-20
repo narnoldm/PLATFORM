@@ -19,14 +19,21 @@ int main(int argc, char *argv[])
     }
 
     PGrid *p1 = new PGrid(rank,size,0);
-    pMat *m1;
+    pMat *m1,*m2;
     int M,N;
     string filename="test.bin";
     assert(m1->check_bin_size(filename,M,N));
-    m1=new pMat(M,N,p1,1,1,0.0);
+    m1=new pMat(M,N,p1,0,0,0.0);
     m1->read_bin(filename);
 
+    m2=new pMat(m1);
+    m2->read_bin(filename);
 
+
+    assert(*m1==*m2);
+
+    cout<<*m1<<endl;
+    cout<<*m2<<endl;
 
 
     cout.rdbuf(strm_buffer);
