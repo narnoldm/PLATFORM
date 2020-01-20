@@ -28,7 +28,7 @@ PGrid::PGrid(int r, int s, int type)
                 pdims[1] = 1;
         }
         if (printRank)
-                printf("Processor Grid N=%d M=%d\n", pdims[0], pdims[1]);
+                cout << "Processor Grid N=" << pdims[0] << " M=" << pdims[1] << endl;
         Cblacs_pinfo(&rank, &size);
         Cblacs_get(-1, 0, &icntxt);
         Cblacs_gridinit(&icntxt, order, pdims[0], pdims[1]);
@@ -38,7 +38,7 @@ PGrid::PGrid(int r, int s, int type)
 PGrid::~PGrid()
 {
         if (printRank)
-                printf("clearing pblacs buffers\n");
+                cout << "clearing pblacs buffers" << endl;
         Cblacs_gridexit(icntxt);
 }
 int PGrid::getDim(int dim)
@@ -62,7 +62,7 @@ pMat::pMat(int n, int m, PGrid *pGp, int t, int b, int c, double init)
 pMat::~pMat()
 {
         if (printRank)
-                printf("Deallocating Distributed Matrix\n");
+                cout << "Deallocating Distributed Matrix" << endl;
 }
 void pMat::setupMat(int n, int m, int t, int b, int c, double init)
 {
@@ -74,7 +74,8 @@ void pMat::setupMat(int n, int m, int t, int b, int c, double init)
         printRank = pG->printRank;
 
         if (printRank)
-                printf("Creating Matrix\nN=%d M=%d\n", N, M);
+                cout << "Creating Matrix" << endl
+                     << "N=" << N << " M=" << M << endl;
         if (block == 0) //square blocks
         {
                 nb = 1000000;
@@ -86,7 +87,7 @@ void pMat::setupMat(int n, int m, int t, int b, int c, double init)
                 mb = nb;
                 if (pG->printRank)
                 {
-                        printf("mb/nb = %d\n", nb);
+                        cout << "mb/nb = " << nb << endl;
                 }
                 MPI_Barrier(MPI_COMM_WORLD);
         }
@@ -100,8 +101,8 @@ void pMat::setupMat(int n, int m, int t, int b, int c, double init)
                         mb = M / pG->getDim(1);
                 if (pG->printRank)
                 {
-                        printf("nb is %d\n", nb);
-                        printf("mb is %d\n", mb);
+                        cout << "nb is " << nb << endl;
+                        cout << "mb is " << mb << endl;
                 }
                 MPI_Barrier(MPI_COMM_WORLD);
         }
@@ -111,9 +112,8 @@ void pMat::setupMat(int n, int m, int t, int b, int c, double init)
                 mb = M;
                 if (pG->printRank)
                 {
-                        printf("nb is %d\n", nb);
-                        printf("mb is %d\n", mb);
-                        fflush(stdout);
+                        cout << "nb is " << nb << endl;
+                        cout << "mb is " << mb << endl;
                 }
                 MPI_Barrier(MPI_COMM_WORLD);
         }
@@ -127,41 +127,39 @@ void pMat::setupMat(int n, int m, int t, int b, int c, double init)
         if (type == 0)
         {
                 if (printRank)
-                        printf("Mat is Double\n");
+                        cout << "Mat is Double" << endl;
                 dataD.resize(nelements, init);
-                GBs=nelemets*8/(1e9);
+                GBs = nelements * 8 / (1e9);
         }
         else if (type == 1)
         {
                 if (printRank)
-                        printf("Mat is Complex\n");
+                        cout << "Mat is Complex" << endl;
                 dataC.resize(nelements);
                 for (int i = 0; i < nelements; i++)
                 {
                         dataC[i].real = init;
                         dataC[i].imag = 0.0;
-                        GBs=nelemets*16/(1e9);
+                        GBs = nelements * 16 / (1e9);
                 }
-                GBs=nelments*
         }
         else
         {
-                if(printRank)
+                if (printRank)
                 {
-                        printf("invalid type\n");
+                        cout << "invalid type" << endl;
                         throw(-1);
                 }
         }
-        
-        
+
         descinit_(desc, &N, &M, &nb, &mb, &i_zero, &i_zero, &(pG->icntxt), &myRC[0], &info);
         if (info != 0)
         {
                 if (pG->printRank)
-                        printf("Error in descriptor setup in arguement %d\n", -info);
+                        cout << "Error in descriptor setup in argument, info=" << -info << endl;
         }
         if (printRank)
-                printf("Matrix Constructed\n");
+                cout << "Matrix Constructed" << endl;
 }
 
 void pMat::switchType(int t)
@@ -169,26 +167,28 @@ void pMat::switchType(int t)
         if (type == t)
         {
                 if (pG->printRank)
-                        printf("matrix is already of data type %d\n", type);
+                        cout << "matrix is already of data type " << type << endl;
+                ;
                 return;
         }
         else if (t == 0)
         {
                 if (pG->printRank)
-                        printf("Switching to Double\n");
+                        cout << "Switching to Double " << endl;
                 dataD.resize(nelements);
                 for (int i = 0; i < nelements; i++)
                         dataD[i] = dataC[i].real;
                 dataC.clear();
                 type = 0;
                 if (pG->printRank)
-                        printf("Matrix is now type %d\n", type);
+                        cout << "Matrix is now type" << type << endl;
+                ;
                 return;
         }
         else if (t == 1)
         {
                 if (pG->printRank)
-                        printf("Switching to Complex\n");
+                        cout << "Switching to Complex" << endl;
 
                 dataC.resize(nelements);
                 for (int i = 0; i < nelements; i++)
@@ -199,7 +199,8 @@ void pMat::switchType(int t)
                 dataD.clear();
                 type = 1;
                 if (pG->printRank)
-                        printf("Matrix is now type %d\n", type);
+                        cout << "Matrix is now type " << type << endl;
+                ;
                 return;
         }
 }
@@ -210,16 +211,16 @@ void pMat::printMat()
         {
                 if (p == pG->rank)
                 {
-                        printf("processor %d has :", p);
+                        cout << "processor " << p << " has :" << endl;
                         for (int i = 0; i < nelements; i++)
                         {
                                 if (i % myRC[0] == 0)
-                                        printf("\n");
+                                        cout << endl;
 
                                 if (type == 0)
-                                        printf("%f\n", dataD[i]);
+                                        cout << dataD[i] << endl;
                                 else if (type == 1)
-                                        printf("%f + %f i\n", dataC[i].real, dataC[i].imag);
+                                        cout << dataC[i].real << " + " << dataC[i].imag << " i " << endl;
                         }
                         fflush(stdout);
                 }
@@ -236,8 +237,8 @@ int pMat::write_bin(std::string filename)
         {
                 MPI_File_write(fH, &N, 1, MPI_INT, MPI_STATUS_IGNORE);
                 MPI_File_write(fH, &M, 1, MPI_INT, MPI_STATUS_IGNORE);
-                printf("Write Start\n");
-                printf("N=%d nb=%d, M=%d mb=%d\n", N, nb, M, mb);
+                cout << "Write Start" << endl;
+                cout << "N=" << N << "nb=" << nb << "M=" << M << "mb=" << mb << endl;
         }
         MPI_File_close(&fH);
         MPI_Barrier(MPI_COMM_WORLD);
@@ -253,29 +254,28 @@ int pMat::write_bin(std::string filename)
         mpiEls = tsize / (sizeof(double));
         if (nelements != mpiEls)
         {
-                printf("Allocation via MPI %d and pblacs %d is different\n", mpiEls, nelements);
+                cout << "Allocation via MPI " << mpiEls << " and pblacs " << nelements << " is different" << endl;
                 throw(-1);
         }
         double t2, t1;
         MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_WRONLY, MPI_INFO_NULL, &fH);
         if (printRank)
-                printf("MPI Allocation %d , pblacs Allocation %d\n", mpiEls, nelements);
+                cout << "MPI Allocation " << mpiEls << " , pblacs Allocation " << nelements << endl;
         t1 = MPI_Wtime();
         MPI_File_set_view(fH, disp, MPI_DOUBLE, darray, "native", MPI_INFO_NULL);
         MPI_File_write_all(fH, dataD.data(), mpiEls, MPI_DOUBLE, MPI_STATUS_IGNORE);
         MPI_File_close(&fH);
         t2 = MPI_Wtime();
         if (printRank)
-                printf("Write time is %f\n", t2 - t1);
+                cout << "Write time is " << t2 - t1 << endl;
 }
-
 
 int pMat::read_bins(std::string prefix, int start, int skip, int end)
 {
         //checks
         if (pG->prow != 1)
         {
-                printf("blocking must be rectangular for benign read in\n");
+                cout << "blocking must be rectangular for benign read in" << endl;
                 throw(-1);
         }
         int numFiles = nelements / N;
@@ -298,7 +298,7 @@ int pMat::read_bins(std::string prefix, int start, int skip, int end)
                         name << std::setprecision(6);
                         fileIndex = start + i * skip;
                         if (printRank)
-                                printf("proc %d is reading file %d\n", iP, fileIndex);
+                                cout << "proc " << iP << " is reading file " << fileIndex << endl;
                         name << fileIndex;
                         read_single_bin((prefix + name.str() + ".bin").c_str(), localC);
                         localC++;
@@ -315,12 +315,12 @@ int pMat::read_single_bin(const char *name, int col)
         fread(&Nfile, sizeof(int), 1, fid);
         if (Mfile != 0)
         {
-                printf("file has more than 1 snapshot !!!\n");
+                cout << "file has more than 1 snapshot !!!" << endl;
                 return -1;
         }
         if (Nfile != N)
         {
-                printf("file has incorrect number of points");
+                cout << "file has incorrect number of points" << endl;
                 return -1;
         }
         double *pointD = dataD.data() + N * col;
@@ -344,8 +344,8 @@ int pMat::read_bin(string &filename)
         while ((rN != N) || (rM != M))
         {
                 if (printRank)
-                        printf("bin file and matrix do not have same dimension\n Attempting to reassign Matrix\n");
-
+                        cout << "bin file and matrix do not have same dimension" << endl
+                             << " Attempting to reassign Matrix" << endl;
                 this->~pMat();
                 this->setupMat(rN, rM, type, block, cycles, 0.0);
         }
@@ -362,13 +362,13 @@ int pMat::read_bin(string &filename)
         //check size
         if (nelements != mpiEls)
         {
-                printf("Allocation via MPI %d and pblacs %d is different\n", mpiEls, nelements);
+                cout << "Allocation via MPI " << mpiEls << " and pblacs " << nelements << " is different" << endl;
                 throw(-1);
         }
         if (printRank)
-                printf("MPI Allocation %d , pblacs Allocation %d\n", mpiEls, nelements);
+                cout << "MPI Allocation " << mpiEls << " , pblacs Allocation " << nelements << endl;
         if (printRank)
-                printf("Read Starting\n");
+                cout<<"Read Starting"<<endl;
         t1 = MPI_Wtime();
         MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fH);
         MPI_File_set_view(fH, disp, MPI_DOUBLE, darray, "native", MPI_INFO_NULL);
@@ -376,7 +376,7 @@ int pMat::read_bin(string &filename)
         MPI_File_close(&fH);
         t2 = MPI_Wtime();
         if (printRank)
-                printf("read of %s took %f seconds\n", filename.c_str(), t2 - t1);
+                cout<<"read of "<<filename<<" took "<<t2-t1<<" seconds"<<endl;
 
         return 1;
 }
@@ -405,8 +405,8 @@ int pMat::matrix_Product(char tA, char tB, int n, int m, int k, pMat *A, int ia,
 
         if ((A->type == 0) && (B->type == 0) && (type == 0))
         {
-                //if(printRank)
-                //        printf("Double Multiply\n");
+                if(printRank)
+                        cout<<"Double Multiply"<<endl;
                 int IA = ia + 1;
                 int JA = ja + 1;
                 int IB = ib + 1;
@@ -418,7 +418,7 @@ int pMat::matrix_Product(char tA, char tB, int n, int m, int k, pMat *A, int ia,
         else if ((A->type == 1) && (B->type == 1) && (type == 1))
         {
                 if (printRank)
-                        printf("Complex Multiply\n");
+                        cout<<"Complex Multiply"<<endl;
                 int IA = ia + 1;
                 int JA = ja + 1;
                 int IB = ib + 1;
@@ -435,7 +435,7 @@ int pMat::matrix_Product(char tA, char tB, int n, int m, int k, pMat *A, int ia,
         else
         {
                 if (printRank)
-                        printf("Other Formats not supported yet\n");
+                        cout<<"Other matrix datatypes not supported yet"<<endl;
         }
         return 0;
 }
@@ -446,7 +446,7 @@ int pMat::matrix_Sum(char tA, int n, int m, pMat *A, int ia, int ja, int ib, int
         if ((A->type == 0) && (type == 0))
         {
                 if (printRank)
-                        printf("Double Sum\n");
+                        cout<<"Double Sum"<<endl;
                 int IA = ia + 1;
                 int JA = ja + 1;
                 int IB = ib + 1;
@@ -456,7 +456,7 @@ int pMat::matrix_Sum(char tA, int n, int m, pMat *A, int ia, int ja, int ib, int
         else if ((A->type == 1) && (type == 1))
         {
                 if (printRank)
-                        printf("Complex Sum\n");
+                        cout<<"Complex Sum"<<endl;
                 int IA = ia + 1;
                 int JA = ja + 1;
                 int IB = ib + 1;
@@ -471,7 +471,7 @@ int pMat::matrix_Sum(char tA, int n, int m, pMat *A, int ia, int ja, int ib, int
         else
         {
                 if (printRank)
-                        printf("Other Formats not supported yet\n");
+                        cout<<"Other Formats not supported yet"<<endl;
         }
         return 0;
 }
@@ -481,7 +481,6 @@ int pMat::svd_run(int N, int M, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         int info;
         char *JOBU = "V", *JOBVT = "V";
         std::vector<double> WORK(1);
-        //double *WORK=(double*)mkl_calloc(1,sizeof(double),64);
         int LWORK = -1;
         int IA = ia + 1;
         int JA = ja + 1;
@@ -489,21 +488,19 @@ int pMat::svd_run(int N, int M, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         double t2, t1;
         pdgesvd(JOBU, JOBVT, &N, &M, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
         if (printRank)
-                printf("WORK=%f, LWORK=%d,info=%d\n", WORK[0], LWORK, info);
+                cout<<"WORK= "<<WORK[0]<<", LWORK= "<<LWORK<<", info= "<<info<<endl;
         LWORK = WORK[0];
-        //mkl_free(WORK);
         WORK.resize(LWORK);
-        //WORK=(double*)mkl_calloc(LWORK,sizeof(double),64);
         if (printRank)
-                printf("Work Allocated: %f MB per processor\n", LWORK / (1e6) * 8);
+                cout<<"Work Allocated: "<< LWORK / (1e6) * 8 <<" MB per processor"<<endl;
         //SVD run
         MPI_Barrier(MPI_COMM_WORLD);
         t1 = MPI_Wtime();
         pdgesvd(JOBU, JOBVT, &N, &M, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
         t2 = MPI_Wtime();
         if (printRank)
-                printf("SVD complete in %f seconds\n", t2 - t1);
-        //mkl_free(WORK);
+                cout<<"SVD complete in "<<t2-t1<<" seconds"<<endl;
+        WORK.resize(0);
         return 1;
 }
 int pMat::transpose(pMat *A, int n, int m, int ia, int ja)
@@ -511,12 +508,12 @@ int pMat::transpose(pMat *A, int n, int m, int ia, int ja)
         int IA = ia + 1;
         int JA = ja + 1;
         if (printRank)
-                printf("Copying transpose\n");
+                cout<<"Copying transpose"<<endl;
 
         if ((n != N) && (m != A->N))
                 if (printRank)
                 {
-                        printf("transpose dimension mismatch\n");
+                        cout<<"transpose dimension mismatch"<<endl;
                         return -1;
                 }
         int i_one = 1;
@@ -531,18 +528,18 @@ int pMat::changeContext(pMat *A, int n, int m, int ia, int ja, int ib, int jb)
         int IB = ib + 1;
         int JB = jb + 1;
         if (printRank)
-                printf("Copying Matrix\n n=%d , m =%d\n", n, m);
+                cout<<"Copying Matrix"<<endl<<"n= "<<n<<" , "<<"m = "<<m<<endl;
         int i_one = 1;
         if (type == 0)
         {
-                //if(printRank)
-                //       printf("Double\n");
+                if(printRank)
+                       cout<<"Double changed pGrid"<<endl;
                 pdgemr2d(&n, &m, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, &(pG->icntxt));
         }
         if (type == 1)
         {
                 if (printRank)
-                        printf("Complex\n");
+                        cout<<"Complex changed pGrid"<<endl;
                 pzgemr2d(&n, &m, A->dataC.data(), &IA, &JA, A->desc, dataC.data(), &IB, &JB, desc, &(pG->icntxt));
         }
 }
@@ -557,7 +554,7 @@ int pMat::dMax(int dim, int rc, double val)
         int index = 0;
 
         if (printRank)
-                printf("finding max\n");
+                cout<<"finding max"<<endl;
         if (dim == 0)
         {
                 int IA = 1, JA = rc + 1, i_one = 1;
@@ -570,13 +567,13 @@ int pMat::dMax(int dim, int rc, double val)
         }
 
         if (printRank)
-                printf("max is %f at %d\n", val, index);
+                cout<<"max is "<<val<<" at "<< index;
 }
 int pMat::dAve(int dim, int rc, double val)
 {
 
         if (printRank)
-                printf("finding sum\n");
+                cout<<"finding sum"<<endl;
         if (dim == 0)
         {
                 int IA = 1, JA = rc + 1, i_one = 1;
@@ -589,8 +586,11 @@ int pMat::dAve(int dim, int rc, double val)
         }
 
         if (printRank)
-                printf("sum is %f\n", val);
+                cout<<"sum is "<< val<<endl;
 }
+
+
+
 
 void pMat::printDesc()
 {
@@ -609,18 +609,23 @@ void pMat::printDesc()
 }
 ostream &operator<<(std::ostream &os, const pMat &p)
 {
-        if(p.printRank)
+        if (p.printRank)
         {
-                std::cout << "Descriptor type: " << desc[0] << std::endl;
-                std::cout << "BLACS context: " << desc[1] << std::endl;
-                std::cout << "Global Rows: " << desc[2] << std::endl;
-                std::cout << "Global Cols: " << desc[3] << std::endl;
-                std::cout << "Row Blocking factor: " << desc[4] << std::endl;
-                std::cout << "Column Blocking factor: " << desc[5] << std::endl;
-                std::cout << "Process row where first row is: " << desc[6] << std::endl;
-                std::cout << "Process Col where first col is: " << desc[7] << std::endl;
-                std::cout << "Leading Dimension: " << desc[8] << std::endl;
-                std::cout << "Memory usage(data only) GB = "<<p.GBs<<std::endl;
+                std::cout << "Descriptor type: " << p.desc[0] << std::endl;
+                std::cout << "BLACS context: " << p.desc[1] << std::endl;
+                std::cout << "Global Rows: " << p.desc[2] << std::endl;
+                std::cout << "Global Cols: " << p.desc[3] << std::endl;
+                std::cout << "Row Blocking factor: " << p.desc[4] << std::endl;
+                std::cout << "Column Blocking factor: " << p.desc[5] << std::endl;
+                std::cout << "Process row where first row is: " << p.desc[6] << std::endl;
+                std::cout << "Process Col where first col is: " << p.desc[7] << std::endl;
+                std::cout << "Leading Dimension: " << p.desc[8] << std::endl;
+                std::cout << "Memory usage(data only) GB = " << p.GBs << std::endl;
         }
         return os;
+}
+
+pMat operator ==(pMat cost &p)
+{
+        
 }
