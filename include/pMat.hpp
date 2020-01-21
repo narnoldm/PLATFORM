@@ -76,8 +76,6 @@ public:
 	void switchType(int t);
 	void printMat();
 	int write_bin(std::string filename);
-	int read_bins(std::string prefix, int start, int skip, int end);
-	int read_single_bin(const char *name, int col);
 	int read_bin(string &filename);
 	bool check_bin_size(string filename, int &mN, int &mM);
 	int matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia, int ja, pMat *B, int ib, int jb, double alpha, double beta, int ic, int jc);
