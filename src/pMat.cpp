@@ -272,65 +272,6 @@ int pMat::write_bin(std::string filename)
                 cout << "Write time is " << t2 - t1 << endl;
 }
 
-int pMat::read_bins(std::string prefix, int start, int skip, int end)
-{
-        //checks
-        if (pG->prow != 1)
-        {
-                cout << "blocking must be rectangular for benign read in" << endl;
-                throw(-1);
-        }
-        int numFiles = nelements / N;
-        int iP = 0;
-        int fileIndex = 0;
-        int localC = 0;
-        std::ostringstream name;
-        for (int i = 0; i < M; i++)
-        {
-                iP = (int)(i / mb);
-                while (iP > (pG->size - 1))
-                {
-                        iP = iP - pG->size;
-                }
-                if (pG->rank == iP)
-                {
-                        name.str("");
-                        name.clear();
-                        name << std::fixed;
-                        name << std::setprecision(6);
-                        fileIndex = start + i * skip;
-                        if (printRank)
-                                cout << "proc " << iP << " is reading file " << fileIndex << endl;
-                        name << fileIndex;
-                        read_single_bin((prefix + name.str() + ".bin").c_str(), localC);
-                        localC++;
-                }
-        }
-}
-
-int pMat::read_single_bin(const char *name, int col)
-{
-        FILE *fid;
-        fid = fopen(name, "rb");
-        int Mfile, Nfile;
-        fread(&Mfile, sizeof(int), 1, fid);
-        fread(&Nfile, sizeof(int), 1, fid);
-        if (Mfile != 0)
-        {
-                cout << "file has more than 1 snapshot !!!" << endl;
-                return -1;
-        }
-        if (Nfile != N)
-        {
-                cout << "file has incorrect number of points" << endl;
-                return -1;
-        }
-        double *pointD = dataD.data() + N * col;
-        fread(pointD, sizeof(double), N, fid);
-        fclose(fid);
-        return 1;
-}
-
 int pMat::read_bin(string &filename)
 {
 
