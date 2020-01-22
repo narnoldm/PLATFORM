@@ -20,15 +20,31 @@ class meta
     meta(int t0,int tf,int ts,string &iPrefix,string &iSuffix);
     ~meta();
 
-
-    
     virtual void checkSize();
     virtual void checkExists();
     virtual bool readSingle(int fileID,double * point);
+    virtual bool writeSingle(int fileID, double *point);
+    virtual void miscProcessing(pMat *Mat);
+    bool batchWrite(pMat *loadMat);
     bool batchRead(pMat * loadMat);
+};
 
-    // virtual bool writeSingle();
-    // virtual bool batchWrite();
+class tecIO : meta
+{
+    public:
+
+    vector<string> varName;
+    vector<int> varIndex;
+    vector<double> normFactor;
+    vector<int> hash;
+    vector<int> cellID;
+    vector<double> average;
+
+    virtual void checkSize();
+    virtual void checkExists();
+    virtual bool readSingle(int fileID,double * point);
+    virtual bool writeSingle(int fileID, double *point);
+    virtual void miscProcessing(pMat *Mat);
 
 };
 

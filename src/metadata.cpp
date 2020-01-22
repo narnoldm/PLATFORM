@@ -79,6 +79,51 @@ bool meta::batchRead(pMat *loadMat)
             localC++;
         }
     }
+    miscProcessing(loadMat);
+}
+
+bool meta::writeSingle(int fileID, double *point)
+{
+    FILE *fid;
+    fid = fopen((prefix + to_string(fileID) + suffix).c_str(), "rb");
+
+    const int ONE=1;
+    int points=nPoints;
+    fwrite(&points, sizeof(int), 1, fid);
+    fwrite(&ONE, sizeof(int), 1, fid);
+    fwrite(point, sizeof(double), nPoints, fid);
+    fclose(fid);
+    return true;
+}
+
+bool meta::batchWrite(pMat *loadMat)
+{
+    assert(loadMat->pG->prow == 1);
+    int iP = 0;
+    int fileIndex = snap0;
+    int localC = 0;
+    for (int i = 0; i < nSets; i++)
+    {
+        iP = (int)(i / loadMat->mb);
+        while (iP > (loadMat->pG->size - 1))
+        {
+            iP = iP - loadMat->pG->size;
+        }
+        if (loadMat->pG->rank == iP)
+        {
+            fileIndex = snap0 + i * snapSkip;
+
+            cout<<"proc "<<iP<<" is writing file "<< fileIndex<<endl;
+            writeSingle(fileIndex,loadMat->dataD.data()+ nPoints*localC);
+            localC++;
+        }
+    }
+}
+
+void meta::miscProcessing(pMat *Mat)
+{
+    cout<<"no additional processing for binary"<<endl;
+
 }
 
 dataTool::dataTool(int r, std::string p, std::string s, int t0, int ts, int tf)
