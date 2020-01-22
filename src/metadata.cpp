@@ -9,21 +9,76 @@ meta::meta(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
     suffix = iSuffix;
     assert(snapF > snap0);
     nSets = 0;
-    for (int i = snap0; i < snapF; i = i + snapSkip)
+    for (int i = snap0; i <= snapF; i = i + snapSkip)
         nSets++;
+    cout<<prefix+to_string(snap0)+suffix<<endl;
+    checkSize();
+    checkExists();
 }
 
-virtual void checkSize()
+void meta::checkSize()
 {
     FILE *fid;
-    fid = fopen(name, "rb");
-    int header[2];
+    fid = fopen((prefix + to_string(snap0) + suffix).c_str(), "rb");
+    assert(fid != NULL);
+    int header[2] = {0, 0};
     fread(&(header[0]), sizeof(int), 1, fid);
     fread(&(header[1]), sizeof(int), 1, fid);
-    assert(header[1] != 1);
-    nPoints=header[0];
+    assert(header[1] == 1);
+    nPoints = header[0];
     fclose(fid);
-    return 1;
+    return;
+}
+
+void meta::checkExists()
+{
+    FILE *fid;
+    for(int i=snap0;i<snapF;i=i+snapSkip)
+    {
+        fid= fopen((prefix + to_string(i) + suffix).c_str(), "rb");
+        assert(fid!=NULL);
+        fclose(fid);
+    }
+
+}
+
+bool meta::readSingle(int fileID, double *point)
+{
+    FILE *fid;
+    fid = fopen((prefix + to_string(fileID) + suffix).c_str(), "rb");
+    int header[2] = {0, 0};
+    fread(&(header[0]), sizeof(int), 1, fid);
+    fread(&(header[1]), sizeof(int), 1, fid);
+    assert(header[1] == 1);
+    assert(header[0] == nPoints);
+    fread(point, sizeof(double), nPoints, fid);
+    fclose(fid);
+    return true;
+}
+
+bool meta::batchRead(pMat *loadMat)
+{
+    assert(loadMat->pG->prow == 1);
+    int iP = 0;
+    int fileIndex = snap0;
+    int localC = 0;
+    for (int i = 0; i < nSets; i++)
+    {
+        iP = (int)(i / loadMat->mb);
+        while (iP > (loadMat->pG->size - 1))
+        {
+            iP = iP - loadMat->pG->size;
+        }
+        if (loadMat->pG->rank == iP)
+        {
+            fileIndex = snap0 + i * snapSkip;
+
+            cout<<"proc "<<iP<<" is reading file "<< fileIndex<<endl;
+            
+            readSingle(fileIndex,loadMat->dataD.data()+ nPoints*localC);
+            localC++;
+        }
+    }
 }
 
 dataTool::dataTool(int r, std::string p, std::string s, int t0, int ts, int tf)
