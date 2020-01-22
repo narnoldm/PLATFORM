@@ -21,9 +21,11 @@ class meta
     ~meta();
 
 
+    
     virtual void checkSize();
-    // virtual bool readSingle();
-    // virtual bool batchRead();
+    virtual void checkExists();
+    virtual bool readSingle(int fileID,double * point);
+    bool batchRead(pMat * loadMat);
 
     // virtual bool writeSingle();
     // virtual bool batchWrite();

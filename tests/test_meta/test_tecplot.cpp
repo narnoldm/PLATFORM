@@ -17,12 +17,38 @@ int main(int argc, char *argv[])
 
     cout << "testing metadata" << endl;
 
-    meta *dataset1;
+    
 
-    string prefix = "testplit/test";
+    string prefix = "testsplit/test";
     string suffix = ".bin";
 
+    PGrid *loadG, *evenG;
+    loadG = new PGrid(rank,size,1);
+    evenG = new PGrid(rank,size,0);
+
+    pMat *loadMat, *evenMatFromLoad, *evenMat;
+
+
+    meta *dataset1;
     dataset1 = new meta(1,100,1,prefix,suffix);
+
+    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,loadG,0,0,0.0);
+    dataset1->batchRead(loadMat);
+
+    evenMatFromLoad = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
+    evenMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
+
+    string evenMatFN= "test.bin";
+    evenMat->read_bin(evenMatFN);
+
+
+    evenMatFromLoad->changeContext(loadMat);
+
+
+    assert((*evenMatFromLoad)==(*evenMat));   
+
+
+
 
     cout.rdbuf(strm_buffer);
     MPI_Finalize();
