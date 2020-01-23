@@ -55,6 +55,7 @@ void meta::checkExists()
 
 bool meta::readSingle(int fileID, double *point)
 {
+    cout<<"meta read"<<endl;
     FILE *fid;
     fid = fopen((prefix + to_string(fileID) + suffix).c_str(), "rb");
     int header[2] = {0, 0};
@@ -93,10 +94,11 @@ bool meta::batchRead(pMat *loadMat)
     miscProcessing(loadMat);
 }
 
-bool meta::writeSingle(int fileID, double *point)
+bool meta::writeSingle(int fileID, double *point,string fpref)
 {
+    cout<<"meta write single"<<endl;
     FILE *fid;
-    fid = fopen((prefix + to_string(fileID) + suffix).c_str(), "rb");
+    fid = fopen((fpref + to_string(fileID) + suffix).c_str(), "wb");
 
     const int ONE = 1;
     int points = nPoints;
@@ -109,6 +111,15 @@ bool meta::writeSingle(int fileID, double *point)
 
 bool meta::batchWrite(pMat *loadMat)
 {
+    batchWrite(loadMat,"out/",prefix);
+}
+bool meta::batchWrite(pMat *loadMat,string dir,string fpref)
+{
+    assert(system(NULL)); //check if system commands work
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+    if(!rank)
+        system(("mkdir "+dir).c_str());
     assert(loadMat->pG->prow == 1);
     int iP = 0;
     int fileIndex = snap0;
@@ -125,11 +136,14 @@ bool meta::batchWrite(pMat *loadMat)
             fileIndex = snap0 + i * snapSkip;
 
             cout << "proc " << iP << " is writing file " << fileIndex << endl;
-            writeSingle(fileIndex, loadMat->dataD.data() + nPoints * localC);
+            writeSingle(fileIndex, loadMat->dataD.data() + nPoints * localC,dir+"/"+fpref);
             localC++;
         }
     }
 }
+
+
+
 
 void meta::miscProcessing(pMat *Mat)
 {
@@ -153,32 +167,7 @@ tecIO::tecIO(int t0, int tf, int ts, string &iPrefix, string &iSuffix, vector<st
     checkExists();
 }
 
-tecIO::tecIO(tecIO *old, string &dir, string &name)
-{
-    assert(system(NULL)); //check if system commands work
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-    if(!rank)
-        system(("mkdir "+dir).c_str());
 
-    snap0=0;
-    snapSkip=1;
-    snapF=old->nSets;
-    nSets=snapF;
-    prefix=name;
-    suffix=old->suffix;
-    nPoints=old->nPoints;
-
-    numVars=old->numVars;
-    dim=old->dim;
-    nCells=old->nCells;
-    varName=old->varName;
-    varIndex=old->varIndex;
-    normID=old->normID;
-    hash=old->hash;
-    cellID=old->cellID;
-    average=old->average;
-}
 void tecIO::checkSize()
 {
     getDimNodes();
@@ -231,9 +220,8 @@ bool tecIO::readSingle(int fileID, double *point)
     }
     tecFileReaderClose(&fH);
 }
-bool tecIO::writeSingle(int fileID, double *point)
+bool tecIO::writeSingle(int fileID, double *point,string fpref)
 {
-    cout<<(prefix + std::to_string(fileID) + suffix);
     void *infH = NULL;
     void *outfH = NULL;
     tecFileReaderOpen((prefix + std::to_string(fileID) + suffix).c_str(), &infH);
@@ -265,7 +253,7 @@ bool tecIO::writeSingle(int fileID, double *point)
     {
         varstr = varstr + "," + varName[i];
     }
-    tecFileWriterOpen((prefix + std::to_string(fileID) + suffix).c_str(), "Code out", varstr.c_str(), 1, 0, 1, NULL, &outfH);
+    tecFileWriterOpen((fpref + std::to_string(fileID) + suffix).c_str(), "Code out", varstr.c_str(), 1, 0, 1, NULL, &outfH);
     assert(outfH != NULL);
     std::vector<int> varTypes(dim + numVars);
     std::vector<int> valueLoc(dim + numVars);
