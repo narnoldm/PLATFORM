@@ -45,8 +45,9 @@ public:
     vector<int> cellID;
     vector<double> average;
 
+    int numVars;
+
     void addVar(std::string var, double &norm);
-    int getVariableIndex(std::string var);
     int getVariableIndex(std::string var, std::string file);
     void getPointsBin();
     void getDimNodes();

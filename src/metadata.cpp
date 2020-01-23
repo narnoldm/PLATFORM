@@ -129,17 +129,47 @@ void meta::miscProcessing(pMat *Mat)
 
 void tecIO::addVar(string var,double &norm)
 {
-
+    varName.push_back(var);
+    varIndex.push_back(getVariableIndex(var,prefix+to_string(snap0)+suffix));
+    normFactor.push_back(norm);
+    assert(varName.size() == varIndex.size());
+    numVars = varName.size();
+    cout<<"dataTool now has "<<numVars<<" variables"<<endl;
 }
 
-int tecIO::getVariableIndex(string var)
+int tecIO::getVariableIndex(string var,string file)
 {
-
-}
-
-int tecIO::getVariableIndex(string var,string filename)
-{
-
+    void *fH;
+    int fileVars;
+    char *vName = NULL;
+    int tecIndex = 0;
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (!rank)
+    {
+        tecFileReaderOpen(file.c_str(), &fH);
+        tecDataSetGetNumVars(fH, &fileVars);
+        for (int i = 1; i <= fileVars; i++)
+        {
+            tecVarGetName(fH, i, &vName);
+            if (var == vName)
+            {
+                printf("%s found in index %d\n", vName, i);
+                tecIndex = i;
+                break;
+            }
+            vName = NULL;
+        }
+        vName=NULL;
+        tecFileReaderClose(&fH);
+        if (tecIndex == 0)
+        {
+            printf("Var not found\n");
+            throw(-1);
+        }
+    }
+    MPI_Bcast(&tecIndex, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    return (tecIndex);
 }
 
 void tecIO::getPointsBin()
