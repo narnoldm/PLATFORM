@@ -45,6 +45,7 @@ class tecIO : public meta
 
 
     tecIO(int t0, int tf, int ts, string &iPrefix, string &iSuffix, vector<string> &iToken);
+    tecIO(tecIO *old, string &dir, string &name);
     ~tecIO();
     virtual void checkSize();
     virtual void checkExists();
