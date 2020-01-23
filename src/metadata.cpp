@@ -126,6 +126,70 @@ void meta::miscProcessing(pMat *Mat)
 
 }
 
+
+void tecIO::addVar(string var,double &norm)
+{
+
+}
+
+int tecIO::getVariableIndex(string var)
+{
+
+}
+
+int tecIO::getVariableIndex(string var,string filename)
+{
+
+}
+
+void tecIO::getPointsBin()
+{
+
+}
+
+void tecIO::getDimNodes()
+{
+
+}
+
+void tecIO::genHash()
+{
+
+}
+
+void tecIO::genHash(string map)
+{
+    
+}
+
+void tecIO::normalize(pMat *dataMat)
+{
+
+}
+
+void tecIO::unNormalize(pMat *dataMat)
+{
+
+}
+
+void tecIO::calcNorm(pMat *dataMat)
+{
+
+}
+
+void tecIO::subAvg(pMat *dataMat)
+{
+
+}
+
+void tecIO::calcAvg(pMat *dataMat)
+{
+
+}
+
+
+
+
 dataTool::dataTool(int r, std::string p, std::string s, int t0, int ts, int tf)
 {
     prefix = p;
