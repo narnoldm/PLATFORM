@@ -36,9 +36,19 @@ int main(int argc, char *argv[])
     token.push_back("Temperature");
     token.push_back("-1");
     dataset1 = new tecIO(150000,151000,10,prefix,suffix,token);
+    tecIO *outset;
+    string outdir="out";
+    string outfile="stuff";
+    outset=new tecIO(dataset1,outdir,outfile);
+
 
     loadMat = new pMat(dataset1->nPoints,dataset1->nSets,loadG,0,0,0.0);
-    //dataset1->batchRead(loadMat);
+    dataset1->batchRead(loadMat);
+
+
+
+    outset->batchWrite(loadMat);
+
 
 
 
