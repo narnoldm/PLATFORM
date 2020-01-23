@@ -15,6 +15,7 @@ public:
     string prefix, suffix;
     vector<string> token;
 
+    meta();
     meta(int t0, int tf, int ts, string &iPrefix, string &iSuffix);
     ~meta();
 
@@ -30,26 +31,29 @@ public:
 class tecIO : meta
 {
 public:
+    //child specific
+
+    vector<string> varName;
+    vector<int> varIndex;
+    vector<string> normID;
+    vector<double> normFactor;
+    vector<int> hash;
+    vector<int> cellID;
+    vector<double> average;
+
+    int numVars, dim, nCells;
+
+
+    tecIO(int t0, int tf, int ts, string &iPrefix, string &iSuffix, vector<string> &iToken);
+    ~tecIO();
     virtual void checkSize();
     virtual void checkExists();
     virtual bool readSingle(int fileID, double *point);
     virtual bool writeSingle(int fileID, double *point);
     virtual void miscProcessing(pMat *Mat);
 
-    //child specific
-
-    vector<string> varName;
-    vector<int> varIndex;
-    vector<double> normFactor;
-    vector<int> hash;
-    vector<int> cellID;
-    vector<double> average;
-
-    int numVars;
-
-    void addVar(std::string var, double &norm);
+    void addVar(std::string var, string &norm);
     int getVariableIndex(std::string var, std::string file);
-    void getPointsBin();
     void getDimNodes();
     void genHash();
     void genHash(std::string map);

@@ -1,5 +1,12 @@
 #include "metadata.hpp"
 
+meta::meta()
+{
+}
+meta::~meta()
+{
+}
+
 meta::meta(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
 {
     snap0 = t0;
@@ -11,7 +18,7 @@ meta::meta(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
     nSets = 0;
     for (int i = snap0; i <= snapF; i = i + snapSkip)
         nSets++;
-    cout<<prefix+to_string(snap0)+suffix<<endl;
+    cout << prefix + to_string(snap0) + suffix << endl;
     checkSize();
     checkExists();
 }
@@ -33,13 +40,17 @@ void meta::checkSize()
 void meta::checkExists()
 {
     FILE *fid;
-    for(int i=snap0;i<snapF;i=i+snapSkip)
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (!rank)
     {
-        fid= fopen((prefix + to_string(i) + suffix).c_str(), "rb");
-        assert(fid!=NULL);
-        fclose(fid);
+        for (int i = snap0; i < snapF; i = i + snapSkip)
+        {
+            fid = fopen((prefix + to_string(i) + suffix).c_str(), "rb");
+            assert(fid != NULL);
+            fclose(fid);
+        }
     }
-
 }
 
 bool meta::readSingle(int fileID, double *point)
@@ -73,9 +84,9 @@ bool meta::batchRead(pMat *loadMat)
         {
             fileIndex = snap0 + i * snapSkip;
 
-            cout<<"proc "<<iP<<" is reading file "<< fileIndex<<endl;
-            
-            readSingle(fileIndex,loadMat->dataD.data()+ nPoints*localC);
+            cout << "proc " << iP << " is reading file " << fileIndex << endl;
+
+            readSingle(fileIndex, loadMat->dataD.data() + nPoints * localC);
             localC++;
         }
     }
@@ -87,8 +98,8 @@ bool meta::writeSingle(int fileID, double *point)
     FILE *fid;
     fid = fopen((prefix + to_string(fileID) + suffix).c_str(), "rb");
 
-    const int ONE=1;
-    int points=nPoints;
+    const int ONE = 1;
+    int points = nPoints;
     fwrite(&points, sizeof(int), 1, fid);
     fwrite(&ONE, sizeof(int), 1, fid);
     fwrite(point, sizeof(double), nPoints, fid);
@@ -113,8 +124,8 @@ bool meta::batchWrite(pMat *loadMat)
         {
             fileIndex = snap0 + i * snapSkip;
 
-            cout<<"proc "<<iP<<" is writing file "<< fileIndex<<endl;
-            writeSingle(fileIndex,loadMat->dataD.data()+ nPoints*localC);
+            cout << "proc " << iP << " is writing file " << fileIndex << endl;
+            writeSingle(fileIndex, loadMat->dataD.data() + nPoints * localC);
             localC++;
         }
     }
@@ -122,22 +133,63 @@ bool meta::batchWrite(pMat *loadMat)
 
 void meta::miscProcessing(pMat *Mat)
 {
-    cout<<"no additional processing for binary"<<endl;
-
+    cout << "no additional processing for binary" << endl;
 }
 
+tecIO::tecIO(int t0, int tf, int ts, string &iPrefix, string &iSuffix, vector<string> &iToken)
+{
+    snap0 = t0;
+    snapF = tf;
+    snapSkip = ts;
+    prefix = iPrefix;
+    suffix = iSuffix;
+    token = iToken;
+    assert(snapF > snap0);
+    nSets = 0;
+    for (int i = snap0; i <= snapF; i = i + snapSkip)
+        nSets++;
+    cout << prefix + to_string(snap0) + suffix << endl;
+    checkSize();
+    //checkExists();
+}
 
-void tecIO::addVar(string var,double &norm)
+void tecIO::checkSize()
+{
+    getDimNodes();
+    for (int i = 0; i < token.size(); i = i + 2)
+    {
+        addVar(token[i], token[i + 1]);
+    }
+    nPoints = nCells * numVars;
+}
+
+void tecIO::checkExists()
+{
+}
+bool tecIO::readSingle(int fileID, double *point)
+{
+}
+bool tecIO::writeSingle(int fileID, double *point)
+{
+}
+void tecIO::miscProcessing(pMat *Mat)
+{
+}
+
+void tecIO::addVar(string var, string &norm)
 {
     varName.push_back(var);
-    varIndex.push_back(getVariableIndex(var,prefix+to_string(snap0)+suffix));
-    normFactor.push_back(norm);
+    varIndex.push_back(getVariableIndex(var, prefix + to_string(snap0) + suffix));
+    normID.push_back(norm);
+    double temp;
+    temp = stod(norm);
+    normFactor.push_back(temp);
     assert(varName.size() == varIndex.size());
     numVars = varName.size();
-    cout<<"dataTool now has "<<numVars<<" variables"<<endl;
+    cout << "metadata registers " << numVars << " variables" << endl;
 }
 
-int tecIO::getVariableIndex(string var,string file)
+int tecIO::getVariableIndex(string var, string file)
 {
     void *fH;
     int fileVars;
@@ -160,11 +212,11 @@ int tecIO::getVariableIndex(string var,string file)
             }
             vName = NULL;
         }
-        vName=NULL;
+        vName = NULL;
         tecFileReaderClose(&fH);
         if (tecIndex == 0)
         {
-            printf("Var not found\n");
+            cout << "Var not found :" << var << endl;
             throw(-1);
         }
     }
@@ -172,53 +224,66 @@ int tecIO::getVariableIndex(string var,string file)
     return (tecIndex);
 }
 
-void tecIO::getPointsBin()
-{
-
-}
-
 void tecIO::getDimNodes()
 {
-
+    void *fH = NULL;
+    long iMax = 0, jMax = 0, kMax = 0;
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (!rank)
+    {
+        long check;
+        int id = 0;
+        cout << (prefix + std::to_string(snap0) + suffix) << endl;
+        tecFileReaderOpen((prefix + std::to_string(snap0) + suffix).c_str(), &fH);
+        assert(fH != NULL);
+        tecZoneGetIJK(fH, 1, &iMax, &jMax, &kMax);
+        cout << "iMax:" << iMax << ", jMax " << jMax << ", kMax " << kMax << endl;
+        check = iMax;
+        while (check == iMax)
+        {
+            id++;
+            tecZoneVarGetNumValues(fH, 1, id, &check);
+            cout << "var " << id << " has " << check << " values" << endl;
+        }
+        nCells = jMax;
+        printf("var %d is the first cellcentered variable\n", id);
+        dim = id - 1;
+        printf("dimension is %d\n", dim);
+        tecFileReaderClose(&fH);
+    }
+    //synch nodes and dimension
+    MPI_Bcast(&nCells, 1, MPI_LONG, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&dim, 1, MPI_INT, 0, MPI_COMM_WORLD);
 }
 
 void tecIO::genHash()
 {
-
 }
 
 void tecIO::genHash(string map)
 {
-    
 }
 
 void tecIO::normalize(pMat *dataMat)
 {
-
 }
 
 void tecIO::unNormalize(pMat *dataMat)
 {
-
 }
 
 void tecIO::calcNorm(pMat *dataMat)
 {
-
 }
 
 void tecIO::subAvg(pMat *dataMat)
 {
-
 }
 
 void tecIO::calcAvg(pMat *dataMat)
 {
-
 }
-
-
-
 
 dataTool::dataTool(int r, std::string p, std::string s, int t0, int ts, int tf)
 {
