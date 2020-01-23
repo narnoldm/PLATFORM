@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
         std::cout.rdbuf(sink.rdbuf());
     }
 
-    cout << "testing tecplot metadata" << endl;
+    cout << "testing metadata" << endl;
 
     
 

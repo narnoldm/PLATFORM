@@ -40,9 +40,13 @@ add_executable(test_pMat tests/test_execs/pMat_test.cpp)
 target_include_directories(test_pMat PRIVATE include)
 target_link_libraries(test_pMat pMat)
 
-add_executable(test_meta tests/test_meta/test_tecplot.cpp)
+add_executable(test_meta tests/test_meta/test_bin.cpp)
 target_include_directories(test_meta PRIVATE include 3rd_Party/tecio/teciosrc)
 target_link_libraries(test_meta pMat meta)
+
+add_executable(test_tec tests/test_meta/test_tecplot.cpp)
+target_include_directories(test_tec PRIVATE include 3rd_Party/tecio/teciosrc)
+target_link_libraries(test_tec pMat meta)
 
 
 
