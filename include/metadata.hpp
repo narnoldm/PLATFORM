@@ -22,9 +22,10 @@ class meta
     virtual void checkSize();
     virtual void checkExists();
     virtual bool readSingle(int fileID, double *point);
-    virtual bool writeSingle(int fileID, double *point);
+    virtual bool writeSingle(int fileID, double *point,string fpref);
     virtual void miscProcessing(pMat *Mat);
     bool batchWrite(pMat *loadMat);
+    bool batchWrite(pMat *loadMat,string dir,string fpref);
     bool batchRead(pMat *loadMat);
 };
 
@@ -45,12 +46,12 @@ class tecIO : public meta
 
 
     tecIO(int t0, int tf, int ts, string &iPrefix, string &iSuffix, vector<string> &iToken);
-    tecIO(tecIO *old, string &dir, string &name);
+
     ~tecIO();
     virtual void checkSize();
     virtual void checkExists();
     virtual bool readSingle(int fileID, double *point);
-    virtual bool writeSingle(int fileID, double *point);
+    virtual bool writeSingle(int fileID, double *point, string fpref);
     virtual void miscProcessing(pMat *Mat);
 
     void addVar(std::string var, string &norm);
