@@ -52,6 +52,7 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "execution": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "slist": "cpp"
     }
 }
