@@ -37,9 +37,7 @@ int main(int argc, char *argv[])
     token.push_back("-1");
     dataset1 = new tecIO(150000,151000,10,prefix,suffix,token);
 
-
-
-    //loadMat = new pMat(dataset1->nPoints,dataset1->nSets,loadG,0,0,0.0);
+    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,loadG,0,0,0.0);
     //dataset1->batchRead(loadMat);
 
 
