@@ -19,8 +19,8 @@ int main(int argc, char *argv[])
 
     
 
-    string prefix = "testsplit/test";
-    string suffix = ".bin";
+    string prefix = "testtec/gemsma_cmb_";
+    string suffix = ".szplt";
 
     PGrid *loadG, *evenG;
     loadG = new PGrid(rank,size,1);
@@ -29,24 +29,18 @@ int main(int argc, char *argv[])
     pMat *loadMat, *evenMatFromLoad, *evenMat;
 
 
-    meta *dataset1;
-    dataset1 = new meta(1,100,1,prefix,suffix);
-
-    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,loadG,0,0,0.0);
-    dataset1->batchRead(loadMat);
-
-    evenMatFromLoad = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
-    evenMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
-
-    string evenMatFN= "test.bin";
-    evenMat->read_bin(evenMatFN);
+    tecIO *dataset1;
+    vector<string> token;
+    token.push_back("Static_Pressure");
+    token.push_back("-1");
+    token.push_back("Temperature");
+    token.push_back("-1");
+    dataset1 = new tecIO(150000,151000,10,prefix,suffix,token);
 
 
-    evenMatFromLoad->changeContext(loadMat);
 
-
-    assert((*evenMatFromLoad)==(*evenMat));   
-
+    //loadMat = new pMat(dataset1->nPoints,dataset1->nSets,loadG,0,0,0.0);
+    //dataset1->batchRead(loadMat);
 
 
 
