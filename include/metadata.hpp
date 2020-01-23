@@ -45,7 +45,7 @@ public:
     vector<int> cellID;
     vector<double> average;
 
-    void addVar(std::string var, double norm);
+    void addVar(std::string var, double &norm);
     int getVariableIndex(std::string var);
     int getVariableIndex(std::string var, std::string file);
     void getPointsBin();
@@ -53,11 +53,11 @@ public:
     void genHash();
     void genHash(std::string map);
     void normalize(pMat *dataMat);
-    void unnormalize(pMat *dataMat);
+    void unNormalize(pMat *dataMat);
     void calcNorm(pMat *dataMat);
-    void subAvg(pMat *&dataMat);
-    void addAvg(pMat *&dataMat);
-    void calcAvg(pMat *dataMat, int wTec, int wAscii);
+    void subAvg(pMat *dataMat);
+    void addAvg(pMat *dataMat);
+    void calcAvg(pMat *dataMat);
 };
 
 class dataTool
