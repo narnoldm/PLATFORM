@@ -2,12 +2,36 @@
 
 meta::meta()
 {
+    isInit = false;
 }
 meta::~meta()
 {
 }
 
+meta::meta(vector<string> &iToken)
+{
+
+    int offset = 7;
+
+    assert(iToken[0] == "input");
+    assert(iToken[1] == "binaryset");
+    assert(iToken.size() == offset);
+    token.resize(iToken.size() - offset);
+    for (int i = offset; i < iToken.size(); i++)
+    {
+        token[i - offset] = iToken[i];
+    }
+    int it0 = stoi(iToken[4]);
+    int itf = stoi(iToken[5]);
+    int its = stoi(iToken[6]);
+    init(it0, itf, its, iToken[2], iToken[3]);
+}
 meta::meta(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
+{
+    init(t0, tf, ts, iPrefix, iSuffix);
+}
+
+void meta::init(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
 {
     snap0 = t0;
     snapF = tf;
@@ -21,6 +45,8 @@ meta::meta(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
     cout << prefix + to_string(snap0) + suffix << endl;
     checkSize();
     checkExists();
+    isInit = true;
+    cout << nPoints << " " << nSets << endl;
 }
 
 void meta::checkSize()
@@ -55,7 +81,7 @@ void meta::checkExists()
 
 bool meta::readSingle(int fileID, double *point)
 {
-    cout<<"meta read"<<endl;
+    cout << "meta read" << endl;
     FILE *fid;
     fid = fopen((prefix + to_string(fileID) + suffix).c_str(), "rb");
     int header[2] = {0, 0};
@@ -94,9 +120,9 @@ bool meta::batchRead(pMat *loadMat)
     miscProcessing(loadMat);
 }
 
-bool meta::writeSingle(int fileID, double *point,string fpref)
+bool meta::writeSingle(int fileID, double *point, string fpref)
 {
-    cout<<"meta write single"<<endl;
+    cout << "meta write single" << endl;
     FILE *fid;
     fid = fopen((fpref + to_string(fileID) + suffix).c_str(), "wb");
 
@@ -111,19 +137,24 @@ bool meta::writeSingle(int fileID, double *point,string fpref)
 
 bool meta::batchWrite(pMat *loadMat)
 {
-    batchWrite(loadMat,"out/",prefix);
+    batchWrite(loadMat, "out/", prefix);
 }
-bool meta::batchWrite(pMat *loadMat,string dir,string fpref)
+bool meta::batchWrite(pMat *loadMat, string dir, string fpref)
 {
     assert(system(NULL)); //check if system commands work
     int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-    if(!rank)
-        system(("mkdir "+dir).c_str());
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (!rank)
+        system(("mkdir " + dir).c_str());
     assert(loadMat->pG->prow == 1);
-    int iP = 0;
-    int fileIndex = snap0;
-    int localC = 0;
+    int iP = 0, fileIndex, localC = 0;
+    if (isInit)
+        fileIndex = snap0;
+    else
+    {
+        fileIndex = 1;
+        nSets = loadMat->M;
+    }
     for (int i = 0; i < nSets; i++)
     {
         iP = (int)(i / loadMat->mb);
@@ -136,38 +167,62 @@ bool meta::batchWrite(pMat *loadMat,string dir,string fpref)
             fileIndex = snap0 + i * snapSkip;
 
             cout << "proc " << iP << " is writing file " << fileIndex << endl;
-            writeSingle(fileIndex, loadMat->dataD.data() + nPoints * localC,dir+"/"+fpref);
+            writeSingle(fileIndex, loadMat->dataD.data() + nPoints * localC, dir + "/" + fpref);
             localC++;
         }
     }
 }
-
-
-
 
 void meta::miscProcessing(pMat *Mat)
 {
     cout << "no additional processing for binary" << endl;
 }
 
-tecIO::tecIO(int t0, int tf, int ts, string &iPrefix, string &iSuffix, vector<string> &iToken)
+tecIO::tecIO(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
+{
+    init(t0, tf, ts, iPrefix, iSuffix);
+}
+tecIO::tecIO()
+{
+    isInit = false;
+}
+tecIO::tecIO(vector<string> &iToken)
+{
+
+    int offset = 7;
+    assert(iToken[0] == "input");
+    assert(iToken[1] == "tecplot");
+
+    token.resize(iToken.size() - offset);
+    for (int i = offset; i < iToken.size(); i++)
+    {
+        token[i - offset] = iToken[i];
+    }
+    int it0 = stoi(iToken[4]);
+    int itf = stoi(iToken[5]);
+    int its = stoi(iToken[6]);
+    init(it0, itf, its, iToken[2], iToken[3]);
+}
+void tecIO::init(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
 {
     snap0 = t0;
     snapF = tf;
     snapSkip = ts;
     prefix = iPrefix;
     suffix = iSuffix;
-    token = iToken;
     assert(snapF > snap0);
     nSets = 0;
     for (int i = snap0; i <= snapF; i = i + snapSkip)
         nSets++;
-    cout << prefix + to_string(snap0) + suffix << endl;
     checkSize();
     checkExists();
+    isInit = true;
+    cout << nPoints << " " << nSets << endl;
 }
 
-
+tecIO::~tecIO()
+{
+}
 void tecIO::checkSize()
 {
     getDimNodes();
@@ -220,11 +275,17 @@ bool tecIO::readSingle(int fileID, double *point)
     }
     tecFileReaderClose(&fH);
 }
-bool tecIO::writeSingle(int fileID, double *point,string fpref)
+
+bool tecIO::writeSingle(int fileID, double *point, string fpref)
 {
     void *infH = NULL;
     void *outfH = NULL;
-    tecFileReaderOpen((prefix + std::to_string(fileID) + suffix).c_str(), &infH);
+    if (fixedMesh)
+    {
+        tecFileReaderOpen((meshFile).c_str(), &infH);
+    }
+    else
+        tecFileReaderOpen((prefix + std::to_string(fileID) + suffix).c_str(), &infH);
     assert(infH != NULL);
     int zoneType;
     long iMax, jMax, kMax;
@@ -334,6 +395,18 @@ void tecIO::addVar(string var, string &norm)
     numVars = varName.size();
     cout << "metadata registers " << numVars << " variables" << endl;
 }
+void tecIO::addVarO(string var, string &norm)
+{
+    varName.push_back(var);
+    varIndex.push_back(varName.size());
+    normID.push_back(norm);
+    double temp;
+    temp = stod(norm);
+    normFactor.push_back(temp);
+    assert(varName.size() == varIndex.size());
+    numVars = varName.size();
+    cout << "metadata registers " << numVars << " variables" << endl;
+}
 
 int tecIO::getVariableIndex(string var, string file)
 {
@@ -372,35 +445,47 @@ int tecIO::getVariableIndex(string var, string file)
 
 void tecIO::getDimNodes()
 {
-    void *fH = NULL;
-    long iMax = 0, jMax = 0, kMax = 0;
+    
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (!rank)
     {
-        long check;
-        int id = 0;
-        cout << (prefix + std::to_string(snap0) + suffix) << endl;
-        tecFileReaderOpen((prefix + std::to_string(snap0) + suffix).c_str(), &fH);
-        assert(fH != NULL);
-        tecZoneGetIJK(fH, 1, &iMax, &jMax, &kMax);
-        cout << "iMax:" << iMax << ", jMax " << jMax << ", kMax " << kMax << endl;
-        check = iMax;
-        while (check == iMax)
+        if (fixedMesh)
         {
-            id++;
-            tecZoneVarGetNumValues(fH, 1, id, &check);
-            cout << "var " << id << " has " << check << " values" << endl;
+            checkMeshDim(meshFile);
         }
-        nCells = jMax;
-        printf("var %d is the first cellcentered variable\n", id);
-        dim = id - 1;
-        printf("dimension is %d\n", dim);
-        tecFileReaderClose(&fH);
+        else
+        {
+            checkMeshDim((prefix + std::to_string(snap0) + suffix));
+        }
     }
     //synch nodes and dimension
     MPI_Bcast(&nCells, 1, MPI_LONG, 0, MPI_COMM_WORLD);
     MPI_Bcast(&dim, 1, MPI_INT, 0, MPI_COMM_WORLD);
+}
+void tecIO::checkMeshDim(string filename)
+{
+    void *fH = NULL;
+    long iMax = 0, jMax = 0, kMax = 0;
+    long check;
+    int id = 0;
+    cout << filename << endl;
+    tecFileReaderOpen(filename.c_str(), &fH);
+    assert(fH != NULL);
+    tecZoneGetIJK(fH, 1, &iMax, &jMax, &kMax);
+    cout << "iMax:" << iMax << ", jMax " << jMax << ", kMax " << kMax << endl;
+    check = iMax;
+    while (check == iMax)
+    {
+        id++;
+        tecZoneVarGetNumValues(fH, 1, id, &check);
+        cout << "var " << id << " has " << check << " values" << endl;
+    }
+    nCells = jMax;
+    printf("var %d is the first cellcentered variable\n", id);
+    dim = id - 1;
+    printf("dimension is %d\n", dim);
+    tecFileReaderClose(&fH);
 }
 
 void tecIO::genHash()
@@ -430,5 +515,3 @@ void tecIO::subAvg(pMat *dataMat)
 void tecIO::calcAvg(pMat *dataMat)
 {
 }
-
-
