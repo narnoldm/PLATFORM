@@ -1,5 +1,4 @@
 
-
 #include "parser.hpp"
 
 template <typename T>
@@ -237,6 +236,14 @@ void inputInfo::assignInputInfo()
                                         cout << "check size failed" << endl;
                                 }
                         }
+                        if(matList[i]->token[1]=="binaryset")
+                        {
+                                cout<<"input type defined"<<endl;
+                                
+
+                        }
+
+
                 }
         }
 }
@@ -637,6 +644,11 @@ ostream &operator<<(std::ostream &os, const executioner &e)
 {
         
 }
+
+
+
+
+
 
 
 bool to_bool(std::string str)
