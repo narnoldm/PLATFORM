@@ -250,6 +250,7 @@ void tecIO::checkExists()
 }
 bool tecIO::readSingle(int fileID, double *point)
 {
+    cout<<(prefix + std::to_string(fileID) + suffix)<<endl;
     void *fH = NULL;
     tecFileReaderOpen((prefix + std::to_string(fileID) + suffix).c_str(), &fH);
     int type;
@@ -393,7 +394,7 @@ void tecIO::addVar(string var, string &norm)
     normFactor.push_back(temp);
     assert(varName.size() == varIndex.size());
     numVars = varName.size();
-    cout << "metadata registers " << numVars << " variables" << endl;
+    cout << "metadata has registered " << numVars << " variable(s)" << endl;
 }
 void tecIO::addVarO(string var, string &norm)
 {
@@ -405,7 +406,7 @@ void tecIO::addVarO(string var, string &norm)
     normFactor.push_back(temp);
     assert(varName.size() == varIndex.size());
     numVars = varName.size();
-    cout << "metadata registers " << numVars << " variables" << endl;
+    cout << "metadata has registered " << numVars << " variable(s)" << endl;
 }
 
 int tecIO::getVariableIndex(string var, string file)
