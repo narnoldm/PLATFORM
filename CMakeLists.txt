@@ -18,18 +18,17 @@ target_link_libraries(pMat ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a -Wl,--
 target_include_directories(pMat PRIVATE include ${MKLROOT}/include)
 
 
-add_library(parser STATIC src/parser.cpp)
-target_include_directories(parser PRIVATE include)
-target_link_libraries(parser pMat)
-
-
 add_library(meta STATIC src/metadata.cpp)
 target_include_directories(meta PUBLIC include 3rd_Party/tecio/teciosrc)
 target_link_libraries(meta pMat ${TECDIR}/libtecio.a)
 
+add_library(parser STATIC src/parser.cpp)
+target_include_directories(parser PRIVATE include)
+target_link_libraries(parser meta)
+
 add_executable(parser_drive src/parser_drive.cpp)
-target_include_directories(parser_drive PRIVATE include)
-target_link_libraries(parser_drive parser pMat)
+target_include_directories(parser_drive PUBLIC include)
+target_link_libraries(parser_drive parser meta)
 
 
 
@@ -42,11 +41,11 @@ target_link_libraries(test_pMat pMat)
 
 add_executable(test_meta tests/test_meta/test_bin.cpp)
 target_include_directories(test_meta PRIVATE include 3rd_Party/tecio/teciosrc)
-target_link_libraries(test_meta pMat meta)
+target_link_libraries(test_meta meta)
 
 add_executable(test_tec tests/test_meta/test_tecplot.cpp)
 target_include_directories(test_tec PRIVATE include 3rd_Party/tecio/teciosrc)
-target_link_libraries(test_tec pMat meta)
+target_link_libraries(test_tec meta)
 
 
 

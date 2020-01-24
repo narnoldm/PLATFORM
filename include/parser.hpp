@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <cctype>
 
-#include "pMat.hpp"
+#include "metadata.hpp"
 
 using namespace ::std;
 
@@ -162,7 +162,6 @@ class executioner
 {
     public: 
     inputReader * inpFile;
-    //vector<dataTool*> dTs;
     vector<PGrid*> pGs;
     vector<pMat*> pMats;
 
