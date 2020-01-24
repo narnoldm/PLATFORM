@@ -616,7 +616,7 @@ void executioner::output()
                         {
                                 cout << "binary detected" << endl;
                                 if (rank == 0)
-                                system(("mkdir " + inpFile->out.matList[i]->name).c_str());
+                                        system(("mkdir " + inpFile->out.matList[i]->name).c_str());
                                 for (int j = 0; j < inpFile->inp.matList.size(); j++)
                                 {
                                         if (inpFile->inp.matList[j]->name == inpFile->out.matList[i]->token[2])
@@ -634,19 +634,18 @@ void executioner::output()
                                         if (inpFile->inp.matList[j]->name == inpFile->out.matList[i]->token[2])
                                         {
                                                 cout << inpFile->out.matList[i]->token[2] << " found" << endl;
-                                                if(inpFile->out.matList[i]->datasetInfo==NULL)
+                                                if (inpFile->out.matList[i]->datasetInfo == NULL)
                                                 {
-                                                        inpFile->out.matList[i]->datasetInfo=new meta();
-                                                        inpFile->out.matList[i]->datasetInfo->snap0=1;
-                                                        inpFile->out.matList[i]->datasetInfo->snapF=pMats[j]->M;
-                                                        inpFile->out.matList[i]->datasetInfo->snapSkip=1;
-                                                        inpFile->out.matList[i]->datasetInfo->nSets=pMats[j]->M;
-                                                        inpFile->out.matList[i]->datasetInfo->prefix=inpFile->out.matList[i]->name;
-                                                        inpFile->out.matList[i]->datasetInfo->suffix=".bin";
-                                                        inpFile->out.matList[i]->datasetInfo->isInit=true;
-
+                                                        inpFile->out.matList[i]->datasetInfo = new meta();
+                                                        inpFile->out.matList[i]->datasetInfo->snap0 = 1;
+                                                        inpFile->out.matList[i]->datasetInfo->snapF = pMats[j]->M;
+                                                        inpFile->out.matList[i]->datasetInfo->snapSkip = 1;
+                                                        inpFile->out.matList[i]->datasetInfo->nSets = pMats[j]->M;
+                                                        inpFile->out.matList[i]->datasetInfo->prefix = inpFile->out.matList[i]->name;
+                                                        inpFile->out.matList[i]->datasetInfo->suffix = ".bin";
+                                                        inpFile->out.matList[i]->datasetInfo->isInit = true;
                                                 }
-                                                inpFile->out.matList[i]->datasetInfo->batchWrite(pMats[j],inpFile->out.matList[i]->name,inpFile->out.matList[i]->name);
+                                                inpFile->out.matList[i]->datasetInfo->batchWrite(pMats[j], inpFile->out.matList[i]->name, inpFile->out.matList[i]->name);
                                         }
                                 }
                         }
@@ -659,29 +658,32 @@ void executioner::output()
                                         {
                                                 cout << inpFile->out.matList[i]->token[2] << " found" << endl;
                                                 tecIO *tempPoint;
-                                                tempPoint = dynamic_cast<tecIO*>(inpFile->out.matList[i]->datasetInfo);
-                                                if(inpFile->out.matList[i]->datasetInfo==NULL)
+                                                if (inpFile->inp.matList[j]->datasetInfo == NULL)
                                                 {
-                                                        cout<<"hi"<<endl;
-                                                        tempPoint=new tecIO();
-                                                        tempPoint->snap0=1;
-                                                        tempPoint->snapF=pMats[j]->M;
-                                                        tempPoint->snapSkip=1;
-                                                        tempPoint->nSets=pMats[j]->M;
-                                                        tempPoint->prefix=inpFile->out.matList[i]->name;
-                                                        tempPoint->suffix=".szplt";
-                                                        tempPoint->isInit=true;
-                                                        tempPoint->meshFile=inpFile->out.matList[i]->token[3];
-                                                        tempPoint->fixedMesh=true;
+                                                        tempPoint = dynamic_cast<tecIO *>(inpFile->out.matList[i]->datasetInfo);
+                                                        tempPoint = new tecIO();
+                                                        tempPoint->snap0 = 1;
+                                                        tempPoint->snapF = pMats[j]->M;
+                                                        tempPoint->snapSkip = 1;
+                                                        tempPoint->nSets = pMats[j]->M;
+                                                        tempPoint->prefix = inpFile->out.matList[i]->name;
+                                                        tempPoint->suffix = ".szplt";
+                                                        tempPoint->isInit = true;
+                                                        tempPoint->meshFile = inpFile->out.matList[i]->token[3];
+                                                        tempPoint->fixedMesh = true;
                                                         tempPoint->getDimNodes();
-                                                        for(int k=4;k<inpFile->out.matList[i]->token.size();k+=2)
+                                                        for (int k = 4; k < inpFile->out.matList[i]->token.size(); k += 2)
                                                         {
 
-                                                                tempPoint->addVarO(inpFile->out.matList[i]->token[k],inpFile->out.matList[i]->token[k+1]);
+                                                                tempPoint->addVarO(inpFile->out.matList[i]->token[k], inpFile->out.matList[i]->token[k + 1]);
                                                         }
-
                                                 }
-                                                tempPoint->batchWrite(pMats[j],inpFile->out.matList[i]->name,inpFile->out.matList[i]->name);
+                                                else
+                                                {
+                                                        tempPoint = dynamic_cast<tecIO *>(inpFile->inp.matList[j]->datasetInfo);
+                                                }
+
+                                                tempPoint->batchWrite(pMats[j], inpFile->out.matList[i]->name, inpFile->out.matList[i]->name);
                                                 delete tempPoint;
                                         }
                                 }
@@ -727,13 +729,13 @@ void executioner::create_matricies()
                         {
                                 pointMat->read_bin(inpFile->inp.matList[i]->token[2]);
                         }
-                        else if(inpFile->inp.matList[i]->token[1] == "binaryset")
+                        else if (inpFile->inp.matList[i]->token[1] == "binaryset")
                         {
                                 inpFile->inp.matList[i]->datasetInfo->batchRead(pointMat);
                         }
-                        else if(inpFile->inp.matList[i]->token[1] == "tecplot")
+                        else if (inpFile->inp.matList[i]->token[1] == "tecplot")
                         {
-                                tecIO *tempPoint=dynamic_cast<tecIO*>(inpFile->inp.matList[i]->datasetInfo);
+                                tecIO *tempPoint = dynamic_cast<tecIO *>(inpFile->inp.matList[i]->datasetInfo);
                                 tempPoint->batchRead(pointMat);
                         }
                         else
@@ -741,6 +743,7 @@ void executioner::create_matricies()
                                 cout << "load type unrecognized" << endl;
                                 throw(-1);
                         }
+                        pointMat->printMat();
                 }
                 pMats.push_back(pointMat);
         }
