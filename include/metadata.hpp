@@ -9,29 +9,32 @@ using namespace ::std;
 
 class meta
 {
-    public:
+public:
     int snap0, snapF, snapSkip;
+    bool isInit=false;
     long nPoints, nSets;
     string prefix, suffix;
     vector<string> token;
 
     meta();
+    meta(vector<string> &iToken);
     meta(int t0, int tf, int ts, string &iPrefix, string &iSuffix);
-    ~meta();
+    virtual ~meta();
+    virtual void init(int t0, int tf, int ts, string &iPrefix, string &iSuffix);
 
     virtual void checkSize();
     virtual void checkExists();
     virtual bool readSingle(int fileID, double *point);
-    virtual bool writeSingle(int fileID, double *point,string fpref);
+    virtual bool writeSingle(int fileID, double *point, string fpref);
     virtual void miscProcessing(pMat *Mat);
     bool batchWrite(pMat *loadMat);
-    bool batchWrite(pMat *loadMat,string dir,string fpref);
+    bool batchWrite(pMat *loadMat, string dir, string fpref);
     bool batchRead(pMat *loadMat);
 };
 
 class tecIO : public meta
 {
-    public:
+public:
     //child specific
 
     vector<string> varName;
@@ -41,11 +44,16 @@ class tecIO : public meta
     vector<int> hash;
     vector<int> cellID;
     vector<double> average;
+    string meshFile;
+    bool fixedMesh=false;
 
     int numVars, dim, nCells;
 
+    tecIO();
+    tecIO(vector<string> &iToken);
+    tecIO(int t0, int tf, int ts, string &iPrefix, string &iSuffix);
+    virtual void init(int t0, int tf, int ts, string &iPrefix, string &iSuffix);
 
-    tecIO(int t0, int tf, int ts, string &iPrefix, string &iSuffix, vector<string> &iToken);
 
     ~tecIO();
     virtual void checkSize();
@@ -54,9 +62,12 @@ class tecIO : public meta
     virtual bool writeSingle(int fileID, double *point, string fpref);
     virtual void miscProcessing(pMat *Mat);
 
+    bool writeSingleFull(int fileID, double *point, string fpref,string meshfile);
     void addVar(std::string var, string &norm);
+    void addVarO(std::string var, string &norm);
     int getVariableIndex(std::string var, std::string file);
     void getDimNodes();
+    void checkMeshDim(string filename);
     void genHash();
     void genHash(std::string map);
     void normalize(pMat *dataMat);

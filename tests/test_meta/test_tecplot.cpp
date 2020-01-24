@@ -31,11 +31,18 @@ int main(int argc, char *argv[])
 
     tecIO *dataset1;
     vector<string> token;
+    token.push_back("input");
+    token.push_back("tecplot");
+    token.push_back(prefix);
+    token.push_back(suffix);
+    token.push_back("150000");
+    token.push_back("151000");
+    token.push_back("10");
     token.push_back("Static_Pressure");
     token.push_back("-1");
     token.push_back("Temperature");
     token.push_back("-1");
-    dataset1 = new tecIO(150000,151000,10,prefix,suffix,token);
+    dataset1 = new tecIO(token);
     string outdir="out";
     string outfile="stuff";
 

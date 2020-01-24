@@ -10,6 +10,8 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank); //Basic MPI intialization
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+
+    //silence output for non root MPI processes
     std::ofstream sink("/dev/null");
     streambuf *strm_buffer = cout.rdbuf();
     if (rank != 0)
@@ -17,7 +19,7 @@ int main(int argc, char *argv[])
         std::cout.rdbuf(sink.rdbuf());
     }
 
-
+    //check for non standard input file name
     string input;
     cout<<argc;
     input="input.pdp";
@@ -28,16 +30,20 @@ int main(int argc, char *argv[])
     cout << input << endl;
     cout << "initializing" << endl;
 
-    inputReader *file1p = new inputReader("input.pdp");
+
+
+    //launch parser
+    inputReader *file1p = new inputReader(input);
     executioner *exec = new executioner(file1p);
 
     exec->init();
-
     exec->exec_all();
     exec->output();
     exec->clear();
 
-    delete file1p;
+
+
+    delete file1p,exec;
     MPI_Barrier(MPI_COMM_WORLD);
     cout.rdbuf(strm_buffer);
     MPI_Finalize();
