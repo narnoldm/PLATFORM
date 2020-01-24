@@ -63,6 +63,7 @@ public:
     };
     int type, dim;
     bool isInput=0,isPA=0,isP0=0;
+    meta *datasetInfo=NULL;
     vector<string> token;
     string name;
     vector<int> dims;
