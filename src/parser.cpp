@@ -345,7 +345,7 @@ void operation::checkMats(inputInfo &iInfo)
                         }
                         if (j == iInfo.matList.size() - 1)
                         {
-                                cout << "name not found" << endl;
+                                cout << input[i] << "name not found" << endl;
                                 break;
                         }
                 }
@@ -394,6 +394,15 @@ void operation::assignOutputDim()
                         cout << "SVD should have 3 outputs and 1 input" << endl;
                         assert(inputMat.size() != 1 || outputMat.size() != 3);
                 }
+                //input contraints SVD requires mb=nb 
+                if(inputMat[0]->isInput)
+                {
+                        cout<<"matrix A is of input format, SVD requires even blocking"<<endl;
+
+                }
+
+
+                //output contraints
                 vector<int> temp;
                 temp.clear();
                 temp.push_back(inputMat[0]->dims[0]);
@@ -595,11 +604,17 @@ void executioner::exec(int opID)
         {
                 cout << "executing SVD" << endl;
                 pMat *A, *U, *S, *VT;
-                A = pMats[inpFile->op.taskQueue[opID]->inID[0]];
-                U = pMats[inpFile->op.taskQueue[opID]->outID[0]];
-                S = pMats[inpFile->op.taskQueue[opID]->outID[1]];
-                VT = pMats[inpFile->op.taskQueue[opID]->outID[2]];
+                A = inpFile->op.taskQueue[opID]->inputMat[0]->pMatpoint;
+                U = inpFile->op.taskQueue[opID]->outputMat[0]->pMatpoint;
+                S = inpFile->op.taskQueue[opID]->outputMat[1]->pMatpoint;
+                VT = inpFile->op.taskQueue[opID]->outputMat[2]->pMatpoint;
+
                 A->svd_run(A->N, A->M, 0, 0, U, VT, S->dataD);
+                cout << "SVD is destructive: reloading A" << endl;
+                if (inpFile->op.taskQueue[opID]->inputMat[0]->datasetInfo != NULL)
+                        inpFile->op.taskQueue[opID]->inputMat[0]->datasetInfo->batchRead(A);
+                else
+                        A->read_bin(inpFile->op.taskQueue[opID]->inputMat[0]->token[2]);
         }
 }
 
@@ -622,7 +637,8 @@ void executioner::output()
                                         if (inpFile->inp.matList[j]->name == inpFile->out.matList[i]->token[2])
                                         {
                                                 cout << inpFile->out.matList[i]->token[2] << " found" << endl;
-                                                pMats[j]->write_bin((inpFile->out.matList[i]->name + "/" + inpFile->out.matList[i]->name + ".bin").c_str());
+                                                inpFile->inp.matList[j]->pMatpoint->write_bin((inpFile->out.matList[i]->name + "/" + inpFile->out.matList[i]->name + ".bin").c_str());
+                                                //pMats[j]->write_bin((inpFile->out.matList[i]->name + "/" + inpFile->out.matList[i]->name + ".bin").c_str());
                                         }
                                 }
                         }
@@ -638,14 +654,16 @@ void executioner::output()
                                                 {
                                                         inpFile->out.matList[i]->datasetInfo = new meta();
                                                         inpFile->out.matList[i]->datasetInfo->snap0 = 1;
-                                                        inpFile->out.matList[i]->datasetInfo->snapF = pMats[j]->M;
+                                                        inpFile->out.matList[i]->datasetInfo->snapF = inpFile->inp.matList[j]->pMatpoint->M;
+                                                        //inpFile->out.matList[i]->datasetInfo->snapF = pMats[j]->M;
                                                         inpFile->out.matList[i]->datasetInfo->snapSkip = 1;
-                                                        inpFile->out.matList[i]->datasetInfo->nSets = pMats[j]->M;
+                                                        //inpFile->out.matList[i]->datasetInfo->nSets = pMats[j]->M;
+                                                        inpFile->out.matList[i]->datasetInfo->nSets = inpFile->inp.matList[j]->pMatpoint->M;
                                                         inpFile->out.matList[i]->datasetInfo->prefix = inpFile->out.matList[i]->name;
                                                         inpFile->out.matList[i]->datasetInfo->suffix = ".bin";
                                                         inpFile->out.matList[i]->datasetInfo->isInit = true;
                                                 }
-                                                inpFile->out.matList[i]->datasetInfo->batchWrite(pMats[j], inpFile->out.matList[i]->name, inpFile->out.matList[i]->name);
+                                                inpFile->out.matList[i]->datasetInfo->batchWrite(inpFile->inp.matList[j]->pMatpoint, inpFile->out.matList[i]->name, inpFile->out.matList[i]->name);
                                         }
                                 }
                         }
@@ -663,9 +681,11 @@ void executioner::output()
                                                         tempPoint = dynamic_cast<tecIO *>(inpFile->out.matList[i]->datasetInfo);
                                                         tempPoint = new tecIO();
                                                         tempPoint->snap0 = 1;
-                                                        tempPoint->snapF = pMats[j]->M;
+                                                        tempPoint->snapF = inpFile->inp.matList[j]->pMatpoint->M;
+                                                        //tempPoint->snapF = pMats[j]->M;
                                                         tempPoint->snapSkip = 1;
-                                                        tempPoint->nSets = pMats[j]->M;
+                                                        tempPoint->nSets = inpFile->inp.matList[j]->pMatpoint->M;
+                                                        //tempPoint->nSets = pMats[j]->M;
                                                         tempPoint->prefix = inpFile->out.matList[i]->name;
                                                         tempPoint->suffix = ".szplt";
                                                         tempPoint->isInit = true;
@@ -683,7 +703,7 @@ void executioner::output()
                                                         tempPoint = dynamic_cast<tecIO *>(inpFile->inp.matList[j]->datasetInfo);
                                                 }
 
-                                                tempPoint->batchWrite(pMats[j], inpFile->out.matList[i]->name, inpFile->out.matList[i]->name);
+                                                tempPoint->batchWrite(inpFile->inp.matList[j]->pMatpoint, inpFile->out.matList[i]->name, inpFile->out.matList[i]->name);
                                                 delete tempPoint;
                                         }
                                 }
@@ -693,9 +713,9 @@ void executioner::output()
 }
 void executioner::clear()
 {
-        for (int i = 0; i < pMats.size(); i++)
+        for (int i = 0; i < inpFile->out.matList.size(); i++)
         {
-                delete pMats[i];
+                delete inpFile->out.matList[i]->pMatpoint;
                 cout << inpFile->inp.matList[i]->name << endl;
         }
 }
@@ -710,7 +730,7 @@ void executioner::create_matricies()
         temp = new PGrid(rank, size, 1);
         pGs.push_back(temp);
         pMat *pointMat;
-        pMats.clear();
+        //pMats.clear();
         for (int i = 0; i < inpFile->inp.matList.size(); i++)
         {
                 cout << "allocating matrix " << *(inpFile->inp.matList[i]) << endl;
@@ -719,8 +739,16 @@ void executioner::create_matricies()
                         cout << "Creating Synched data" << endl;
                         pointMat = new pMat(inpFile->inp.matList[i]->dims[0], pGs[1]->size, pGs[1], 0, 0, 0.0);
                 }
+                else if (inpFile->inp.matList[i]->isInput)
+                {
+                        cout << "Creating Loading matrix" << endl;
+                        pointMat = new pMat(inpFile->inp.matList[i]->dims[0], inpFile->inp.matList[i]->dims[1], pGs[1], 0, 0, 0.0);
+                }
                 else
                         pointMat = new pMat(inpFile->inp.matList[i]->dims[0], inpFile->inp.matList[i]->dims[1], pGs[0], 0, 0, 0.0);
+                //point header to pMat
+                inpFile->inp.matList[i]->pMatpoint=pointMat;               
+                
                 //input
                 if (inpFile->inp.matList[i]->isInput)
                 {
@@ -743,9 +771,8 @@ void executioner::create_matricies()
                                 cout << "load type unrecognized" << endl;
                                 throw(-1);
                         }
-                        pointMat->printMat();
                 }
-                pMats.push_back(pointMat);
+                //pMats.push_back(pointMat);
         }
 }
 
