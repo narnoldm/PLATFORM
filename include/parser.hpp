@@ -63,6 +63,7 @@ public:
     };
     int type, dim;
     bool isInput=0,isPA=0,isP0=0;
+    pMat *pMatpoint=NULL;
     meta *datasetInfo=NULL;
     vector<string> token;
     string name;
@@ -164,7 +165,7 @@ class executioner
     public: 
     inputReader * inpFile;
     vector<PGrid*> pGs;
-    vector<pMat*> pMats;
+    //vector<pMat*> pMats;
 
 
     executioner();
@@ -177,6 +178,7 @@ class executioner
     void output();
     void clear();
     void create_matricies();
+    void switch_pMat_type();
 };
 
 
