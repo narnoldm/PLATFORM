@@ -493,6 +493,8 @@ int pMat::changeContext(pMat *A)
 {
         changeContext(A, N, M, 0, 0, 0, 0);
 }
+
+
 int pMat::dMax(int dim, int rc, double val)
 {
         double max;
