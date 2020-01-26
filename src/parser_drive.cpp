@@ -42,8 +42,8 @@ int main(int argc, char *argv[])
     executioner *exec = new executioner(file1p);
 
     exec->init();
-    //exec->exec_all();
-    //exec->output();
+    exec->exec_all();
+    exec->output();
     exec->clear();
 
 
