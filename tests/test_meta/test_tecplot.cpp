@@ -54,7 +54,8 @@ int main(int argc, char *argv[])
 
     dataset1->batchWrite(loadMat,outdir,outfile);
 
-
+    delete loadMat,evenMatFromLoad,evenMat;
+    delete loadG,evenG,dataset1;
 
 
     cout.rdbuf(strm_buffer);

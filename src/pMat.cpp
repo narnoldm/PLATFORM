@@ -24,12 +24,13 @@ PGrid::PGrid(int r, int s, int type)
                 pdims[0] = 1;
                 pdims[1] = 1;
         }
-        if (printRank)
-                cout << "Processor Grid N=" << pdims[0] << " M=" << pdims[1] << endl;
+        cout << rank << " " << size;
+        cout << "initializing Cblacs" << endl;
         Cblacs_pinfo(&rank, &size);
         Cblacs_get(-1, 0, &icntxt);
         Cblacs_gridinit(&icntxt, order, pdims[0], pdims[1]);
         Cblacs_gridinfo(icntxt, &prow, &pcol, &myrow, &mycol);
+        cout << "Processor Grid N=" << pdims[0] << " M=" << pdims[1] << endl;
         MPI_Barrier(MPI_COMM_WORLD);
 }
 PGrid::~PGrid()
@@ -284,13 +285,13 @@ int pMat::read_bin(string &filename)
         MPI_File_read_all(fH, &rM, 1, MPI_INT, MPI_STATUS_IGNORE);
         MPI_File_close(&fH);
 
-        while ((rN != N) || (rM != M))
+        if ((rN != N) || (rM != M))
         {
                 if (printRank)
                         cout << "bin file and matrix do not have same dimension" << endl
-                             << " Attempting to reassign Matrix" << endl;
-                this->~pMat();
-                this->setupMat(rN, rM, type, block, cycles, 0.0);
+                             << "File N=" << rN << ", M=" << rM << endl
+                             << "Matrix N=" << N << ", M=" << M << endl;
+                throw(-1);
         }
         int dims[2] = {N, M};
         int distribs[2] = {MPI_DISTRIBUTE_CYCLIC, MPI_DISTRIBUTE_CYCLIC};
@@ -494,7 +495,6 @@ int pMat::changeContext(pMat *A)
         changeContext(A, N, M, 0, 0, 0, 0);
 }
 
-
 int pMat::dMax(int dim, int rc, double val)
 {
         double max;
@@ -573,12 +573,12 @@ bool operator==(pMat const &p1, pMat const &p2)
 {
         if ((p1.M != p2.M) || (p1.N != p2.N))
         {
-                cout<<"Dim mismatch"<<endl;
+                cout << "Dim mismatch" << endl;
                 return false;
         }
         else if ((p1.nelements != p2.nelements))
         {
-                cout<<"element mismatch"<<endl;
+                cout << "element mismatch" << endl;
                 return false;
         }
         else

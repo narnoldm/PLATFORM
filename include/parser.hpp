@@ -63,17 +63,27 @@ public:
     };
     int type, dim;
     bool isInput=0,isPA=0,isP0=0;
+     
+     
+    bool compPGreq=false;
+    bool IOPGreq=false;
+
+
     pMat *pMatpoint=NULL;
     meta *datasetInfo=NULL;
     vector<string> token;
     string name;
     vector<int> dims;
 
+    
+
+
     dataID();
     ~dataID();
     void setName(string n);
     void setInfo(string d);
     void setInfo(vector<int> &d);
+    void switchPmatType(PGrid *newPG);
 };
 
 class inputInfo
@@ -112,6 +122,7 @@ public:
     vector<int> outID;
     vector<dataID *> inputMat;
     vector<dataID *> outputMat;
+
 
     string opName;
     bool operation_ident;
@@ -156,6 +167,7 @@ public:
     inputInfo out;
 
     inputReader(std::string file);
+    ~inputReader();
     bool ScanFile();
 };
 
@@ -178,7 +190,6 @@ class executioner
     void output();
     void clear();
     void create_matricies();
-    void switch_pMat_type();
 };
 
 

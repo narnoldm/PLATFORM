@@ -141,6 +141,24 @@ void dataID::setInfo(vector<int> &d)
                 dims[i] = d[i];
         type = defined;
 }
+void dataID::switchPmatType(PGrid *newPG)
+{
+        if(newPG!=pMatpoint->pG)
+        {
+        cout<<"in place copy this can be memory explosive"<<endl;
+        cout<<dims[0]<<" "<<dims[1]<<endl;
+        pMat *temppMat;
+        temppMat = new pMat(dims[0],dims[1], newPG, 0, 0, 0.0);
+        temppMat->changeContext(pMatpoint);
+        delete pMatpoint; 
+        pMatpoint=temppMat;  
+        }
+        else
+                cout<<"already in this format"<<endl;            
+
+}
+
+
 ostream &operator<<(std::ostream &os, const dataID &mID)
 {
         cout << "Matrix " << mID.name << " is of type:" << mID.type << endl;
@@ -161,7 +179,7 @@ ostream &operator<<(std::ostream &os, const dataID &mID)
                 cout << "is Synched Data " << mID.isPA << endl;
                 cout << "is P0 Data " << mID.isP0 << endl;
         }
-
+        cout<<endl;
         return os;
 }
 
@@ -173,6 +191,7 @@ inputInfo::inputInfo()
 inputInfo::~inputInfo()
 {
         cout << "destructing mat info" << endl;
+        
 }
 
 bool inputInfo::ScanInput(string line)
@@ -181,11 +200,10 @@ bool inputInfo::ScanInput(string line)
         tokenparse(line, "=", split);
         assert(split.size() == 2);
         dataID *point;
+        point = new dataID();
+        point->setName(split[0]);
+        point->setInfo(split[1]);
         matList.push_back(point);
-        matList[matList.size() - 1] = new dataID();
-        matList[matList.size() - 1]->setName(split[0]);
-        matList[matList.size() - 1]->setInfo(split[1]);
-
         return 1;
 }
 
@@ -395,11 +413,8 @@ void operation::assignOutputDim()
                         assert(inputMat.size() != 1 || outputMat.size() != 3);
                 }
                 //input contraints SVD requires mb=nb 
-                if(inputMat[0]->isInput)
-                {
-                        cout<<"matrix A is of input format, SVD requires even blocking"<<endl;
-
-                }
+                
+                        inputMat[0]->compPGreq=true;
 
 
                 //output contraints
@@ -479,7 +494,15 @@ inputReader::inputReader(string file)
         ifile = file;
         ScanFile();
 }
-
+inputReader::~inputReader()
+{
+        ifile.clear();
+        keys.clear();
+        intParam.clear();
+        doubleParam.clear();
+        stringParam.clear();
+        
+}
 bool inputReader::ScanFile()
 {
         fstream inFile;
@@ -566,6 +589,7 @@ bool inputReader::ScanFile()
                         throw(-1);
                 }
         }
+        cout <<inp;
         cout << "Yay all orperations and matracies defined" << endl;
 }
 
@@ -610,11 +634,8 @@ void executioner::exec(int opID)
                 VT = inpFile->op.taskQueue[opID]->outputMat[2]->pMatpoint;
 
                 A->svd_run(A->N, A->M, 0, 0, U, VT, S->dataD);
-                cout << "SVD is destructive: reloading A" << endl;
-                if (inpFile->op.taskQueue[opID]->inputMat[0]->datasetInfo != NULL)
-                        inpFile->op.taskQueue[opID]->inputMat[0]->datasetInfo->batchRead(A);
-                else
-                        A->read_bin(inpFile->op.taskQueue[opID]->inputMat[0]->token[2]);
+                cout << "SVD is destructive: Using or Outputing A is ill advised" << endl;
+
         }
 }
 
@@ -638,8 +659,7 @@ void executioner::output()
                                         {
                                                 cout << inpFile->out.matList[i]->token[2] << " found" << endl;
                                                 inpFile->inp.matList[j]->pMatpoint->write_bin((inpFile->out.matList[i]->name + "/" + inpFile->out.matList[i]->name + ".bin").c_str());
-                                                //pMats[j]->write_bin((inpFile->out.matList[i]->name + "/" + inpFile->out.matList[i]->name + ".bin").c_str());
-                                        }
+                                                }
                                 }
                         }
                         if (inpFile->out.matList[i]->token[1] == "binaryset")
@@ -650,14 +670,13 @@ void executioner::output()
                                         if (inpFile->inp.matList[j]->name == inpFile->out.matList[i]->token[2])
                                         {
                                                 cout << inpFile->out.matList[i]->token[2] << " found" << endl;
+                                                inpFile->inp.matList[j]->switchPmatType(pGs[1]);
                                                 if (inpFile->out.matList[i]->datasetInfo == NULL)
                                                 {
                                                         inpFile->out.matList[i]->datasetInfo = new meta();
                                                         inpFile->out.matList[i]->datasetInfo->snap0 = 1;
                                                         inpFile->out.matList[i]->datasetInfo->snapF = inpFile->inp.matList[j]->pMatpoint->M;
-                                                        //inpFile->out.matList[i]->datasetInfo->snapF = pMats[j]->M;
                                                         inpFile->out.matList[i]->datasetInfo->snapSkip = 1;
-                                                        //inpFile->out.matList[i]->datasetInfo->nSets = pMats[j]->M;
                                                         inpFile->out.matList[i]->datasetInfo->nSets = inpFile->inp.matList[j]->pMatpoint->M;
                                                         inpFile->out.matList[i]->datasetInfo->prefix = inpFile->out.matList[i]->name;
                                                         inpFile->out.matList[i]->datasetInfo->suffix = ".bin";
@@ -675,6 +694,7 @@ void executioner::output()
                                         if (inpFile->inp.matList[j]->name == inpFile->out.matList[i]->token[2])
                                         {
                                                 cout << inpFile->out.matList[i]->token[2] << " found" << endl;
+                                                inpFile->inp.matList[j]->switchPmatType(pGs[1]);
                                                 tecIO *tempPoint;
                                                 if (inpFile->inp.matList[j]->datasetInfo == NULL)
                                                 {
@@ -713,10 +733,14 @@ void executioner::output()
 }
 void executioner::clear()
 {
-        for (int i = 0; i < inpFile->out.matList.size(); i++)
+        for (int i = 0; i < inpFile->inp.matList.size(); i++)
         {
-                delete inpFile->out.matList[i]->pMatpoint;
+                delete inpFile->inp.matList[i]->pMatpoint;
                 cout << inpFile->inp.matList[i]->name << endl;
+        }
+        for(int i=0;i<pGs.size();i++)
+        {
+                delete pGs[i];
         }
 }
 void executioner::create_matricies()
@@ -771,6 +795,12 @@ void executioner::create_matricies()
                                 cout << "load type unrecognized" << endl;
                                 throw(-1);
                         }
+                }
+
+                if(inpFile->inp.matList[i]->compPGreq)
+                {
+                        cout<<"need to copy to even process grid"<<endl;
+                        inpFile->inp.matList[i]->switchPmatType(pGs[0]);
                 }
                 //pMats.push_back(pointMat);
         }
