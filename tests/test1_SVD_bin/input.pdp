@@ -7,7 +7,7 @@ PROCSCHECK=4
 
 
 #INPUT
-!A=input|tecplot|gemsma_cmb_|.szplt|1|100|1
+!A=input|tecplot|gemsma_cmb_|.szplt|1|100|1|Normalize|Static_Pressure|
 A=input|binary|test.bin
 U=inferred
 VT=inferred

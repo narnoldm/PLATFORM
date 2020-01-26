@@ -671,17 +671,22 @@ void executioner::output()
                                         {
                                                 cout << inpFile->out.matList[i]->token[2] << " found" << endl;
                                                 inpFile->inp.matList[j]->switchPmatType(pGs[1]);
-                                                if (inpFile->out.matList[i]->datasetInfo == NULL)
+                                                if (inpFile->inp.matList[j]->datasetInfo == NULL)
                                                 {
                                                         inpFile->out.matList[i]->datasetInfo = new meta();
                                                         inpFile->out.matList[i]->datasetInfo->snap0 = 1;
                                                         inpFile->out.matList[i]->datasetInfo->snapF = inpFile->inp.matList[j]->pMatpoint->M;
                                                         inpFile->out.matList[i]->datasetInfo->snapSkip = 1;
+                                                        inpFile->out.matList[i]->datasetInfo->nPoints = inpFile->inp.matList[j]->pMatpoint->N;
                                                         inpFile->out.matList[i]->datasetInfo->nSets = inpFile->inp.matList[j]->pMatpoint->M;
                                                         inpFile->out.matList[i]->datasetInfo->prefix = inpFile->out.matList[i]->name;
                                                         inpFile->out.matList[i]->datasetInfo->suffix = ".bin";
                                                         inpFile->out.matList[i]->datasetInfo->isInit = true;
                                                 }
+                                                else
+                                                {
+                                                        inpFile->out.matList[i]->datasetInfo=inpFile->inp.matList[j]->datasetInfo;
+                                                }                                             
                                                 inpFile->out.matList[i]->datasetInfo->batchWrite(inpFile->inp.matList[j]->pMatpoint, inpFile->out.matList[i]->name, inpFile->out.matList[i]->name);
                                         }
                                 }
@@ -702,10 +707,8 @@ void executioner::output()
                                                         tempPoint = new tecIO();
                                                         tempPoint->snap0 = 1;
                                                         tempPoint->snapF = inpFile->inp.matList[j]->pMatpoint->M;
-                                                        //tempPoint->snapF = pMats[j]->M;
                                                         tempPoint->snapSkip = 1;
                                                         tempPoint->nSets = inpFile->inp.matList[j]->pMatpoint->M;
-                                                        //tempPoint->nSets = pMats[j]->M;
                                                         tempPoint->prefix = inpFile->out.matList[i]->name;
                                                         tempPoint->suffix = ".szplt";
                                                         tempPoint->isInit = true;
@@ -714,9 +717,9 @@ void executioner::output()
                                                         tempPoint->getDimNodes();
                                                         for (int k = 4; k < inpFile->out.matList[i]->token.size(); k += 2)
                                                         {
-
                                                                 tempPoint->addVarO(inpFile->out.matList[i]->token[k], inpFile->out.matList[i]->token[k + 1]);
                                                         }
+                                                        tempPoint->nPoints=tempPoint->nCells*tempPoint->numVars;
                                                 }
                                                 else
                                                 {
