@@ -137,6 +137,7 @@ public:
     void checkOperation(string token);
     bool inferDim();
     void assignOutputDim();
+    void execute();
 };
 
 class operationQueue
