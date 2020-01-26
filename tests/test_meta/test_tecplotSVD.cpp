@@ -40,8 +40,8 @@ int main(int argc, char *argv[])
     token.push_back("10");
     token.push_back("Static_Pressure");
     token.push_back("-1");
-    token.push_back("Temperature");
-    token.push_back("-1");
+    //token.push_back("Temperature");
+    //token.push_back("-1");
     dataset1 = new tecIO(token);
     string outdir="out";
     string outfile="U";
