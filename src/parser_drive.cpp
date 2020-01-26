@@ -14,7 +14,12 @@ int main(int argc, char *argv[])
     //silence output for non root MPI processes
     std::ofstream sink("/dev/null");
     streambuf *strm_buffer = cout.rdbuf();
-    if (rank != 0)
+    int debug_proc=0;
+    if(argc>2)
+    {
+        debug_proc=atoi(argv[2]);
+    }
+    if (rank != debug_proc)
     {
         std::cout.rdbuf(sink.rdbuf());
     }
@@ -37,8 +42,8 @@ int main(int argc, char *argv[])
     executioner *exec = new executioner(file1p);
 
     exec->init();
-    exec->exec_all();
-    exec->output();
+    //exec->exec_all();
+    //exec->output();
     exec->clear();
 
 
