@@ -11,7 +11,7 @@ class meta
 {
 public:
     int snap0, snapF, snapSkip;
-    bool isInit=false;
+    bool isInit = false;
     long nPoints, nSets;
     string prefix, suffix;
     vector<string> token;
@@ -32,6 +32,7 @@ public:
     bool batchRead(pMat *loadMat);
 };
 
+
 class tecIO : public meta
 {
 public:
@@ -45,7 +46,7 @@ public:
     vector<int> cellID;
     vector<double> average;
     string meshFile;
-    bool fixedMesh=false;
+    bool fixedMesh = false;
 
     int numVars, dim, nCells;
 
@@ -54,7 +55,6 @@ public:
     tecIO(int t0, int tf, int ts, string &iPrefix, string &iSuffix);
     virtual void init(int t0, int tf, int ts, string &iPrefix, string &iSuffix);
 
-
     ~tecIO();
     virtual void checkSize();
     virtual void checkExists();
@@ -62,7 +62,7 @@ public:
     virtual bool writeSingle(int fileID, double *point, string fpref);
     virtual void miscProcessing(pMat *Mat);
 
-    bool writeSingleFull(int fileID, double *point, string fpref,string meshfile);
+    bool writeSingleFull(int fileID, double *point, string fpref, string meshfile);
     void addVar(std::string var, string &norm);
     void addVarO(std::string var, string &norm);
     int getVariableIndex(std::string var, std::string file);
