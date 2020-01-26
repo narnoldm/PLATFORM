@@ -44,18 +44,27 @@ int main(int argc, char *argv[])
     token.push_back("-1");
     dataset1 = new tecIO(token);
     string outdir="out";
-    string outfile="stuff";
+    string outfile="U";
 
 
     loadMat = new pMat(dataset1->nPoints,dataset1->nSets,loadG,0,0,0.0);
     dataset1->batchRead(loadMat);
-
     evenMat=new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
-
     evenMat->changeContext(loadMat);
     delete loadMat;
+
+    pMat *U,*VT;
+    vector<double> S;
+
+    U=new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
+    VT=new pMat(dataset1->nSets,dataset1->nSets,evenG,0,0,0.0);
+    S.resize(dataset1->nSets);
+
+    evenMat->svd_run(dataset1->nPoints,dataset1->nSets,0,0,U,VT,S);
+
+
     loadMat = new pMat(dataset1->nPoints,dataset1->nSets,loadG,0,0,0.0);
-    loadMat->changeContext(evenMat);
+    loadMat->changeContext(U);
 
     dataset1->batchWrite(loadMat,outdir,outfile);
 
