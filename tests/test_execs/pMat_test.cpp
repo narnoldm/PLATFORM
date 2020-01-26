@@ -36,6 +36,8 @@ int main(int argc, char *argv[])
     cout<<*m2<<endl;
 
 
+    delete p1,m1,m2;
+
     cout.rdbuf(strm_buffer);
     MPI_Finalize();
     return 0;

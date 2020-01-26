@@ -430,8 +430,10 @@ int tecIO::getVariableIndex(string var, string file)
                 tecIndex = i;
                 break;
             }
+            delete vName;
             vName = NULL;
         }
+        delete vName;
         vName = NULL;
         tecFileReaderClose(&fH);
         if (tecIndex == 0)
