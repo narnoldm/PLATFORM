@@ -137,6 +137,7 @@ public:
     void checkOperation(string token);
     bool inferDim();
     void assignOutputDim();
+    void opInfoCheck(int,int);
     void execute();
 };
 

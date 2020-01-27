@@ -75,18 +75,26 @@ public:
 	void setupMat(int m, int n, int t, int b, int c, double init);
 	void switchType(int t);
 	void printMat();
+	
+	//I/O
 	int write_bin(std::string filename);
 	int read_bin(string &filename);
 	bool check_bin_size(string filename, int &mN, int &mM);
+	
+	//PBLAS
 	int matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia, int ja, pMat *B, int ib, int jb, double alpha, double beta, int ic, int jc);
 	int matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int jb, double alpha, double beta);
+	
+	//Scalapack
+	
 	int svd_run(int m, int n, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S);
+	
+	//Utilities
 	int transpose(pMat *A, int m, int n, int ia, int ja);
 	int changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb);
 	int changeContext(pMat *A);
-	int dMax(int dim, int rc, double val);
-	int dAve(int dim, int rc, double val);
-	void printDesc();
+	int dMax(int dim, int rc, double &val);
+	int dAve(int dim, int rc, double &val);
 };
 
 ostream &operator<<(std::ostream &os, const pMat &p);

@@ -495,7 +495,7 @@ int pMat::changeContext(pMat *A)
         changeContext(A, N, M, 0, 0, 0, 0);
 }
 
-int pMat::dMax(int dim, int rc, double val)
+int pMat::dMax(int dim, int rc, double &val)
 {
         double max;
         int index = 0;
@@ -516,7 +516,7 @@ int pMat::dMax(int dim, int rc, double val)
         if (printRank)
                 cout << "max is " << val << " at " << index;
 }
-int pMat::dAve(int dim, int rc, double val)
+int pMat::dAve(int dim, int rc, double &val)
 {
 
         if (printRank)
@@ -536,21 +536,6 @@ int pMat::dAve(int dim, int rc, double val)
                 cout << "sum is " << val << endl;
 }
 
-void pMat::printDesc()
-{
-        if (printRank)
-        {
-                std::cout << "Descriptor type: " << desc[0] << std::endl;
-                std::cout << "BLACS context: " << desc[1] << std::endl;
-                std::cout << "Global Rows: " << desc[2] << std::endl;
-                std::cout << "Global Cols: " << desc[3] << std::endl;
-                std::cout << "Row Blocking factor: " << desc[4] << std::endl;
-                std::cout << "Column Blocking factor: " << desc[5] << std::endl;
-                std::cout << "Process row where first row is: " << desc[6] << std::endl;
-                std::cout << "Process Col where first col is: " << desc[7] << std::endl;
-                std::cout << "Leading Dimension: " << desc[8] << std::endl;
-        }
-}
 ostream &operator<<(std::ostream &os, const pMat &p)
 {
         if (p.printRank)
