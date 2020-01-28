@@ -1,3 +1,8 @@
+#ifndef PMAT_H
+#define PMAT_H
+
+
+
 #include <stdlib.h>
 #include <mpi.h>
 #include "mkl.h"
@@ -16,8 +21,6 @@
 
 #include "extern_func.hpp"
 
-
-using namespace ::std;
 
 
 
@@ -78,8 +81,8 @@ public:
 	
 	//I/O
 	int write_bin(std::string filename);
-	int read_bin(string &filename);
-	bool check_bin_size(string filename, int &mN, int &mM);
+	int read_bin(std::string &filename);
+	bool check_bin_size(std::string filename, int &mN, int &mM);
 	
 	//PBLAS
 	int matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia, int ja, pMat *B, int ib, int jb, double alpha, double beta, int ic, int jc);
@@ -87,7 +90,7 @@ public:
 	
 	//Scalapack
 	
-	int svd_run(int m, int n, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S);
+	int svd_run(int m, int n, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S);
 	
 	//Utilities
 	int transpose(pMat *A, int m, int n, int ia, int ja);
@@ -97,5 +100,9 @@ public:
 	int dAve(int dim, int rc, double &val);
 };
 
-ostream &operator<<(std::ostream &os, const pMat &p);
+std::ostream &operator<<(std::ostream &os, const pMat &p);
 bool operator==(pMat const &p1, pMat const &p2);
+
+
+
+#endif

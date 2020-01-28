@@ -1,5 +1,10 @@
 #include "metadata.hpp"
 
+
+
+
+using namespace::std;
+
 meta::meta()
 {
     isInit = false;
