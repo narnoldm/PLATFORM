@@ -8,6 +8,7 @@ set(TECDIR ${CMAKE_CURRENT_SOURCE_DIR}/3rd_Party/tecio/teciosrc)
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
 message("${CMAKE_CXX_COMPILER_ID} detected")
+set(isINTEL 1)
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 endif()
 
@@ -15,7 +16,8 @@ endif()
 
 add_library(pMat STATIC src/pMat.cpp)
 target_link_libraries(pMat ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -lpthread -lm -ldl) 
-target_include_directories(pMat PRIVATE include ${MKLROOT}/include)
+endif()
+target_include_directories(pMat PUBLIC include ${MKLROOT}/include)
 target_link_libraries(pMat debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/allinea/forge/lib/64/libdmallocxx.a)
 
 add_library(meta STATIC src/metadata.cpp)
