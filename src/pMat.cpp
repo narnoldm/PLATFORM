@@ -14,7 +14,10 @@ PGrid::PGrid(int r, int s, int type)
         myrow = 0;
         mycol = 0;
         int ngone = -1, zero = 0;
-        char *order = "R";
+        string orderStr="R";
+        char *order = new char[orderStr.size()+1];
+        copy(orderStr.begin(),orderStr.end(),order);
+        order[orderStr.size()]='\0';
         if (type == 0)
                 MPI_Dims_create(size, 2, pdims);
         else if (type == 1)
@@ -35,6 +38,7 @@ PGrid::PGrid(int r, int s, int type)
         Cblacs_gridinfo(icntxt, &prow, &pcol, &myrow, &mycol);
         cout << "Processor Grid N=" << pdims[0] << " M=" << pdims[1] << endl;
         MPI_Barrier(MPI_COMM_WORLD);
+        delete order;
 }
 PGrid::~PGrid()
 {
@@ -426,7 +430,8 @@ int pMat::matrix_Sum(char tA, int n, int m, pMat *A, int ia, int ja, int ib, int
 int pMat::svd_run(int N, int M, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S)
 {
         int info;
-        char *JOBU = "V", *JOBVT = "V";
+        string computeFlag="V";
+        const char *JOBU = computeFlag.c_str(), *JOBVT = computeFlag.c_str();
         std::vector<double> WORK(1);
         int LWORK = -1;
         int IA = ia + 1;
