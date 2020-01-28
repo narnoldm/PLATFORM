@@ -399,18 +399,6 @@ void tecIO::addVar(string var, string &norm)
     numVars = varName.size();
     cout << "metadata has registered " << numVars << " variable(s)" << endl;
 }
-void tecIO::addVarO(string var, string &norm)
-{
-    varName.push_back(var);
-    varIndex.push_back(varName.size());
-    normID.push_back(norm);
-    double temp;
-    temp = stod(norm);
-    normFactor.push_back(temp);
-    assert(varName.size() == varIndex.size());
-    numVars = varName.size();
-    cout << "metadata has registered " << numVars << " variable(s)" << endl;
-}
 
 int tecIO::getVariableIndex(string var, string file)
 {
