@@ -20,7 +20,7 @@
 
 bool to_bool(std::string str);
 
-void tokenparse(std::string &input, std::string sep, std::vector<std::string> &tokens);
+void tokenparse(const std::string &input, std::string sep, std::vector<std::string> &tokens);
 
 
 
