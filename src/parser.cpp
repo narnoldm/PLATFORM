@@ -517,8 +517,8 @@ bool operationQueue::ScanOperations(string token)
         if (split.size() != 2)
                 return 0;
         operation *point;
+        point=new operation(split[0], split[1]);
         taskQueue.push_back(point);
-        taskQueue[taskQueue.size() - 1] = new operation(split[0], split[1]);
         return 1;
 }
 
@@ -764,7 +764,7 @@ void executioner::output()
                                                         tempPoint->getDimNodes();
                                                         for (int k = 4; k < inpFile->out.matList[i]->token.size(); k += 2)
                                                         {
-                                                                tempPoint->addVarO(inpFile->out.matList[i]->token[k], inpFile->out.matList[i]->token[k + 1]);
+                                                                tempPoint->addVar(inpFile->out.matList[i]->token[k], inpFile->out.matList[i]->token[k + 1]);
                                                         }
                                                         tempPoint->nPoints = tempPoint->nCells * tempPoint->numVars;
                                                 }

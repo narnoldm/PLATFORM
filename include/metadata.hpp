@@ -64,7 +64,6 @@ public:
 
     bool writeSingleFull(int fileID, double *point, string fpref, string meshfile);
     void addVar(std::string var, string &norm);
-    void addVarO(std::string var, string &norm);
     int getVariableIndex(std::string var, std::string file);
     void getDimNodes();
     void checkMeshDim(string filename);
