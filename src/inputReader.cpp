@@ -11,10 +11,6 @@ inputReader::inputReader(string file)
 inputReader::~inputReader()
 {
         ifile.clear();
-        keys.clear();
-        intParam.clear();
-        doubleParam.clear();
-        stringParam.clear();
 }
 bool inputReader::ScanFile()
 {

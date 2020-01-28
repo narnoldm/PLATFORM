@@ -2,6 +2,8 @@
 #include "operation.hpp"
 
 
+using namespace::std;
+
 operation::operation(string token1, string token2)
 {
         assignInput(token2);
@@ -52,6 +54,7 @@ void operation::checkMats(inputInfo &iInfo)
                         if (j == iInfo.matList.size() - 1)
                         {
                                 cout << input[i] << "name not found" << endl;
+                                throw(-1);
                                 break;
                         }
                 }
@@ -68,6 +71,7 @@ void operation::checkMats(inputInfo &iInfo)
                         if (j == iInfo.matList.size() - 1)
                         {
                                 cout << "name not found" << endl;
+                                throw(-1);
                                 break;
                         }
                 }
@@ -170,7 +174,7 @@ void operation::execute()
 
 }
 
-void operation::opInfoCheck(int in, int out)
+void operation::opInfoCheck(const int &in,const int &out)
 {
         if (inputMat.size() != in || outputMat.size() != out)
         {
