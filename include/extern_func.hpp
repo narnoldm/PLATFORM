@@ -3,12 +3,27 @@
 #define EXTERN_FUNC_H
 
 
+/***
+ * Ideally all external functions will be interfaced here
+ * */
+
+
+
+
+/// CBLACS functions
 extern "C" void Cblacs_pinfo(int *MYPNUM, int *NPROCS);
 extern "C" void Cblacs_get(int ICONTXT, int WHAT, int *VAL);
 extern "C" void Cblacs_gridinit(int *ICONTXT, char *ORDER, int prow, int pcol);
 extern "C" void Cblacs_gridinfo(int ICONTXT, int *nprow, int *npcol, int *myprow, int *mypcol);
 extern "C" void Cblacs_gridexit(int ICONTXT);
+
+
+/// BLAS routines
 extern "C" double cblas_dnrm2(const MKL_INT n, const double *x, const MKL_INT incx);
+
+
+
+/// ScaLAPACK & PBLAS Routines
 extern "C" MKL_INT numroc_(const MKL_INT *n, const MKL_INT *nb, const MKL_INT *iproc, const MKL_INT *srcproc, const MKL_INT *nprocs);
 extern "C" void descinit_(MKL_INT *desc, const MKL_INT *m, const MKL_INT *n, const MKL_INT *mb, const MKL_INT *nb, const MKL_INT *irsrc, const MKL_INT *icsrc, const MKL_INT *ictxt, const MKL_INT *lld, MKL_INT *info);
 extern "C" void pdgeadd(const char *trans, const MKL_INT *m, const MKL_INT *n, const double *alpha, const double *a, const MKL_INT *ia, const MKL_INT *ja, const MKL_INT *desca, const double *beta, double *c, const MKL_INT *ic, const MKL_INT *jc, const MKL_INT *descc);

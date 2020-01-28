@@ -12,18 +12,18 @@ dataID::~dataID()
 {
 }
 
-void dataID::setName(string n)
+void dataID::setName(string &n)
 {
         name = n;
 }
 
-void dataID::setInfo(string d)
+void dataID::setInfo(string &d)
 {
         token.clear();
         tokenparse(d, "|", token);
         if (token.size() == 1)
         {
-                if (d == "inferred")
+                if (token[0] == "inferred")
                 {
                         type = inferred;
                         return;

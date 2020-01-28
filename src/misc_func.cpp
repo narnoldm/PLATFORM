@@ -15,7 +15,7 @@ bool to_bool(std::string str)
         return b;
 }
 
-void tokenparse(string &input, string sep, vector<string> &tokens)
+void tokenparse(const string &input, string sep, vector<string> &tokens)
 {
         //count |
         int loc, loc2;
