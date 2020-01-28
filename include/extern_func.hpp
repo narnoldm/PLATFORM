@@ -1,4 +1,7 @@
 
+#ifndef EXTERN_FUNC_H
+#define EXTERN_FUNC_H
+
 
 extern "C" void Cblacs_pinfo(int *MYPNUM, int *NPROCS);
 extern "C" void Cblacs_get(int ICONTXT, int WHAT, int *VAL);
@@ -14,3 +17,6 @@ extern "C" void pzgemm(const char *transa, const char *transb, const MKL_INT *m,
 extern "C" void pdamax(const MKL_INT *n, double *amax, MKL_INT *indx, const double *x, const MKL_INT *ix, const MKL_INT *jx, const MKL_INT *descx, const MKL_INT *incx);
 extern "C" void pdasum(const MKL_INT *n, double *asum, const double *x, const MKL_INT *ix, const MKL_INT *jx, const MKL_INT *descx, const MKL_INT *incx);
 extern "C" void pdtran(const MKL_INT *m, const MKL_INT *n, const double *alpha, const double *a, const MKL_INT *ia, const MKL_INT *ja, const MKL_INT *desca, const double *beta, double *c, const MKL_INT *ic, const MKL_INT *jc, const MKL_INT *descc);
+
+
+#endif

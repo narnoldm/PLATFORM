@@ -1,6 +1,7 @@
 
 
-#include "parser.hpp"
+#include "inputReader.hpp"
+#include "executioner.hpp"
 
 int main(int argc, char *argv[])
 {

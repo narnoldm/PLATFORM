@@ -25,7 +25,7 @@ target_link_libraries(meta debug -Wl,--allow-multiple-definition,--undefined=mal
 
 
 
-add_library(parser STATIC src/parser.cpp)
+add_library(parser STATIC src/dataID.cpp src/executioner.cpp src/inputInfo.cpp src/inputReader.cpp src/misc_func.cpp src/operation.cpp src/sysInfo.cpp)
 target_include_directories(parser PRIVATE include)
 target_link_libraries(parser meta)
 target_link_libraries(parser debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/allinea/forge/lib/64/libdmallocxx.a)

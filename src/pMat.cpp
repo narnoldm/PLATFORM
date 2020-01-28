@@ -1,5 +1,8 @@
 #include "pMat.hpp"
 
+
+using namespace::std;
+
 PGrid::PGrid(int r, int s, int type)
 {
         rank = r;
