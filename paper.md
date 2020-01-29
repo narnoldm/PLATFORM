@@ -24,18 +24,33 @@ bibliography: paper.bib
 
 # Summary
 
-Within the model reduction community a variety of methods have been developed.
+In the scientific model reduction community a variety of 
+decomposition techniques are used for analysis of complex
+spatio-temporal systems as well as reduced-order model 
+development. Application of these methods to more complex
+problems require memory usage that often exceeds that of 
+single machines. Parallel Data Processor (PDP) is a MPI 
+C++ package built upon the ScaLAPACK toolset of distributed
+Linear Algebra. 
 
 
 
-``Gala`` was designed to be used by both astronomical researchers and by
-students in courses on gravitational dynamics or astronomy. It has already been
-used in a number of scientific publications [@Pearson:2017] and has also been
-used in graduate courses on Galactic dynamics to, e.g., provide interactive
-visualizations of textbook material [@Binney:2008]. The combination of speed,
-design, and support for Astropy functionality in ``Gala`` will enable exciting
-scientific explorations of forthcoming data releases from the *Gaia* mission
-[@gaia] by students and experts alike.
+# Statement of need
+
+In the current development of projection based reduced-order models a 
+basis is generated from a "data matrix". This matrix is sized as 
+(degrees of freedom x number of timesteps). For development problems 
+this is often small enough to be done in the scritping environement. 
+Additionally in the cases where one of the given dimensions of small
+method of snapshots() can be utilized. (however at wall time costs
+due to file I/O) However as attempts are made to apply these methods 
+to large problems other tools must be used to overcome the memory 
+and I/O problem. PDP aims to make overcoming these issues easier
+without users needing to understand the depths of distributed
+linear algebra computing.
+
+
+
 
 # Mathematics
 
