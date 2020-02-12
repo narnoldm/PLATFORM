@@ -532,7 +532,7 @@ int pMat::dMax(int dim, int rc, double &val)
         if (printRank)
                 cout << "max is " << val << " at " << index;
 }
-int pMat::dAve(int dim, int rc, double &val)
+int pMat::dSum(int dim, int rc, double &val)
 {
 
         if (printRank)

@@ -112,7 +112,7 @@ public:
 	int changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb);
 	int changeContext(pMat *A);
 	int dMax(int dim, int rc, double &val);
-	int dAve(int dim, int rc, double &val);
+	int dSum(int dim, int rc, double &val);
 };
 
 std::ostream &operator<<(std::ostream &os, const pMat &p);
