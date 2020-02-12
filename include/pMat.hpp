@@ -2,11 +2,8 @@
 #define PMAT_H
 
 #include <stdlib.h>
-#include <mpi.h>
-#include "mkl.h"
-#include <mkl_cblas.h>
-#include <mkl_pblas.h>
-#include <mkl_scalapack.h>
+
+
 #include <vector>
 #include <string>
 #include <iomanip>
@@ -66,7 +63,11 @@ public:
 	int M, N, mb, nb;
 	long MBs;
 	std::vector<double> dataD;
+	#ifdef USE_MKL
 	std::vector<MKL_Complex16> dataC;
+	#else
+	std::vector<complex16> dataC;
+	#endif
 	bool printRank;
 	bool isComp;
 	const int i_zero = 0;

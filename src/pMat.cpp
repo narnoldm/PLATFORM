@@ -376,7 +376,11 @@ int pMat::matrix_Product(char tA, char tB, int n, int m, int k, pMat *A, int ia,
                 int JB = jb + 1;
                 int IC = ic + 1;
                 int JC = jc + 1;
+                #ifdef USE_MKL
                 MKL_Complex16 Ac, Bc;
+                #else 
+                complex16 Ac,Bc;
+                #endif
                 Ac.real = alpha;
                 Ac.imag = 0;
                 Bc.real = beta;
@@ -412,7 +416,11 @@ int pMat::matrix_Sum(char tA, int n, int m, pMat *A, int ia, int ja, int ib, int
                 int JA = ja + 1;
                 int IB = ib + 1;
                 int JB = jb + 1;
+                #ifdef USE_MKL
                 MKL_Complex16 Ac, Bc;
+                #else 
+                complex16 Ac,Bc;
+                #endif
                 Ac.real = alpha;
                 Ac.imag = 0;
                 Bc.real = beta;
