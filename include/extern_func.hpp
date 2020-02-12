@@ -7,6 +7,20 @@
  * Ideally all external functions will be interfaced here
  * */
 
+#include <mpi.h>
+
+
+#ifdef USE_MKL
+#include "mkl.h"
+#include <mkl_cblas.h>
+#include <mkl_pblas.h>
+#include <mkl_scalapack.h>
+#endif
+//#include <pblas.h>
+
+
+
+
 
 
 
@@ -17,21 +31,34 @@ extern "C" void Cblacs_gridinit(int *ICONTXT, char *ORDER, int prow, int pcol);
 extern "C" void Cblacs_gridinfo(int ICONTXT, int *nprow, int *npcol, int *myprow, int *mypcol);
 extern "C" void Cblacs_gridexit(int ICONTXT);
 
-
+#ifndef USE_MKL
 /// BLAS routines
-extern "C" double cblas_dnrm2(const MKL_INT n, const double *x, const MKL_INT incx);
 
 
+struct complex16
+{
+    double real;
+    double imag;
+};
 
-/// ScaLAPACK & PBLAS Routines
-extern "C" MKL_INT numroc_(const MKL_INT *n, const MKL_INT *nb, const MKL_INT *iproc, const MKL_INT *srcproc, const MKL_INT *nprocs);
-extern "C" void descinit_(MKL_INT *desc, const MKL_INT *m, const MKL_INT *n, const MKL_INT *mb, const MKL_INT *nb, const MKL_INT *irsrc, const MKL_INT *icsrc, const MKL_INT *ictxt, const MKL_INT *lld, MKL_INT *info);
-extern "C" void pdgeadd(const char *trans, const MKL_INT *m, const MKL_INT *n, const double *alpha, const double *a, const MKL_INT *ia, const MKL_INT *ja, const MKL_INT *desca, const double *beta, double *c, const MKL_INT *ic, const MKL_INT *jc, const MKL_INT *descc);
-extern "C" void pdgemm(const char *transa, const char *transb, const MKL_INT *m, const MKL_INT *n, const MKL_INT *k, const double *alpha, const double *a, const MKL_INT *ia, const MKL_INT *ja, const MKL_INT *desca, const double *b, const MKL_INT *ib, const MKL_INT *jb, const MKL_INT *descb, const double *beta, double *c, const MKL_INT *ic, const MKL_INT *jc, const MKL_INT *descc);
-extern "C" void pzgemm(const char *transa, const char *transb, const MKL_INT *m, const MKL_INT *n, const MKL_INT *k, const MKL_Complex16 *alpha, const MKL_Complex16 *a, const MKL_INT *ia, const MKL_INT *ja, const MKL_INT *desca, const MKL_Complex16 *b, const MKL_INT *ib, const MKL_INT *jb, const MKL_INT *descb, const MKL_Complex16 *beta, MKL_Complex16 *c, const MKL_INT *ic, const MKL_INT *jc, const MKL_INT *descc);
-extern "C" void pdamax(const MKL_INT *n, double *amax, MKL_INT *indx, const double *x, const MKL_INT *ix, const MKL_INT *jx, const MKL_INT *descx, const MKL_INT *incx);
-extern "C" void pdasum(const MKL_INT *n, double *asum, const double *x, const MKL_INT *ix, const MKL_INT *jx, const MKL_INT *descx, const MKL_INT *incx);
-extern "C" void pdtran(const MKL_INT *m, const MKL_INT *n, const double *alpha, const double *a, const MKL_INT *ia, const MKL_INT *ja, const MKL_INT *desca, const double *beta, double *c, const MKL_INT *ic, const MKL_INT *jc, const MKL_INT *descc);
+extern "C" double cblas_dnrm2(const int n, const double *x, const int incx);
 
+extern "C" int numroc_(const int *n, const int *nb, const int *iproc, const int *srcproc, const int *nprocs);
+extern "C" void descinit_(int *desc, const int *m, const int *n, const int *mb, const int *nb, const int *irsrc, const int *icsrc, const int *ictxt, const int *lld, int *info);
+extern "C" void pdgeadd(const char *trans, const int *m, const int *n, const double *alpha, const double *a, const int *ia, const int *ja, const int *desca, const double *beta, double *c, const int *ic, const int *jc, const int *descc);
+extern "C" void pzgeadd(const char *trans, const int *m, const int *n, const complex16 *alpha, const complex16 *a, const int *ia, const int *ja, const int *desca, const complex16 *beta, complex16 *c, const int *ic, const int *jc, const int *descc);
+extern "C" void pdgemm(const char *transa, const char *transb, const int *m, const int *n, const int *k, const double *alpha, const double *a, const int *ia, const int *ja, const int *desca, const double *b, const int *ib, const int *jb, const int *descb, const double *beta, double *c, const int *ic, const int *jc, const int *descc);
+extern "C" void pdamax(const int *n, double *amax, int *indx, const double *x, const int *ix, const int *jx, const int *descx, const int *incx);
+extern "C" void pdasum(const int *n, double *asum, const double *x, const int *ix, const int *jx, const int *descx, const int *incx);
+extern "C" void pdtran(const int *m, const int *n, const double *alpha, const double *a, const int *ia, const int *ja, const int *desca, const double *beta, double *c, const int *ic, const int *jc, const int *descc);
+extern "C" void pzgemm(const char *transa, const char *transb, const int *m, const int *n, const int *k, const complex16 *alpha, const complex16 *a, const int *ia, const int *ja, const int *desca, const complex16 *b, const int *ib, const int *jb, const int *descb, const complex16 *beta, complex16 *c, const int *ic, const int *jc, const int *descc);
+
+
+extern "C" void pdgesvd(const char *,const char *, const int *,const int *,const double *,const int *,const int *,const int *, const double *, const double *,const int *,const int *,const int *,const double *,const int *,const int *,const int *, const double *,const int *,const int *);
+extern "C" void pdgemr2d(const int *,const int *,const double *,const int *,const int *,const int *,const double *,const int *,const int *,const int *,const int *);
+extern "C" void pzgemr2d(const int *,const int *,const complex16 *,const int *,const int *,const int *,const complex16 *,const int *,const int *,const int *,const int *);
+
+
+#endif
 
 #endif
