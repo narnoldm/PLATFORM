@@ -1,9 +1,6 @@
 #include "metadata.hpp"
 
-
-
-
-using namespace::std;
+using namespace ::std;
 
 meta::meta()
 {
@@ -183,9 +180,6 @@ void meta::miscProcessing(pMat *Mat)
     cout << "no additional processing for binary" << endl;
 }
 
-
-
-
 tecIO::tecIO(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
 {
     init(t0, tf, ts, iPrefix, iSuffix);
@@ -258,7 +252,7 @@ void tecIO::checkExists()
 }
 bool tecIO::readSingle(int fileID, double *point)
 {
-    cout<<(prefix + std::to_string(fileID) + suffix)<<endl;
+    cout << (prefix + std::to_string(fileID) + suffix) << endl;
     void *fH = NULL;
     tecFileReaderOpen((prefix + std::to_string(fileID) + suffix).c_str(), &fH);
     int type;
@@ -444,7 +438,7 @@ int tecIO::getVariableIndex(string var, string file)
 
 void tecIO::getDimNodes()
 {
-    
+
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (!rank)
@@ -497,6 +491,19 @@ void tecIO::genHash(string map)
 
 void tecIO::normalize(pMat *dataMat)
 {
+    cout<<"Normalizing Matrix by Norm Factor"<<endl;
+        int numFiles = dataMat->nelements / nPoints;
+        for (int i = 0; i < numFiles; i++)
+        {
+                for (int j = 0; j < numVars; j++)
+                {
+                        for (int k = 0; k < nCells; k++)
+                        {
+                                dataMat->dataD[i * nPoints + j * nCells + k] /= normFactor[j];
+                        }
+                }
+        }
+
 }
 
 void tecIO::unNormalize(pMat *dataMat)
@@ -505,12 +512,117 @@ void tecIO::unNormalize(pMat *dataMat)
 
 void tecIO::calcNorm(pMat *dataMat)
 {
+     int numFiles = dataMat->nelements / nPoints;
+        std::vector<double> mag(nCells * numFiles, 0.0);
+        //double *mag = new double[nCells*numFiles];
+        double maxmag = 0.0;
+        double group = 0.0;
+        for (int i = 0; i < numVars; i++)
+        {
+                if (normFactor[i] < 0)
+                {
+                        group = normFactor[i];
+                        for (int m = 0; m < (nCells * numFiles); m++)
+                                mag[m] = 0.0;
+                        maxmag = 0.0;
+                        
+                        cout<<varName[i]<<" is in normalization group "<< normFactor[i]<<endl;
+                        for (int j = 0; j < numVars; j++)
+                        {
+                                if (normFactor[j] == group)
+                                {
+                                        for (int f = 0; f < numFiles; f++)
+                                        {
+                                                for (int n = 0; n < nCells; n++)
+                                                {
+                                                        mag[f * nCells + n] += (dataMat->dataD[f * numVars * nCells + j * nCells + n]) * (dataMat->dataD[f * numVars * nCells + j * nCells + n]);
+                                                }
+                                        }
+                                }
+                        }
+                        for (int n = 0; n < (nCells * numFiles); n++)
+                        {
+                                mag[n] = sqrt(mag[n]);
+                                if (mag[n] > maxmag)
+                                        maxmag = mag[n];
+                        }
+                        for (int j = 0; j < numVars; j++)
+                        {
+                                if (normFactor[j] == group)
+                                {
+                                        normFactor[j] = maxmag;
+                                        cout<<"Setting norm factor "<<j<<" to "<<maxmag<<endl;
+                                }
+                        }
+                }
+                else
+                {
+                        cout<<varName[i]<<" is using specified normalization of "<< normFactor[i];
+                }
+        }
+        mag.clear();
+        for (int i = 0; i < numVars; i++)
+        {
+                MPI_Allreduce(MPI_IN_PLACE, normFactor.data() + i, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+                cout<<"Synched norm factor for "<<varName[i]<<" is : "<< normFactor[i];
+        }
+        if(dataMat->pG->rank == 0)
+        {
+                std::vector<double> normVec(numVars * nCells);
+                for (int i = 0; i < numVars; i++)
+                {
+                        for (int j = 0; j < nCells; j++)
+                        {
+                                normVec[i * nCells + j] = normFactor[i];
+                        }
+                }
+                writeSingle(snap0, normVec.data(), "norm");
+                printASCIIVecP0("norm.data",normVec.data(),normVec.size());
+                normVec.clear();
+                //delete [] normVec;
+        }
+
+
+
 }
 
 void tecIO::subAvg(pMat *dataMat)
 {
+    if (average.size() == 0)
+    {
+        cout<<"Average isn't setup call calcAvg first"<<endl;
+        throw(-1);
+    }
+    
+    cout<<"Subtracting Average"<<endl;
+    int numFiles = dataMat->nelements / nPoints;
+    for (int i = 0; i < numFiles; i++)
+    {
+        for (int j = 0; j < nPoints; j++)
+            dataMat->dataD[i * nPoints + j] -= average[j];
+    }
 }
 
 void tecIO::calcAvg(pMat *dataMat)
 {
+    if (average.size() != nPoints)
+    {
+        cout << "Allocating Average as " << nPoints << " cells" << endl;
+        average.resize(nPoints, 0.0);
+        cout << "Average Allocated" << endl;
+    }
+    int numFiles = dataMat->nelements / nPoints;
+    for (int i = 0; i < nPoints; i++)
+    {
+        for (int j = 0; j < numFiles; j++)
+        {
+            average[i] += dataMat->dataD[j * nPoints + i];
+        }
+    }
+    MPI_Allreduce(MPI_IN_PLACE, average.data(), nPoints, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    for (int i = 0; i < nPoints; i++)
+        average[i] /= nSets;
+
+    if (dataMat->pG->rank == 0)
+        writeSingle(snap0, average.data(), "average");
 }

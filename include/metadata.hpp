@@ -9,7 +9,7 @@
 #include <assert.h>
 #include <vector>
 #include "pMat.hpp"
-
+#include "misc_func.hpp"
 
 class meta
 {

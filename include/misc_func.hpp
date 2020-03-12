@@ -16,7 +16,7 @@
 
 
 
-
+void printASCIIVecP0(std::string fname, double *Mat, int N);
 
 bool to_bool(std::string str);
 

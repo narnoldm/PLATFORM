@@ -30,7 +30,7 @@ endif()
 target_include_directories(pMat PUBLIC include)
 target_link_libraries(pMat debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/allinea/forge/lib/64/libdmallocxx.a)
 
-add_library(meta STATIC src/metadata.cpp)
+add_library(meta STATIC src/metadata.cpp src/misc_func.cpp)
 target_include_directories(meta PUBLIC include ${TECDIR})
 target_link_libraries(meta pMat ${TECDIR}/libtecio.a)
 target_link_libraries(meta debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/allinea/forge/lib/64/libdmallocxx.a)
@@ -53,6 +53,17 @@ add_executable(serial_norm src/serial_norm_calc.cpp)
 target_include_directories(serial_norm PUBLIC include)
 target_link_libraries(serial_norm parser meta)
 target_link_libraries(serial_norm debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/allinea/forge/lib/64/libdmallocxx.a)
+
+add_executable(par_MOS src/ParallelIO_MOS.cpp)
+target_include_directories(par_MOS PUBLIC include)
+target_link_libraries(par_MOS parser meta)
+target_link_libraries(par_MOS debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/allinea/forge/lib/64/libdmallocxx.a)
+
+add_executable(VecPOD src/VectorPOD.cpp)
+target_include_directories(VecPOD PUBLIC include)
+target_link_libraries(VecPOD parser meta)
+target_link_libraries(VecPOD debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/allinea/forge/lib/64/libdmallocxx.a)
+
 
 enable_testing()
 

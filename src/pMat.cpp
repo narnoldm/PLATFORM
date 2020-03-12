@@ -463,6 +463,14 @@ int pMat::svd_run(int N, int M, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         WORK.resize(0);
         return 1;
 }
+
+
+
+
+
+
+
+
 int pMat::transpose(pMat *A, int n, int m, int ia, int ja)
 {
         int IA = ia + 1;
@@ -568,6 +576,14 @@ ostream &operator<<(std::ostream &os, const pMat &p)
                 std::cout << "Memory usage(data only) MB = " << p.MBs << std::endl;
         }
         return os;
+}
+
+double pMat::getElement(int I,int J)
+{
+        double item=0.0;
+        int l,m;
+        //l=(I)/(pG->prow*mb)
+
 }
 
 bool operator==(pMat const &p1, pMat const &p2)
