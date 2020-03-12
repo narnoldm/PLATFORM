@@ -31,6 +31,8 @@ int main(int argc, char *argv[])
     m2=new pMat(m1);
     m2->read_bin(filename);
 
+    for(int i=0;i<5;i++)
+        cout<<"element["<<i<<"] = "<<m2->getElement(i,0)<<endl; 
 
     assert(*m1==*m2);
 

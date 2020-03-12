@@ -93,6 +93,7 @@ public:
 
 	/// Will print out entire matrix (DO NOT USE unless debugging)
 	void printMat();
+	double getElement(int I,int J);
 
 	//I/O 
 	int write_bin(std::string filename);

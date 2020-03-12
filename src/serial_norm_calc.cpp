@@ -56,11 +56,11 @@ int main(int argc, char *argv[])
             sum[j]+=(data[j]-average[j])*(data[j]-average[j]);
     }
     for(int j=0;j<data.size();j++)
-            average[j]/=M;
+            sum[j]/=M;
 
     double val=0.0;
     for(int j=0;j<data.size();j++)
-        val+=average[j];
+        val+=sum[j];
 
     val/=N;
     val=sqrt(val);
