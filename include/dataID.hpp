@@ -64,7 +64,7 @@ public:
     /// Sets dimensions
     void setInfo(std::vector<int> &d);
     /// For pMat structures performs processer grid swap needed for IO or computational constraints
-    void switchPmatType(PGrid *newPG);
+    void switchPmatType(int newtype);
 };
 /// stdout overload
 std::ostream &operator<<(std::ostream &os, const dataID &mID);

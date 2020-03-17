@@ -69,7 +69,7 @@ void executioner::output()
                                         if (inpFile->inp.matList[j]->name == inpFile->out.matList[i]->token[2])
                                         {
                                                 cout << inpFile->out.matList[i]->token[2] << " found" << endl;
-                                                inpFile->inp.matList[j]->switchPmatType(pGs[1]);
+                                                inpFile->inp.matList[j]->switchPmatType(1);
                                                 if (inpFile->inp.matList[j]->datasetInfo == NULL)
                                                 {
                                                         inpFile->out.matList[i]->datasetInfo = new meta();
@@ -98,7 +98,7 @@ void executioner::output()
                                         if (inpFile->inp.matList[j]->name == inpFile->out.matList[i]->token[2])
                                         {
                                                 cout << inpFile->out.matList[i]->token[2] << " found" << endl;
-                                                inpFile->inp.matList[j]->switchPmatType(pGs[1]);
+                                                inpFile->inp.matList[j]->switchPmatType(1);
                                                 tecIO *tempPoint;
                                                 if (inpFile->inp.matList[j]->datasetInfo == NULL)
                                                 {
@@ -202,7 +202,7 @@ void executioner::create_matricies()
                 if (inpFile->inp.matList[i]->compPGreq)
                 {
                         cout << "need to copy to even process grid" << endl;
-                        inpFile->inp.matList[i]->switchPmatType(pGs[0]);
+                        inpFile->inp.matList[i]->switchPmatType(0);
                 }
                 //pMats.push_back(pointMat);
         }

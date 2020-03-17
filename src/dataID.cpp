@@ -59,14 +59,15 @@ void dataID::setInfo(vector<int> &d)
                 dims[i] = d[i];
         type = defined;
 }
-void dataID::switchPmatType(PGrid *newPG)
+void dataID::switchPmatType(int newblock)
 {
-        if (newPG != pMatpoint->pG)
+        cout<<newblock<<" "<<pMatpoint->block<<endl;
+        if (newblock != pMatpoint->block)
         {
                 cout << "in place copy this can be memory explosive" << endl;
                 cout << dims[0] << " " << dims[1] << endl;
                 pMat *temppMat;
-                temppMat = new pMat(dims[0], dims[1], newPG, 0, 0, 0.0);
+                temppMat = new pMat(dims[0], dims[1], pMatpoint->pG, 0, newblock, 0.0);
                 temppMat->changeContext(pMatpoint);
                 delete pMatpoint;
                 pMatpoint = temppMat;
