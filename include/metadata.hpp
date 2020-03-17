@@ -72,7 +72,7 @@ public:
     int getVariableIndex(std::string var, std::string file);
     void getDimNodes();
     void checkMeshDim(std::string filename);
-    void genHash();
+    void genHash(std::string &, int);
     void genHash(std::string map);
     void normalize(pMat *dataMat);
     void unNormalize(pMat *dataMat);
