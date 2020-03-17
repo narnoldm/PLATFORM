@@ -483,6 +483,40 @@ void tecIO::checkMeshDim(string filename)
 
 void tecIO::genHash()
 {
+    int var_index = 0;
+        var_index = getVariableIndex("cell_id");
+        hash.resize(nCells, 0);
+        cellID.resize(nCells, 0);
+        void *fH;
+        if (printRank)
+        {
+                int hashType;
+                cellID.resize(nCells);
+                tecFileReaderOpen((prefix + std::to_string(snap0) + suffix).c_str(), &fH);
+                tecZoneVarGetType(fH, 1, var_index, &hashType);
+                if (hashType == 3)
+                {
+                        tecZoneVarGetInt32Values(fH, 1, var_index, 1, nCells, cellID.data());
+                }
+                if (hashType == 2)
+                {
+                        std::vector<float> hashTemp(nCells, 0.0);
+                        tecZoneVarGetFloatValues(fH, 1, var_index, 1, nCells, hashTemp.data());
+                        for (int i = 0; i < hash.size(); i++)
+                                hash[i] = (int)(hashTemp[i]);
+                        hashTemp.clear();
+                }
+                tecFileReaderClose(&fH);
+                for (int i = 0; i < nCells; i++)
+                {
+                        cellID[i]--;
+                        hash[cellID[i]] = i;
+                }
+                printf("hash table built\nDistributing to procs\n");
+        }
+        MPI_Bcast(hash.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(cellID.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
+
 }
 
 void tecIO::genHash(string map)
@@ -508,6 +542,19 @@ void tecIO::normalize(pMat *dataMat)
 
 void tecIO::unNormalize(pMat *dataMat)
 {
+    cout<<"UnNormalizing Matrix by Norm Factor"<<endl;
+        int numFiles = dataMat->nelements / nPoints;
+        for (int i = 0; i < numFiles; i++)
+        {
+                for (int j = 0; j < numVars; j++)
+                {
+                        for (int k = 0; k < nCells; k++)
+                        {
+                                dataMat->dataD[i * nPoints + j * nCells + k] *= normFactor[j];
+                        }
+                }
+        }
+
 }
 
 void tecIO::calcNorm(pMat *dataMat)

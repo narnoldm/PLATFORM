@@ -50,6 +50,7 @@ public:
     std::vector<int> cellID;
     std::vector<double> average;
     std::string meshFile;
+    bool outBin=false;
     bool fixedMesh = false;
 
     int numVars, dim, nCells;
