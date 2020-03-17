@@ -104,7 +104,7 @@ bool meta::batchRead(pMat *loadMat)
     int localC = 0;
     for (int i = 0; i < nSets; i++)
     {
-        iP = (int)(i / loadMat->mb);
+        iP = (int)(i / loadMat->nb);
         while (iP > (loadMat->pG->size - 1))
         {
             iP = iP - loadMat->pG->size;
@@ -155,11 +155,11 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref)
     else
     {
         fileIndex = 1;
-        nSets = loadMat->M;
+        nSets = loadMat->N;
     }
     for (int i = 0; i < nSets; i++)
     {
-        iP = (int)(i / loadMat->mb);
+        iP = (int)(i / loadMat->nb);
         while (iP > (loadMat->pG->size - 1))
         {
             iP = iP - loadMat->pG->size;
