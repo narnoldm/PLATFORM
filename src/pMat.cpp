@@ -34,9 +34,9 @@ PGrid::PGrid(int r, int s, int type)
         Cblacs_pinfo(&rank, &size);
         Cblacs_get(-1, 0, &icntxt);
         Cblacs_gridinit(&icntxt, order, pdims[0], pdims[1]);
-        Cblacs_gridinfo(icntxt, &pcol, &prow, &mycol, &myrow);
+        Cblacs_gridinfo(icntxt, &pcol, &prow, &myrow, &mycol);
         cout << "Processor Grid M(cols)=" << pdims[0] << " N(rows)=" << pdims[1] << endl;
-        cout << "local processor row"<<mycol<<" and column "<<mycol<<endl;
+        cout << "local processor row"<<myrow<<" and column "<<mycol<<endl;
         cout << "PBLACS is row major by default and everything is else is Column major (because reasons)"<<endl;
         MPI_Barrier(MPI_COMM_WORLD);
         delete order;
@@ -99,12 +99,10 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init)
                         cout << "mb/nb = " << nb << endl;
                 MPI_Barrier(MPI_COMM_WORLD);
         }
-        else if (block == 1) //other blocks
+        else if (block == 1) //load blocks
         {
                 nb = 1000000;
-                mb = nb;
-                if (mb > (M / pG->getDim(1)))
-                        mb = M;
+                mb = M;
                 if (nb > (N / pG->getDim(0)))
                         nb = std::max(1,N / pG->getDim(0));
                         cout << "mb is " << mb << endl;
@@ -122,13 +120,25 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init)
                 }
                 MPI_Barrier(MPI_COMM_WORLD);
         }
-        myRC[0] = numroc_(&M, &mb, &(pG->myrow), &i_zero, &(pG->prow));
+        else if (block ==3) //synched block
+        {
+                nb=N/(pG->prow); 
+                mb=M/(pG->pcol);
+        }
+        myRC[0] =numroc_(&M, &mb, &(pG->myrow), &i_zero, &(pG->prow));
+        //cout<<myRC[0]<<" "<<M<<" "<<mb<<" "<<pG->myrow<<" "<<pG->prow<<endl;
+        
         myRC[1] = numroc_(&N, &nb, &(pG->mycol), &i_zero, &(pG->pcol));
-        if (myRC[0] < 1)
-                myRC[0] = 1;
-        if (myRC[1] < 1)
-                myRC[1] = 1;
+        //cout<<myRC[1]<<" "<<N<<" "<<nb<<" "<<pG->mycol<<" "<<pG->pcol<<endl;
+
+        //if (myRC[0] < 1)
+        //        myRC[0] = 1;
+        //if (myRC[1] < 1)
+        //        myRC[1] = 1;
         nelements = (long long)myRC[0] * (long long)myRC[1];
+        for(int i=0;i<2;i++)
+                myRC[i]=std::max(1,myRC[i]);
+
         if (type == 0)
         {
                 if (printRank)
@@ -159,12 +169,15 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init)
         MPI_Barrier(MPI_COMM_WORLD);
         cout<<"nelements "<<nelements<<endl;
         cout<<myRC[0]<<" "<<myRC[1]<<endl;
+
+        
+
         descinit_(desc, &M, &N, &mb, &nb, &i_zero, &i_zero, &(pG->icntxt), &myRC[0], &info);
-        cout<<"hi"<<endl;
+        //for(int i=0;i<9;i++)
+        //        cout<<desc[i]<<endl;
         if (info != 0)
         {
                         cout << "Error in descriptor setup in argument, info=" << -info << endl;
-                        throw(-1);
         }
         if (printRank)
                 cout << "Matrix Constructed" << endl;
@@ -298,6 +311,7 @@ int pMat::read_bin(string &filename)
                 throw(-1);
         }
         int dims[2] = {M, N};
+        cout<<"M = "<<M<<" N = "<<N<<endl;
         int distribs[2] = {MPI_DISTRIBUTE_CYCLIC, MPI_DISTRIBUTE_CYCLIC};
         int dargs[2] = {mb, nb};
         MPI_Datatype darray;
@@ -432,7 +446,7 @@ int pMat::matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int
 
 int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S)
 {
-        int info;
+        int info=0;
         string computeFlag = "V";
         const char *JOBU = computeFlag.c_str(), *JOBVT = computeFlag.c_str();
         std::vector<double> WORK(1);
@@ -444,6 +458,12 @@ int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         pdgesvd(JOBU, JOBVT, &M, &N, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
         if (printRank)
                 cout << "WORK= " << WORK[0] << ", LWORK= " << LWORK << ", info= " << info << endl;
+
+        if(info<0)
+        {
+                cout << "Error in SVD setup in argument, info=" << -info << endl;
+                throw(-1);
+        }
         LWORK = WORK[0];
         WORK.resize(LWORK);
         if (printRank)
