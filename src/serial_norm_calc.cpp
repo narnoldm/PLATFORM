@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 
     for(int i=dataset1->snap0;i<=dataset1->snapF;i=i+dataset1->snapSkip)
     {
-        assert(dataset1->readSingle(i,data.data()));
+        dataset1->readSingle(i,data.data());
         for(int j=0;j<data.size();j++)
             average[j]+=data[j];
     }
@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
 
     for(int i=dataset1->snap0;i<=dataset1->snapF;i=i+dataset1->snapSkip)
     {
-        assert(dataset1->readSingle(i,data.data()));
+        dataset1->readSingle(i,data.data());
         for(int j=0;j<data.size();j++)
             sum[j]+=(data[j]-average[j])*(data[j]-average[j]);
     }
