@@ -481,18 +481,18 @@ void tecIO::checkMeshDim(string filename)
     tecFileReaderClose(&fH);
 }
 
-void tecIO::genHash()
+void tecIO::genHash(string &filename,int rank)
 {
     int var_index = 0;
-        var_index = getVariableIndex("cell_id");
+        var_index = getVariableIndex("cell_id",filename);
         hash.resize(nCells, 0);
         cellID.resize(nCells, 0);
         void *fH;
-        if (printRank)
+        if (!rank)
         {
                 int hashType;
                 cellID.resize(nCells);
-                tecFileReaderOpen((prefix + std::to_string(snap0) + suffix).c_str(), &fH);
+                tecFileReaderOpen(filename.c_str(), &fH);
                 tecZoneVarGetType(fH, 1, var_index, &hashType);
                 if (hashType == 3)
                 {
