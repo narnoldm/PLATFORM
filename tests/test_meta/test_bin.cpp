@@ -14,7 +14,11 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     std::ofstream sink("/dev/null");
     streambuf *strm_buffer = cout.rdbuf();
-    if (rank != 0)
+    int out=0;
+    if(argc==2)
+        out=atoi(argv[1]);
+    
+    if (rank != out)
     {
         std::cout.rdbuf(sink.rdbuf());
     }
@@ -34,9 +38,9 @@ int main(int argc, char *argv[])
 
 
     meta *dataset1;
-    dataset1 = new meta(1,100,1,prefix,suffix);
+    dataset1 = new meta(1,4,1,prefix,suffix);
 
-    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,loadG,0,0,0.0);
+    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,loadG,0,1,0.0);
     dataset1->batchRead(loadMat);
 
     evenMatFromLoad = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
@@ -47,6 +51,9 @@ int main(int argc, char *argv[])
 
 
     evenMatFromLoad->changeContext(loadMat);
+    loadMat->printMat();
+    evenMatFromLoad->printMat();
+    evenMat->printMat();
 
 
     assert((*evenMatFromLoad)==(*evenMat));   
