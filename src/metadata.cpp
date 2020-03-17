@@ -98,16 +98,16 @@ bool meta::readSingle(int fileID, double *point)
 
 bool meta::batchRead(pMat *loadMat)
 {
-    assert(loadMat->pG->prow == 1);
+    assert(loadMat->mb == nPoints);
     int iP = 0;
     int fileIndex = snap0;
     int localC = 0;
     for (int i = 0; i < nSets; i++)
     {
         iP = (int)(i / loadMat->nb);
-        while (iP > (loadMat->pG->size - 1))
+        while (iP > (loadMat->pG->pcol - 1))
         {
-            iP = iP - loadMat->pG->size;
+            iP = iP - loadMat->pG->pcol;
         }
         if (loadMat->pG->rank == iP)
         {
@@ -148,7 +148,7 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (!rank)
         system(("mkdir " + dir).c_str());
-    assert(loadMat->pG->prow == 1);
+    assert(loadMat->mb == nPoints);
     int iP = 0, fileIndex, localC = 0;
     if (isInit)
         fileIndex = snap0;
@@ -160,9 +160,9 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref)
     for (int i = 0; i < nSets; i++)
     {
         iP = (int)(i / loadMat->nb);
-        while (iP > (loadMat->pG->size - 1))
+        while (iP > (loadMat->pG->pcol - 1))
         {
-            iP = iP - loadMat->pG->size;
+            iP = iP - loadMat->pG->pcol;
         }
         if (loadMat->pG->rank == iP)
         {

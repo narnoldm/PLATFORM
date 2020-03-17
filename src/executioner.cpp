@@ -153,8 +153,6 @@ void executioner::create_matricies()
         MPI_Comm_size(MPI_COMM_WORLD, &size);
         temp = new PGrid(rank, size, 0);
         pGs.push_back(temp);
-        temp = new PGrid(rank, size, 1);
-        pGs.push_back(temp);
         pMat *pointMat;
         //pMats.clear();
         for (int i = 0; i < inpFile->inp.matList.size(); i++)
@@ -163,12 +161,12 @@ void executioner::create_matricies()
                 if (inpFile->inp.matList[i]->isPA)
                 {
                         cout << "Creating Synched data" << endl;
-                        pointMat = new pMat(inpFile->inp.matList[i]->dims[0], pGs[1]->size, pGs[1], 0, 0, 0.0);
+                        pointMat = new pMat(inpFile->inp.matList[i]->dims[0]*pGs[0]->prow, pGs[0]->pcol, pGs[0], 0, 3, 0.0);
                 }
                 else if (inpFile->inp.matList[i]->isInput)
                 {
                         cout << "Creating Loading matrix" << endl;
-                        pointMat = new pMat(inpFile->inp.matList[i]->dims[0], inpFile->inp.matList[i]->dims[1], pGs[1], 0, 1, 0.0);
+                        pointMat = new pMat(inpFile->inp.matList[i]->dims[0], inpFile->inp.matList[i]->dims[1], pGs[0], 0, 1, 0.0);
                 }
                 else
                         pointMat = new pMat(inpFile->inp.matList[i]->dims[0], inpFile->inp.matList[i]->dims[1], pGs[0], 0, 0, 0.0);
