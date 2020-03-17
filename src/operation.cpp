@@ -158,7 +158,7 @@ void operation::execute()
                 S = outputMat[1]->pMatpoint;
                 VT = outputMat[2]->pMatpoint;
 
-                A->svd_run(A->N, A->M, 0, 0, U, VT, S->dataD);
+                A->svd_run(A->M, A->N, 0, 0, U, VT, S->dataD);
                 cout << "SVD is destructive: Using or Outputing A is ill advised" << endl;
         }
         else if(opName =="M*M")

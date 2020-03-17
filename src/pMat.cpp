@@ -1,7 +1,6 @@
 #include "pMat.hpp"
 
-
-using namespace::std;
+using namespace ::std;
 
 PGrid::PGrid(int r, int s, int type)
 {
@@ -14,16 +13,16 @@ PGrid::PGrid(int r, int s, int type)
         myrow = 0;
         mycol = 0;
         int ngone = -1, zero = 0;
-        string orderStr="R";
-        char *order = new char[orderStr.size()+1];
-        copy(orderStr.begin(),orderStr.end(),order);
-        order[orderStr.size()]='\0';
+        string orderStr = "R";
+        char *order = new char[orderStr.size() + 1];
+        copy(orderStr.begin(), orderStr.end(), order);
+        order[orderStr.size()] = '\0';
         if (type == 0)
                 MPI_Dims_create(size, 2, pdims);
         else if (type == 1)
         {
-                pdims[0] = 1;
-                pdims[1] = size;
+                pdims[0] = size;
+                pdims[1] = 1;
         }
         else if (type == 2)
         {
@@ -35,8 +34,10 @@ PGrid::PGrid(int r, int s, int type)
         Cblacs_pinfo(&rank, &size);
         Cblacs_get(-1, 0, &icntxt);
         Cblacs_gridinit(&icntxt, order, pdims[0], pdims[1]);
-        Cblacs_gridinfo(icntxt, &prow, &pcol, &myrow, &mycol);
-        cout << "Processor Grid N=" << pdims[0] << " M=" << pdims[1] << endl;
+        Cblacs_gridinfo(icntxt, &pcol, &prow, &mycol, &myrow);
+        cout << "Processor Grid M(cols)=" << pdims[0] << " N(rows)=" << pdims[1] << endl;
+        cout << "local processor row"<<mycol<<" and column "<<mycol<<endl;
+        cout << "PBLACS is row major by default and everything is else is Column major (because reasons)"<<endl;
         MPI_Barrier(MPI_COMM_WORLD);
         delete order;
 }
@@ -57,27 +58,27 @@ pMat::pMat()
 pMat::pMat(pMat *point)
 {
         pG = point->pG;
-        setupMat(point->N, point->M, point->type, point->block, point->cycles, 0.0);
+        setupMat(point->M, point->N, point->type, point->block, point->cycles, 0.0);
 }
-pMat::pMat(int n, int m, PGrid *pGp, int t, int b, double init)
+pMat::pMat(int m, int n, PGrid *pGp, int t, int b, double init)
 {
         pG = pGp;
-        setupMat(n, m, t, b, 1, init);
+        setupMat(m, n, t, b, 1, init);
 }
-pMat::pMat(int n, int m, PGrid *pGp, int t, int b, int c, double init)
+pMat::pMat(int m, int n, PGrid *pGp, int t, int b, int c, double init)
 {
         pG = pGp;
-        setupMat(n, m, t, b, c, init);
+        setupMat(m, n, t, b, c, init);
 }
 pMat::~pMat()
 {
         if (printRank)
                 cout << "Deallocating Distributed Matrix" << endl;
 }
-void pMat::setupMat(int n, int m, int t, int b, int c, double init)
+void pMat::setupMat(int m, int n, int t, int b, int c, double init)
 {
-        N = n;
         M = m;
+        N = n;
         type = t;
         block = b;
         cycles = c;
@@ -85,35 +86,29 @@ void pMat::setupMat(int n, int m, int t, int b, int c, double init)
 
         if (printRank)
                 cout << "Creating Matrix" << endl
-                     << "N=" << N << " M=" << M << endl;
+                     << "M=" << M << " N=" << N << endl;
         if (block == 0) //square blocks
         {
                 nb = 1000000;
                 mb = nb;
+                if (mb > (M / pG->getDim(1)))
+                        mb = std::max(1, M / (pG->getDim(1) * cycles));
                 if (nb > (N / pG->getDim(0)))
                         nb = std::max(1, N / (pG->getDim(0) * cycles));
-                if (nb > (M / pG->getDim(1)))
-                        nb = std::max(1, M / (pG->getDim(1) * cycles));
                 mb = nb;
-                if (pG->printRank)
-                {
                         cout << "mb/nb = " << nb << endl;
-                }
                 MPI_Barrier(MPI_COMM_WORLD);
         }
         else if (block == 1) //other blocks
         {
                 nb = 1000000;
                 mb = nb;
-                if (nb > (N / pG->getDim(0)))
-                        nb = N / pG->getDim(0);
                 if (mb > (M / pG->getDim(1)))
-                        mb = M / pG->getDim(1);
-                if (pG->printRank)
-                {
-                        cout << "nb is " << nb << endl;
+                        mb = M;
+                if (nb > (N / pG->getDim(0)))
+                        nb = std::max(1,N / pG->getDim(0));
                         cout << "mb is " << mb << endl;
-                }
+                         cout << "nb is " << nb << endl;
                 MPI_Barrier(MPI_COMM_WORLD);
         }
         else if (block == 2) //p0 block
@@ -127,8 +122,8 @@ void pMat::setupMat(int n, int m, int t, int b, int c, double init)
                 }
                 MPI_Barrier(MPI_COMM_WORLD);
         }
-        myRC[0] = numroc_(&N, &nb, &(pG->myrow), &i_zero, &(pG->prow));
-        myRC[1] = numroc_(&M, &mb, &(pG->mycol), &i_zero, &(pG->pcol));
+        myRC[0] = numroc_(&M, &mb, &(pG->myrow), &i_zero, &(pG->prow));
+        myRC[1] = numroc_(&N, &nb, &(pG->mycol), &i_zero, &(pG->pcol));
         if (myRC[0] < 1)
                 myRC[0] = 1;
         if (myRC[1] < 1)
@@ -161,12 +156,15 @@ void pMat::setupMat(int n, int m, int t, int b, int c, double init)
                         throw(-1);
                 }
         }
-
-        descinit_(desc, &N, &M, &nb, &mb, &i_zero, &i_zero, &(pG->icntxt), &myRC[0], &info);
+        MPI_Barrier(MPI_COMM_WORLD);
+        cout<<"nelements "<<nelements<<endl;
+        cout<<myRC[0]<<" "<<myRC[1]<<endl;
+        descinit_(desc, &M, &N, &mb, &nb, &i_zero, &i_zero, &(pG->icntxt), &myRC[0], &info);
+        cout<<"hi"<<endl;
         if (info != 0)
         {
-                if (pG->printRank)
                         cout << "Error in descriptor setup in argument, info=" << -info << endl;
+                        throw(-1);
         }
         if (printRank)
                 cout << "Matrix Constructed" << endl;
@@ -217,7 +215,7 @@ void pMat::switchType(int t)
 
 void pMat::printMat()
 {
-        for (int p = 0; p < 1; p++)
+        for (int p = 0; p < pG->size; p++)
         {
                 if (p == pG->rank)
                 {
@@ -228,7 +226,7 @@ void pMat::printMat()
                                         cout << endl;
 
                                 if (type == 0)
-                                        cout << dataD[i] << endl;
+                                        cout <<i<<" "<< dataD[i] << endl;
                                 else if (type == 1)
                                         cout << dataC[i].real << " + " << dataC[i].imag << " i " << endl;
                         }
@@ -245,17 +243,17 @@ int pMat::write_bin(std::string filename)
         MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fH);
         if (printRank)
         {
-                MPI_File_write(fH, &N, 1, MPI_INT, MPI_STATUS_IGNORE);
                 MPI_File_write(fH, &M, 1, MPI_INT, MPI_STATUS_IGNORE);
+                MPI_File_write(fH, &N, 1, MPI_INT, MPI_STATUS_IGNORE);
                 cout << "Write Start" << endl;
-                cout << "N=" << N << "nb=" << nb << "M=" << M << "mb=" << mb << endl;
+                cout << "M=" << M << "mb=" << mb << "N=" << N << "nb=" << nb << endl;
         }
         MPI_File_close(&fH);
         MPI_Barrier(MPI_COMM_WORLD);
         int disp = 2 * sizeof(int);
-        int dims[2] = {N, M};
+        int dims[2] = {M, N};
         int distribs[2] = {MPI_DISTRIBUTE_CYCLIC, MPI_DISTRIBUTE_CYCLIC};
-        int dargs[2] = {nb, mb};
+        int dargs[2] = {mb, nb};
         MPI_Datatype darray;
         MPI_Type_create_darray(pG->size, pG->rank, 2, dims, distribs, dargs, pG->pdims, MPI_ORDER_FORTRAN, MPI_DOUBLE, &darray);
         MPI_Type_commit(&darray);
@@ -283,26 +281,25 @@ int pMat::write_bin(std::string filename)
 int pMat::read_bin(string &filename)
 {
 
-        int rN, rM;
+        int rM, rN;
         double t2, t1;
         MPI_Barrier(MPI_COMM_WORLD);
         MPI_File fH;
         MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fH);
-        MPI_File_read_all(fH, &rN, 1, MPI_INT, MPI_STATUS_IGNORE);
         MPI_File_read_all(fH, &rM, 1, MPI_INT, MPI_STATUS_IGNORE);
+        MPI_File_read_all(fH, &rN, 1, MPI_INT, MPI_STATUS_IGNORE);
         MPI_File_close(&fH);
 
         if ((rN != N) || (rM != M))
         {
-                if (printRank)
-                        cout << "bin file and matrix do not have same dimension" << endl
-                             << "File N=" << rN << ", M=" << rM << endl
-                             << "Matrix N=" << N << ", M=" << M << endl;
+                cout << "bin file and matrix do not have same dimension" << endl
+                     << "File M=" << rM << ", N=" << rN << endl
+                     << "Matrix M=" << M << ", N=" << N << endl;
                 throw(-1);
         }
-        int dims[2] = {N, M};
+        int dims[2] = {M, N};
         int distribs[2] = {MPI_DISTRIBUTE_CYCLIC, MPI_DISTRIBUTE_CYCLIC};
-        int dargs[2] = {nb, mb};
+        int dargs[2] = {mb, nb};
         MPI_Datatype darray;
         MPI_Type_create_darray(pG->size, pG->rank, 2, dims, distribs, dargs, pG->pdims, MPI_ORDER_FORTRAN, MPI_DOUBLE, &darray);
         MPI_Type_commit(&darray);
@@ -316,10 +313,8 @@ int pMat::read_bin(string &filename)
                 cout << "Allocation via MPI " << mpiEls << " and pblacs " << nelements << " is different" << endl;
                 throw(-1);
         }
-        if (printRank)
-                cout << "MPI Allocation " << mpiEls << " , pblacs Allocation " << nelements << endl;
-        if (printRank)
-                cout << "Read Starting" << endl;
+        cout << "MPI Allocation " << mpiEls << " , pblacs Allocation " << nelements << endl;
+        cout << "Read Starting" << endl;
         t1 = MPI_Wtime();
         MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fH);
         MPI_File_set_view(fH, disp, MPI_DOUBLE, darray, "native", MPI_INFO_NULL);
@@ -332,16 +327,16 @@ int pMat::read_bin(string &filename)
         return 1;
 }
 
-bool pMat::check_bin_size(string filename, int &mN, int &mM)
+bool pMat::check_bin_size(string filename, int &mM, int &mN)
 {
         MPI_Barrier(MPI_COMM_WORLD);
         MPI_File fH;
         if (!MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fH))
         {
-                MPI_File_read_all(fH, &mN, 1, MPI_INT, MPI_STATUS_IGNORE);
                 MPI_File_read_all(fH, &mM, 1, MPI_INT, MPI_STATUS_IGNORE);
+                MPI_File_read_all(fH, &mN, 1, MPI_INT, MPI_STATUS_IGNORE);
                 MPI_File_close(&fH);
-                cout << filename << " has data with N: " << mN << " M: " << mM << endl;
+                cout << filename << " has data with M: " << mM << " N: " << mN << endl;
                 return true;
         }
         else
@@ -351,7 +346,7 @@ bool pMat::check_bin_size(string filename, int &mN, int &mM)
         }
 }
 
-int pMat::matrix_Product(char tA, char tB, int n, int m, int k, pMat *A, int ia, int ja, pMat *B, int ib, int jb, double alpha, double beta, int ic, int jc)
+int pMat::matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia, int ja, pMat *B, int ib, int jb, double alpha, double beta, int ic, int jc)
 {
 
         if ((A->type == 0) && (B->type == 0) && (type == 0))
@@ -364,7 +359,7 @@ int pMat::matrix_Product(char tA, char tB, int n, int m, int k, pMat *A, int ia,
                 int JB = jb + 1;
                 int IC = ic + 1;
                 int JC = jc + 1;
-                pdgemm(&tA, &tB, &n, &m, &k, &alpha, A->dataD.data(), &IA, &JA, A->desc, B->dataD.data(), &IB, &JB, B->desc, &beta, dataD.data(), &IC, &JC, desc);
+                pdgemm(&tA, &tB, &m, &n, &k, &alpha, A->dataD.data(), &IA, &JA, A->desc, B->dataD.data(), &IB, &JB, B->desc, &beta, dataD.data(), &IC, &JC, desc);
         }
         else if ((A->type == 1) && (B->type == 1) && (type == 1))
         {
@@ -376,16 +371,16 @@ int pMat::matrix_Product(char tA, char tB, int n, int m, int k, pMat *A, int ia,
                 int JB = jb + 1;
                 int IC = ic + 1;
                 int JC = jc + 1;
-                #ifdef USE_MKL
+#ifdef USE_MKL
                 MKL_Complex16 Ac, Bc;
-                #else 
-                complex16 Ac,Bc;
-                #endif
+#else
+                complex16 Ac, Bc;
+#endif
                 Ac.real = alpha;
                 Ac.imag = 0;
                 Bc.real = beta;
                 Bc.imag = 0;
-                pzgemm(&tA, &tB, &n, &m, &k, &Ac, A->dataC.data(), &IA, &JA, A->desc, B->dataC.data(), &IB, &JB, B->desc, &Bc, dataC.data(), &IC, &JC, desc);
+                pzgemm(&tA, &tB, &m, &n, &k, &Ac, A->dataC.data(), &IA, &JA, A->desc, B->dataC.data(), &IB, &JB, B->desc, &Bc, dataC.data(), &IC, &JC, desc);
         }
         else
         {
@@ -395,7 +390,7 @@ int pMat::matrix_Product(char tA, char tB, int n, int m, int k, pMat *A, int ia,
         return 0;
 }
 
-int pMat::matrix_Sum(char tA, int n, int m, pMat *A, int ia, int ja, int ib, int jb, double alpha, double beta)
+int pMat::matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int jb, double alpha, double beta)
 {
 
         if ((A->type == 0) && (type == 0))
@@ -406,7 +401,7 @@ int pMat::matrix_Sum(char tA, int n, int m, pMat *A, int ia, int ja, int ib, int
                 int JA = ja + 1;
                 int IB = ib + 1;
                 int JB = jb + 1;
-                pdgeadd(&tA, &n, &m, &alpha, A->dataD.data(), &IA, &JA, A->desc, &beta, dataD.data(), &IB, &JB, desc);
+                pdgeadd(&tA, &m, &n, &alpha, A->dataD.data(), &IA, &JA, A->desc, &beta, dataD.data(), &IB, &JB, desc);
         }
         else if ((A->type == 1) && (type == 1))
         {
@@ -416,16 +411,16 @@ int pMat::matrix_Sum(char tA, int n, int m, pMat *A, int ia, int ja, int ib, int
                 int JA = ja + 1;
                 int IB = ib + 1;
                 int JB = jb + 1;
-                #ifdef USE_MKL
+#ifdef USE_MKL
                 MKL_Complex16 Ac, Bc;
-                #else 
-                complex16 Ac,Bc;
-                #endif
+#else
+                complex16 Ac, Bc;
+#endif
                 Ac.real = alpha;
                 Ac.imag = 0;
                 Bc.real = beta;
                 Bc.imag = 0;
-                pzgeadd(&tA, &n, &m, &Ac, A->dataC.data(), &IA, &JA, A->desc, &Bc, dataC.data(), &IB, &JB, desc);
+                pzgeadd(&tA, &m, &n, &Ac, A->dataC.data(), &IA, &JA, A->desc, &Bc, dataC.data(), &IB, &JB, desc);
         }
         else
         {
@@ -435,10 +430,10 @@ int pMat::matrix_Sum(char tA, int n, int m, pMat *A, int ia, int ja, int ib, int
         return 0;
 }
 
-int pMat::svd_run(int N, int M, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S)
+int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S)
 {
         int info;
-        string computeFlag="V";
+        string computeFlag = "V";
         const char *JOBU = computeFlag.c_str(), *JOBVT = computeFlag.c_str();
         std::vector<double> WORK(1);
         int LWORK = -1;
@@ -446,7 +441,7 @@ int pMat::svd_run(int N, int M, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         int JA = ja + 1;
         int i_one = 1;
         double t2, t1;
-        pdgesvd(JOBU, JOBVT, &N, &M, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
+        pdgesvd(JOBU, JOBVT, &M, &N, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
         if (printRank)
                 cout << "WORK= " << WORK[0] << ", LWORK= " << LWORK << ", info= " << info << endl;
         LWORK = WORK[0];
@@ -456,7 +451,7 @@ int pMat::svd_run(int N, int M, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         //SVD run
         MPI_Barrier(MPI_COMM_WORLD);
         t1 = MPI_Wtime();
-        pdgesvd(JOBU, JOBVT, &N, &M, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
+        pdgesvd(JOBU, JOBVT, &M, &N, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
         t2 = MPI_Wtime();
         if (printRank)
                 cout << "SVD complete in " << t2 - t1 << " seconds" << endl;
@@ -464,21 +459,14 @@ int pMat::svd_run(int N, int M, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         return 1;
 }
 
-
-
-
-
-
-
-
-int pMat::transpose(pMat *A, int n, int m, int ia, int ja)
+int pMat::transpose(pMat *A, int m, int n, int ia, int ja)
 {
         int IA = ia + 1;
         int JA = ja + 1;
         if (printRank)
                 cout << "Copying transpose" << endl;
 
-        if ((n != N) && (m != A->N))
+        if ((m != M) && (n != A->M))
                 if (printRank)
                 {
                         cout << "transpose dimension mismatch" << endl;
@@ -487,36 +475,33 @@ int pMat::transpose(pMat *A, int n, int m, int ia, int ja)
         int i_one = 1;
         double ONE = 1.0;
         double ZERO = 0.0;
-        pdtran(&n, &m, &ONE, A->dataD.data(), &IA, &JA, A->desc, &ZERO, dataD.data(), &i_one, &i_one, desc);
+        pdtran(&m, &n, &ONE, A->dataD.data(), &IA, &JA, A->desc, &ZERO, dataD.data(), &i_one, &i_one, desc);
 }
-int pMat::changeContext(pMat *A, int n, int m, int ia, int ja, int ib, int jb)
+int pMat::changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb)
 {
         int IA = ia + 1;
         int JA = ja + 1;
         int IB = ib + 1;
         int JB = jb + 1;
-        if (printRank)
                 cout << "Copying Matrix" << endl
-                     << "n= " << n << " , "
-                     << "m = " << m << endl;
+                     << "m = " << m << " , "
+                     << "n = " << n << endl;
         int i_one = 1;
         if (type == 0)
         {
-                if (printRank)
                         cout << "Double changed pGrid" << endl;
-                pdgemr2d(&n, &m, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, &(pG->icntxt));
+                pdgemr2d(&m, &n, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, &(pG->icntxt));
         }
         if (type == 1)
         {
-                if (printRank)
                         cout << "Complex changed pGrid" << endl;
-                pzgemr2d(&n, &m, A->dataC.data(), &IA, &JA, A->desc, dataC.data(), &IB, &JB, desc, &(pG->icntxt));
+                pzgemr2d(&m, &n, A->dataC.data(), &IA, &JA, A->desc, dataC.data(), &IB, &JB, desc, &(pG->icntxt));
         }
 }
 
 int pMat::changeContext(pMat *A)
 {
-        changeContext(A, N, M, 0, 0, 0, 0);
+        changeContext(A, M, N, 0, 0, 0, 0);
 }
 
 int pMat::dMax(int dim, int rc, double &val)
@@ -529,12 +514,12 @@ int pMat::dMax(int dim, int rc, double &val)
         if (dim == 0)
         {
                 int IA = 1, JA = rc + 1, i_one = 1;
-                pdamax(&N, &val, &index, dataD.data(), &IA, &JA, desc, &i_one);
+                pdamax(&M, &val, &index, dataD.data(), &IA, &JA, desc, &i_one);
         }
         if (dim == 1)
         {
                 int IA = rc + 1, JA = 1, i_one = 1;
-                pdamax(&M, &val, &index, dataD.data(), &IA, &JA, desc, &N);
+                pdamax(&N, &val, &index, dataD.data(), &IA, &JA, desc, &M);
         }
 
         if (printRank)
@@ -548,12 +533,12 @@ int pMat::dSum(int dim, int rc, double &val)
         if (dim == 0)
         {
                 int IA = 1, JA = rc + 1, i_one = 1;
-                pdasum(&N, &val, dataD.data(), &IA, &JA, desc, &i_one);
+                pdasum(&M, &val, dataD.data(), &IA, &JA, desc, &i_one);
         }
         if (dim == 1)
         {
                 int IA = rc + 1, JA = 1, i_one = 1;
-                pdasum(&M, &val, dataD.data(), &IA, &JA, desc, &N);
+                pdasum(&N, &val, dataD.data(), &IA, &JA, desc, &M);
         }
 
         if (printRank)
@@ -562,8 +547,6 @@ int pMat::dSum(int dim, int rc, double &val)
 
 ostream &operator<<(std::ostream &os, const pMat &p)
 {
-        if (p.printRank)
-        {
                 std::cout << "Descriptor type: " << p.desc[0] << std::endl;
                 std::cout << "BLACS context: " << p.desc[1] << std::endl;
                 std::cout << "Global Rows: " << p.desc[2] << std::endl;
@@ -574,16 +557,14 @@ ostream &operator<<(std::ostream &os, const pMat &p)
                 std::cout << "Process Col where first col is: " << p.desc[7] << std::endl;
                 std::cout << "Leading Dimension: " << p.desc[8] << std::endl;
                 std::cout << "Memory usage(data only) MB = " << p.MBs << std::endl;
-        }
         return os;
 }
 
-double pMat::getElement(int I,int J)
+double pMat::getElement(int I, int J)
 {
-        double item=0.0;
-        int l,m;
+        double item = 0.0;
+        int l, m;
         //l=(I)/(pG->prow*mb)
-
 }
 
 bool operator==(pMat const &p1, pMat const &p2)

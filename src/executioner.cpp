@@ -74,10 +74,10 @@ void executioner::output()
                                                 {
                                                         inpFile->out.matList[i]->datasetInfo = new meta();
                                                         inpFile->out.matList[i]->datasetInfo->snap0 = 1;
-                                                        inpFile->out.matList[i]->datasetInfo->snapF = inpFile->inp.matList[j]->pMatpoint->M;
+                                                        inpFile->out.matList[i]->datasetInfo->snapF = inpFile->inp.matList[j]->pMatpoint->N;
                                                         inpFile->out.matList[i]->datasetInfo->snapSkip = 1;
-                                                        inpFile->out.matList[i]->datasetInfo->nPoints = inpFile->inp.matList[j]->pMatpoint->N;
-                                                        inpFile->out.matList[i]->datasetInfo->nSets = inpFile->inp.matList[j]->pMatpoint->M;
+                                                        inpFile->out.matList[i]->datasetInfo->nPoints = inpFile->inp.matList[j]->pMatpoint->M;
+                                                        inpFile->out.matList[i]->datasetInfo->nSets = inpFile->inp.matList[j]->pMatpoint->N;
                                                         inpFile->out.matList[i]->datasetInfo->prefix = inpFile->out.matList[i]->name;
                                                         inpFile->out.matList[i]->datasetInfo->suffix = ".bin";
                                                         inpFile->out.matList[i]->datasetInfo->isInit = true;
@@ -105,9 +105,9 @@ void executioner::output()
                                                         tempPoint = dynamic_cast<tecIO *>(inpFile->out.matList[i]->datasetInfo);
                                                         tempPoint = new tecIO();
                                                         tempPoint->snap0 = 1;
-                                                        tempPoint->snapF = inpFile->inp.matList[j]->pMatpoint->M;
+                                                        tempPoint->snapF = inpFile->inp.matList[j]->pMatpoint->N;
                                                         tempPoint->snapSkip = 1;
-                                                        tempPoint->nSets = inpFile->inp.matList[j]->pMatpoint->M;
+                                                        tempPoint->nSets = inpFile->inp.matList[j]->pMatpoint->N;
                                                         tempPoint->prefix = inpFile->out.matList[i]->name;
                                                         tempPoint->suffix = ".szplt";
                                                         tempPoint->isInit = true;
@@ -168,12 +168,14 @@ void executioner::create_matricies()
                 else if (inpFile->inp.matList[i]->isInput)
                 {
                         cout << "Creating Loading matrix" << endl;
-                        pointMat = new pMat(inpFile->inp.matList[i]->dims[0], inpFile->inp.matList[i]->dims[1], pGs[1], 0, 0, 0.0);
+                        pointMat = new pMat(inpFile->inp.matList[i]->dims[0], inpFile->inp.matList[i]->dims[1], pGs[1], 0, 1, 0.0);
                 }
                 else
                         pointMat = new pMat(inpFile->inp.matList[i]->dims[0], inpFile->inp.matList[i]->dims[1], pGs[0], 0, 0, 0.0);
                 //point header to pMat
                 inpFile->inp.matList[i]->pMatpoint = pointMat;
+
+                cout<<(*pointMat);
 
                 //input
                 if (inpFile->inp.matList[i]->isInput)

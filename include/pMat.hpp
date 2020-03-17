@@ -79,44 +79,44 @@ public:
 
 	pMat();
 	/// Will create copy pMat object of pointed one
-	pMat(pMat *point);
+	pMat(pMat *);
 	/// Creates pMat of dimension M,N on context pG with contant value
-	pMat(int m, int n, PGrid *pG, int t, int b, double init);
+	pMat(int , int , PGrid *, int , int , double );
 	/// Creates pMat of dimension M,N on context pG with contant value with cycles
-	pMat(int m, int n, PGrid *pG, int t, int b, int c, double init);
+	pMat(int , int , PGrid *, int , int , int , double );
 	~pMat();
 
 	/// core setup routine called by different contructors
-	void setupMat(int m, int n, int t, int b, int c, double init);
+	void setupMat(int , int , int , int , int , double );
 	/// Will swtich type
-	void switchType(int t);
+	void switchType(int );
 
 	/// Will print out entire matrix (DO NOT USE unless debugging)
 	void printMat();
-	double getElement(int I,int J);
+	double getElement(int ,int );
 
 	//I/O 
-	int write_bin(std::string filename);
-	int read_bin(std::string &filename);
-	bool check_bin_size(std::string filename, int &mN, int &mM);
+	int write_bin(std::string );
+	int read_bin(std::string &);
+	bool check_bin_size(std::string , int &, int &);
 
 	//PBLAS
-	int matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia, int ja, pMat *B, int ib, int jb, double alpha, double beta, int ic, int jc);
-	int matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int jb, double alpha, double beta);
+	int matrix_Product(char , char , int , int , int , pMat *, int , int , pMat *, int , int , double , double , int , int );
+	int matrix_Sum(char , int , int , pMat *, int , int , int , int , double , double );
 
 	//Scalapack
 
-	int svd_run(int m, int n, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S);
+	int svd_run(int , int , int , int , pMat *&, pMat *&, std::vector<double> &);
 
 	//Utilities
-	int transpose(pMat *A, int m, int n, int ia, int ja);
-	int changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb);
-	int changeContext(pMat *A);
-	int dMax(int dim, int rc, double &val);
-	int dSum(int dim, int rc, double &val);
+	int transpose(pMat *, int , int , int , int );
+	int changeContext(pMat *, int , int , int , int , int , int );
+	int changeContext(pMat *);
+	int dMax(int , int , double &);
+	int dSum(int , int , double &);
 };
 
-std::ostream &operator<<(std::ostream &os, const pMat &p);
-bool operator==(pMat const &p1, pMat const &p2);
+std::ostream &operator<<(std::ostream &, const pMat &);
+bool operator==(pMat const &, pMat const &);
 
 #endif
