@@ -13,7 +13,11 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     std::ofstream sink("/dev/null");
     streambuf *strm_buffer = cout.rdbuf();
-    if (rank != 0)
+    int out=0;
+    if(argc==2)
+        out=atoi(argv[1]);
+    
+    if (rank != out)
     {
         std::cout.rdbuf(sink.rdbuf());
     }
@@ -25,8 +29,7 @@ int main(int argc, char *argv[])
     string prefix = "testtec/gemsma_cmb_";
     string suffix = ".szplt";
 
-    PGrid *loadG, *evenG;
-    loadG = new PGrid(rank,size,1);
+    PGrid *evenG;
     evenG = new PGrid(rank,size,0);
 
     pMat *loadMat, *evenMatFromLoad, *evenMat;
@@ -50,20 +53,20 @@ int main(int argc, char *argv[])
     string outfile="stuff";
 
 
-    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,loadG,0,0,0.0);
+    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
     dataset1->batchRead(loadMat);
 
     evenMat=new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
 
     evenMat->changeContext(loadMat);
     delete loadMat;
-    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,loadG,0,0,0.0);
+    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
     loadMat->changeContext(evenMat);
 
     dataset1->batchWrite(loadMat,outdir,outfile);
 
     delete loadMat,evenMatFromLoad,evenMat;
-    delete loadG,evenG,dataset1;
+    delete evenG,dataset1;
 
 
     cout.rdbuf(strm_buffer);

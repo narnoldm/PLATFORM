@@ -30,17 +30,16 @@ int main(int argc, char *argv[])
     string prefix = "testsplit/test";
     string suffix = ".bin";
 
-    PGrid *loadG, *evenG;
-    loadG = new PGrid(rank,size,1);
+    PGrid *evenG;
     evenG = new PGrid(rank,size,0);
 
     pMat *loadMat, *evenMatFromLoad, *evenMat;
 
 
     meta *dataset1;
-    dataset1 = new meta(1,4,1,prefix,suffix);
+    dataset1 = new meta(1,100,1,prefix,suffix);
 
-    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,loadG,0,1,0.0);
+    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
     dataset1->batchRead(loadMat);
 
     evenMatFromLoad = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
@@ -51,9 +50,6 @@ int main(int argc, char *argv[])
 
 
     evenMatFromLoad->changeContext(loadMat);
-    loadMat->printMat();
-    evenMatFromLoad->printMat();
-    evenMat->printMat();
 
 
     assert((*evenMatFromLoad)==(*evenMat));   

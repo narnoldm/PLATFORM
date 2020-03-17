@@ -24,8 +24,7 @@ int main(int argc, char *argv[])
     string prefix = "testtec/gemsma_cmb_";
     string suffix = ".szplt";
 
-    PGrid *loadG, *evenG;
-    loadG = new PGrid(rank,size,1);
+    PGrid *evenG;
     evenG = new PGrid(rank,size,0);
 
     pMat *loadMat, *evenMatFromLoad, *evenMat;
@@ -49,7 +48,7 @@ int main(int argc, char *argv[])
     string outfile="U";
 
 
-    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,loadG,0,0,0.0);
+    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
     dataset1->batchRead(loadMat);
     evenMat=new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
     evenMat->changeContext(loadMat);
@@ -65,13 +64,13 @@ int main(int argc, char *argv[])
     evenMat->svd_run(dataset1->nPoints,dataset1->nSets,0,0,U,VT,S);
 
 
-    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,loadG,0,0,0.0);
+    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
     loadMat->changeContext(U);
 
     dataset1->batchWrite(loadMat,outdir,outfile);
 
     delete loadMat,evenMatFromLoad,evenMat;
-    delete loadG,evenG,dataset1;
+    delete evenG,dataset1;
 
 
     cout.rdbuf(strm_buffer);
