@@ -107,7 +107,7 @@ public:
 	//Scalapack
 
 	int svd_run(int , int , int , int , pMat *&, pMat *&, std::vector<double> &);
-
+	int mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S);
 	//Utilities
 	int transpose(pMat *, int , int , int , int );
 	int changeContext(pMat *, int , int , int , int , int , int );
