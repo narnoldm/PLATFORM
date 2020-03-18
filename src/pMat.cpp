@@ -478,6 +478,33 @@ int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         WORK.resize(0);
         return 1;
 }
+int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S)
+{
+        int IA = ia + 1;
+        int JA = ja + 1;
+        int i_one = 1;
+        double t2, t1;
+        cout<<"starting MOS"<<endl;
+        int minMN=std::min(M,N);
+        //pMat * corMat = new pMat(minMN,minMN,pG,0,0,0.0);
+        pMat * corMatp0 = new pMat(minMN,minMN,pG,0,2,0.0);
+
+        if(minMN==N)
+        {
+        corMatp0->matrix_Product('T','N',minMN,minMN,M,this,0,0,this,0,0,1.0,0.0,0,0);
+        cout<<"start eigensolve"<<endl;
+
+        
+
+
+
+        }
+        else
+        {
+                cout<<"min M not supported yet"<<endl;
+                throw(-1);
+        }
+}
 
 int pMat::transpose(pMat *A, int m, int n, int ia, int ja)
 {

@@ -1,5 +1,3 @@
-
-
 #include "metadata.hpp"
 
 
@@ -37,7 +35,7 @@ int main(int argc, char *argv[])
     token.push_back(prefix);
     token.push_back(suffix);
     token.push_back("150000");
-    token.push_back("150020");
+    token.push_back("151000");
     token.push_back("10");
     token.push_back("Static_Pressure");
     token.push_back("-1");
@@ -52,6 +50,7 @@ int main(int argc, char *argv[])
     dataset1->batchRead(loadMat);
     evenMat=new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
     evenMat->changeContext(loadMat);
+    delete loadMat;
 
     pMat *U,*VT;
     vector<double> S;
@@ -61,21 +60,11 @@ int main(int argc, char *argv[])
     S.resize(dataset1->nSets);
 
     evenMat->svd_run(dataset1->nPoints,dataset1->nSets,0,0,U,VT,S);
-    evenMat->changeContext(loadMat);
-
-    pMat *U2,*VT2;
-    vector<double> S2;
-
-    U2=new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
-    VT2=new pMat(dataset1->nSets,dataset1->nSets,evenG,0,0,0.0);
-    S2.resize(dataset1->nSets);
-
-    evenMat->mos_run(dataset1->nPoints,dataset1->nSets,0,0,U2,VT2,S2);
-
 
 
     loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
     loadMat->changeContext(U);
+
     dataset1->batchWrite(loadMat,outdir,outfile);
 
     delete loadMat,evenMatFromLoad,evenMat;
