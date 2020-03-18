@@ -43,7 +43,6 @@ PGrid::PGrid(int r, int s, int type)
 }
 PGrid::~PGrid()
 {
-        if (printRank)
                 cout << "clearing pblacs buffers" << endl;
         Cblacs_gridexit(icntxt);
 }
@@ -72,7 +71,6 @@ pMat::pMat(int m, int n, PGrid *pGp, int t, int b, int c, double init)
 }
 pMat::~pMat()
 {
-        if (printRank)
                 cout << "Deallocating Distributed Matrix" << endl;
 }
 void pMat::setupMat(int m, int n, int t, int b, int c, double init)
@@ -84,7 +82,6 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init)
         cycles = c;
         printRank = pG->printRank;
 
-        if (printRank)
                 cout << "Creating Matrix" << endl
                      << "M=" << M << " N=" << N << endl;
         if (block == 0) //square blocks
@@ -113,11 +110,8 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init)
         {
                 nb = N;
                 mb = M;
-                if (pG->printRank)
-                {
                         cout << "nb is " << nb << endl;
                         cout << "mb is " << mb << endl;
-                }
                 MPI_Barrier(MPI_COMM_WORLD);
         }
         else if (block ==3) //synched block
@@ -141,14 +135,12 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init)
 
         if (type == 0)
         {
-                if (printRank)
                         cout << "Mat is Double" << endl;
                 dataD.resize(nelements, init);
                 MBs = nelements * 8.0 / (1.0e6);
         }
         else if (type == 1)
         {
-                if (printRank)
                         cout << "Mat is Complex" << endl;
                 dataC.resize(nelements);
                 for (int i = 0; i < nelements; i++)
@@ -160,11 +152,8 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init)
         }
         else
         {
-                if (printRank)
-                {
                         cout << "invalid type" << endl;
                         throw(-1);
-                }
         }
         MPI_Barrier(MPI_COMM_WORLD);
         cout<<"nelements "<<nelements<<endl;
@@ -179,7 +168,6 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init)
         {
                         cout << "Error in descriptor setup in argument, info=" << -info << endl;
         }
-        if (printRank)
                 cout << "Matrix Constructed" << endl;
 }
 
@@ -456,7 +444,7 @@ int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         int i_one = 1;
         double t2, t1;
         pdgesvd(JOBU, JOBVT, &M, &N, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
-        if (printRank)
+        
                 cout << "WORK= " << WORK[0] << ", LWORK= " << LWORK << ", info= " << info << endl;
 
         if(info<0)
@@ -466,16 +454,16 @@ int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         }
         LWORK = WORK[0];
         WORK.resize(LWORK);
-        if (printRank)
                 cout << "Work Allocated: " << LWORK / (1e6) * 8 << " MB per processor" << endl;
         //SVD run
         MPI_Barrier(MPI_COMM_WORLD);
         t1 = MPI_Wtime();
         pdgesvd(JOBU, JOBVT, &M, &N, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
         t2 = MPI_Wtime();
-        if (printRank)
                 cout << "SVD complete in " << t2 - t1 << " seconds" << endl;
         WORK.resize(0);
+
+
         return 1;
 }
 int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S)
@@ -486,24 +474,68 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         double t2, t1;
         cout<<"starting MOS"<<endl;
         int minMN=std::min(M,N);
-        //pMat * corMat = new pMat(minMN,minMN,pG,0,0,0.0);
         pMat * corMatp0 = new pMat(minMN,minMN,pG,0,2,0.0);
-
+        pMat * VTp0 = new pMat(minMN,minMN,pG,0,2,0.0);
         if(minMN==N)
         {
-        corMatp0->matrix_Product('T','N',minMN,minMN,M,this,0,0,this,0,0,1.0,0.0,0,0);
-        cout<<"start eigensolve"<<endl;
+                corMatp0->matrix_Product('T','N',minMN,minMN,M,this,0,0,this,0,0,1.0,0.0,0,0);
+                cout<<"start eigensolve"<<endl;
+                 t1 = MPI_Wtime();
+                if(pG->rank==0)
+                {
+                Eigen::MatrixXd corMatEig= Eigen::Map<Eigen::MatrixXd>(corMatp0->dataD.data(),minMN,minMN);
+                corMatEig = corMatEig.selfadjointView<Eigen::Upper>();
+                Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(corMatEig);
+                
+                Eigen::MatrixXd VTEig(minMN,minMN);
+                Eigen::VectorXd SEig(minMN);
 
+                SEig=es.eigenvalues().reverse();
+                VTEig=es.eigenvectors().rowwise().reverse();
+                
+
+                Eigen::Map<Eigen::MatrixXd>(VTp0->dataD.data(),VTEig.rows(),VTEig.cols())=VTEig;
+                Eigen::Map<Eigen::VectorXd>(S.data(),minMN)=SEig;
+
+                for(int i=0;i<S.size();i++)
+                        S[i]=std::sqrt(S[i]);
+
+
+                }
+                cout<<"finish eigensolve"<<endl;
+                MPI_Bcast(S.data(), S.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+                pMat *V = new pMat(VT->M,VT->N,VT->pG,0,VT->block,0.0);
+                V->changeContext(VTp0);
+                VT->transpose(V);
+                delete V;
+
+                for(int i=0;i<S.size();i++)
+                        cout<<S[i]<<endl;
+
+                delete VTp0;
+                delete corMatp0;
+
+                for(int i=0;i<minMN;i++)
+                {
+                        U->matrix_Product('N','T',M,1,minMN,this,0,0,VT,i,0,(1.0/S[i]),0.0,0,i);
+                }
+                t2 = MPI_Wtime();
+                cout << "MOS SVD complete in " << t2 - t1 << " seconds" << endl;
+
+        }
         
 
 
-
-        }
         else
         {
                 cout<<"min M not supported yet"<<endl;
                 throw(-1);
         }
+}
+
+int pMat::transpose(pMat *A)
+{
+        transpose(A,this->M,this->N,0,0);
 }
 
 int pMat::transpose(pMat *A, int m, int n, int ia, int ja)
@@ -592,6 +624,26 @@ int pMat::dSum(int dim, int rc, double &val)
                 cout << "sum is " << val << endl;
 }
 
+
+int pMat::outerProductSum(pMat *U,char UT,pMat *VT,char VTT,std::vector<double> &S,int inv)
+{
+        if(inv==1)
+        {
+                this->matrix_Product(UT,VTT,U->M,VT->N,1,U,0,0,VT,0,0,1/S[0],0.0,0,0);
+                for(int i=1;i<S.size();i++)
+                {
+                        this->matrix_Product(UT,VTT,U->M,VT->N,1,U,0,i,VT,i,0,1/S[i],1.0,0,0);
+                }
+        }
+        else
+        {
+                this->matrix_Product(UT,VTT,U->M,VT->N,1,U,0,0,VT,0,0,S[0],0.0,0,0);
+                for(int i=1;i<S.size();i++)
+                {
+                        this->matrix_Product(UT,VTT,U->M,VT->N,1,U,0,i,VT,i,0,S[i],1.0,0,0);       
+                }
+        }
+}
 ostream &operator<<(std::ostream &os, const pMat &p)
 {
                 std::cout << "Descriptor type: " << p.desc[0] << std::endl;
@@ -632,9 +684,11 @@ bool operator==(pMat const &p1, pMat const &p2)
                 {
                         for (int i = 0; i < p1.nelements; i++)
                         {
-                                if (p1.dataD[i] != p2.dataD[i])
+                                double epsilon=.01;
+                                if ( (p1.dataD[i]+p1.dataD[i]*epsilon) < p2.dataD[i] || (p1.dataD[i]-p1.dataD[i]*epsilon) > p2.dataD[i])
                                 {
                                         cout << "element " << i << " does not match" << endl;
+                                        cout<<p1.dataD[i]<<"!="<<p2.dataD[i];
                                         return false;
                                 }
                         }

@@ -12,40 +12,39 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     std::ofstream sink("/dev/null");
     streambuf *strm_buffer = cout.rdbuf();
-    if (rank != 0)
+    
+    if (rank != atoi(argv[1]))
     {
         std::cout.rdbuf(sink.rdbuf());
     }
 
-    cout << "testing tecplot metadata" << endl;
+    cout << "testing binaryset metadata" << endl;
 
     
 
-    string prefix = "testtec/gemsma_cmb_";
-    string suffix = ".szplt";
+    string prefix = "testsplit/test";
+    string suffix = ".bin";
 
     PGrid *evenG;
     evenG = new PGrid(rank,size,0);
 
     pMat *loadMat, *evenMatFromLoad, *evenMat;
 
-
-    tecIO *dataset1;
-    vector<string> token;
-    token.push_back("input");
-    token.push_back("tecplot");
-    token.push_back(prefix);
-    token.push_back(suffix);
-    token.push_back("150010");
-    token.push_back("150050");
-    token.push_back("10");
-    token.push_back("Static_Pressure");
-    token.push_back("-1");
-    //token.push_back("Temperature");
-    //token.push_back("-1");
-    dataset1 = new tecIO(token);
     string outdir="out";
     string outfile="U";
+
+    meta *dataset1;
+    vector<string> token;
+    token.push_back("input");
+    token.push_back("binaryset");
+    token.push_back(prefix);
+    token.push_back(suffix);
+    token.push_back("1");
+    token.push_back("10");
+    token.push_back("1");
+    //token.push_back("Temperature");
+    //token.push_back("-1");
+    dataset1 = new meta(token);
 
 
     loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
@@ -59,10 +58,12 @@ int main(int argc, char *argv[])
     U=new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
     VT=new pMat(dataset1->nSets,dataset1->nSets,evenG,0,0,0.0);
     S.resize(dataset1->nSets);
-
     evenMat->svd_run(dataset1->nPoints,dataset1->nSets,0,0,U,VT,S);
-    VT->printMat();
-    evenMat->changeContext(loadMat);
+    evenMat->outerProductSum(U,'N',VT,'N',S,0);
+
+    for(int i=0;i<S.size();i++)
+        cout<<S[i]<<endl;
+
 
     pMat *U2,*VT2;
     vector<double> S2;
@@ -73,7 +74,8 @@ int main(int argc, char *argv[])
 
     evenMat->mos_run(dataset1->nPoints,dataset1->nSets,0,0,U2,VT2,S2);
 
-
+    for(int i=0;i<S2.size();i++)
+        cout<<S2[i]<<endl;
 
     loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
     loadMat->changeContext(U);

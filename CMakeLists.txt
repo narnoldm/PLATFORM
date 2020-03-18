@@ -8,6 +8,8 @@ include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 
 set(CMAKE_CXX_STANDARD 17)
 set(TECDIR ${CMAKE_CURRENT_SOURCE_DIR}/3rd_Party/tecio/teciosrc)
+set(EIGENDIR ${CMAKE_CURRENT_SOURCE_DIR}/3rd_Party/eigen-3.3.7)
+
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
 message("${CMAKE_CXX_COMPILER_ID} detected")
@@ -27,7 +29,7 @@ target_include_directories(pMat PUBLIC include ${MKLROOT}/include)
 else()
 target_link_libraries(pMat -L/home/narnoldm/Dropbox/Michigan/Lab/0_2020/1Jan/ScaLAPACK/build/lib/libscalapack.a)
 endif()
-target_include_directories(pMat PUBLIC include)
+target_include_directories(pMat PUBLIC include ${EIGENDIR})
 target_link_libraries(pMat debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/allinea/forge/lib/64/libdmallocxx.a)
 
 add_library(meta STATIC src/metadata.cpp src/misc_func.cpp)
@@ -84,6 +86,10 @@ add_executable(test_tecSVD tests/test_meta/test_tecplotSVD.cpp)
 target_include_directories(test_tecSVD PRIVATE include 3rd_Party/tecio/teciosrc)
 target_link_libraries(test_tecSVD meta)
 
+add_executable(test_binSVD tests/test_meta/test_binSVD.cpp)
+target_include_directories(test_binSVD PRIVATE include 3rd_Party/tecio/teciosrc)
+target_link_libraries(test_binSVD meta)
+
 add_test(NAME test_pMat_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_pMat)
 add_test(NAME test_pMat_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_pMat)
 add_test(NAME test_metadata_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_meta)
@@ -92,6 +98,10 @@ add_test(NAME test_tecplot_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
 add_test(NAME test_tecplot_paralllel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_tec)
 add_test(NAME test_tecplotSVD_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_tecSVD)
 add_test(NAME test_tecplotSVD_paralllel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_tecSVD)
+add_test(NAME test_binSVD_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_binSVD)
+add_test(NAME test_binSVD_paralllel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_binSVD)
+
+
 add_test(NAME test_SVD_bin_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test1_SVD_bin COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/parser_drive)
 add_test(NAME test_SVD_bin_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test1_SVD_bin COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/parser_drive)
 
