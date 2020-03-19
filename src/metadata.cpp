@@ -653,7 +653,7 @@ void tecIO::calcNorm(pMat *dataMat)
         for (int i = 0; i < numVars; i++)
         {
                 MPI_Allreduce(MPI_IN_PLACE, normFactor.data() + i, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-                cout<<"Synched norm factor for "<<varName[i]<<" is : "<< normFactor[i];
+                cout<<"Synched norm factor for "<<varName[i]<<" is : "<< normFactor[i]<<endl;
         }
         if(dataMat->pG->rank == 0)
         {
