@@ -52,6 +52,7 @@ public:
     std::string meshFile;
     bool outBin=false;
     bool fixedMesh = false;
+    bool GEMSbin=false;
 
     int numVars, dim, nCells;
 
@@ -72,14 +73,16 @@ public:
     int getVariableIndex(std::string var, std::string file);
     void getDimNodes();
     void checkMeshDim(std::string filename);
-    void genHash(std::string &, int);
-    void genHash(std::string map);
+    void genHash(std::string );
     void normalize(pMat *dataMat);
     void unNormalize(pMat *dataMat);
     void calcNorm(pMat *dataMat);
     void subAvg(pMat *dataMat);
     void addAvg(pMat *dataMat);
     void calcAvg(pMat *dataMat);
+
+    //misc
+    void activateGEMSbin(std::string);
 };
 
 

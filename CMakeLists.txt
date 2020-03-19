@@ -61,10 +61,17 @@ target_include_directories(par_MOS PUBLIC include)
 target_link_libraries(par_MOS parser meta)
 target_link_libraries(par_MOS debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/allinea/forge/lib/64/libdmallocxx.a)
 
-add_executable(VecPOD src/VectorPOD.cpp)
-target_include_directories(VecPOD PUBLIC include)
-target_link_libraries(VecPOD parser meta)
-target_link_libraries(VecPOD debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/allinea/forge/lib/64/libdmallocxx.a)
+add_executable(POD CASLAB_execs/POD_tec.cpp)
+target_include_directories(POD PUBLIC include)
+target_link_libraries(POD parser meta)
+target_link_libraries(POD debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/allinea/forge/lib/64/libdmallocxx.a)
+
+
+
+
+
+
+
 
 
 enable_testing()
