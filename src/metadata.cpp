@@ -120,6 +120,9 @@ bool meta::batchRead(pMat *loadMat)
         }
     }
     miscProcessing(loadMat);
+    cout<<"waiting for other processes read"<<endl;
+    MPI_Barrier(MPI_COMM_WORLD);
+
 }
 
 bool meta::writeSingle(int fileID, double *point, string fpref)
