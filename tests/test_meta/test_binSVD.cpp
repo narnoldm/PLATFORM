@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
     std::ofstream sink("/dev/null");
     streambuf *strm_buffer = cout.rdbuf();
     
-    if (rank != atoi(argv[1]))
+    if (rank != 0)
     {
         std::cout.rdbuf(sink.rdbuf());
     }

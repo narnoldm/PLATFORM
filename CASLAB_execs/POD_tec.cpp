@@ -39,15 +39,25 @@ int main(int argc, char *argv[])
     token.push_back("10");
     token.push_back("Static_Pressure");
     token.push_back("-1");
+    token.push_back("Temperature");
+    token.push_back("-2");
     //token.push_back("Temperature");
     //token.push_back("-1");
     dataset1 = new tecIO(token);
-    string outdir="out";
+    string outdir="out2";
     string outfile="U";
 
 
     loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
     dataset1->batchRead(loadMat);
+
+
+    dataset1->calcAvg(loadMat);
+    dataset1->subAvg(loadMat);
+    dataset1->calcNorm(loadMat);
+    dataset1->normalize(loadMat);
+
+
     evenMat=new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
     evenMat->changeContext(loadMat);
     delete loadMat;
@@ -59,13 +69,42 @@ int main(int argc, char *argv[])
     VT=new pMat(dataset1->nSets,dataset1->nSets,evenG,0,0,0.0);
     S.resize(dataset1->nSets);
 
-    evenMat->svd_run(dataset1->nPoints,dataset1->nSets,0,0,U,VT,S);
+    if(dataset1->nPoints/dataset1->nSets >=100)
+    {
+        evenMat->mos_run(dataset1->nPoints,dataset1->nSets,0,0,U,VT,S);
+    }
+    else
+    {
+        evenMat->svd_run(dataset1->nPoints,dataset1->nSets,0,0,U,VT,S);
+    }
+
+    printASCIIVecP0("S.txt",S.data(),S.size());
+    VT->write_bin("VT.bin");
 
 
     loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
     loadMat->changeContext(U);
 
-    dataset1->batchWrite(loadMat,outdir,outfile);
+    tecIO *Uout=new tecIO();
+    Uout->snap0 = 1;
+    Uout->snapF = loadMat->N;
+    Uout->snapSkip = 1;
+    Uout->nSets = loadMat->N;
+    Uout->prefix = "U";
+    Uout->suffix = ".szplt";
+    Uout->isInit = true;
+    Uout->meshFile = dataset1->prefix+std::to_string(dataset1->snap0)+dataset1->suffix;
+    Uout->fixedMesh = true;
+    Uout->getDimNodes();
+    Uout->varName=dataset1->varName;
+    Uout->varIndex=dataset1->varIndex;
+    Uout->numVars=Uout->varName.size();
+    Uout->nPoints = Uout->nCells*Uout->numVars;
+
+
+    Uout->activateGEMSbin("");
+    Uout->batchWrite(loadMat);
+
 
     delete loadMat,evenMatFromLoad,evenMat;
     delete evenG,dataset1;
