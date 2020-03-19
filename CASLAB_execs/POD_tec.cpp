@@ -10,17 +10,21 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     std::ofstream sink("/dev/null");
     streambuf *strm_buffer = cout.rdbuf();
-    if (rank != 0)
+    int debug_proc=0;
+    if(argc>2)
+    {
+        debug_proc=atoi(argv[2]);
+    }
+    if (rank != debug_proc)
     {
         std::cout.rdbuf(sink.rdbuf());
     }
+    string input = argv[1];
+    cout<<"input string is: "<<input<<endl;
+    vector<string> token;
+    tokenparse(input,"|",token);
 
-    cout << "testing tecplot metadata" << endl;
 
-    
-
-    string prefix = "testtec/gemsma_cmb_";
-    string suffix = ".szplt";
 
     PGrid *evenG;
     evenG = new PGrid(rank,size,0);
@@ -29,20 +33,6 @@ int main(int argc, char *argv[])
 
 
     tecIO *dataset1;
-    vector<string> token;
-    token.push_back("input");
-    token.push_back("tecplot");
-    token.push_back(prefix);
-    token.push_back(suffix);
-    token.push_back("150000");
-    token.push_back("151000");
-    token.push_back("10");
-    token.push_back("Static_Pressure");
-    token.push_back("-1");
-    token.push_back("Temperature");
-    token.push_back("-2");
-    //token.push_back("Temperature");
-    //token.push_back("-1");
     dataset1 = new tecIO(token);
     string outdir="out2";
     string outfile="U";
