@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 
     printASCIIVecP0("S.txt",S.data(),S.size());
     VT->write_bin("VT.bin");
-
+    delete evenMat;
 
     loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
     loadMat->changeContext(U);
