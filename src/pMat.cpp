@@ -510,6 +510,7 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
 
                 for(int i=0;i<minMN;i++)
                 {
+                        cout<<i<<endl;
                         U->matrix_Product('N','T',M,1,minMN,this,0,0,VT,i,0,(1.0/S[i]),0.0,0,i);
                 }
                 t2 = MPI_Wtime();
