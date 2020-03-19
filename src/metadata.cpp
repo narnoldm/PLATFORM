@@ -148,6 +148,7 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (!rank)
         system(("mkdir " + dir).c_str());
+        cout<<loadMat->mb<<" "<<nPoints<<endl;
     assert(loadMat->mb == nPoints);
     int iP = 0, fileIndex, localC = 0;
     if (isInit)
@@ -285,6 +286,7 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref)
     void *outfH = NULL;
     if (fixedMesh)
     {
+        cout<<"hi"<<endl;
         tecFileReaderOpen((meshFile).c_str(), &infH);
     }
     else
@@ -381,6 +383,30 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref)
     valueLoc.clear();
     passive.clear();
     shareVar.clear();
+
+    if(GEMSbin)
+    {
+    cout << "bin write single" << endl;
+    FILE *fid;
+    fid = fopen((fpref + to_string(fileID) + ".bin").c_str(), "wb");
+
+    int ONE = 1;
+    fwrite(&nPoints, sizeof(int), 1, fid);
+    fwrite(&ONE, sizeof(int), 1, fid);
+    for (int i = 0; i < numVars; i++)
+    {
+        for (int j = 0; j < nCells; j++)
+           fwrite(&point[i * nCells + hash[j]], sizeof(double), 1, fid);
+    }
+    fclose(fid);
+
+    }
+
+
+
+
+
+
 }
 void tecIO::miscProcessing(pMat *Mat)
 {
@@ -449,10 +475,10 @@ void tecIO::getDimNodes()
         }
         else
         {
+            cout<<"hi"<<endl;
             checkMeshDim((prefix + std::to_string(snap0) + suffix));
         }
     }
-    //synch nodes and dimension
     MPI_Bcast(&nCells, 1, MPI_LONG, 0, MPI_COMM_WORLD);
     MPI_Bcast(&dim, 1, MPI_INT, 0, MPI_COMM_WORLD);
 }
@@ -481,13 +507,18 @@ void tecIO::checkMeshDim(string filename)
     tecFileReaderClose(&fH);
 }
 
-void tecIO::genHash(string &filename,int rank)
+void tecIO::genHash(string filename)
 {
-    int var_index = 0;
-        var_index = getVariableIndex("cell_id",filename);
+        
         hash.resize(nCells, 0);
         cellID.resize(nCells, 0);
         void *fH;
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        if(filename!="")
+        {
+            int var_index = 0;
+        var_index = getVariableIndex("cell_id",filename);
         if (!rank)
         {
                 int hashType;
@@ -514,19 +545,27 @@ void tecIO::genHash(string &filename,int rank)
                 }
                 printf("hash table built\nDistributing to procs\n");
         }
+        
         MPI_Bcast(hash.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Bcast(cellID.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
-
+        }
+        else
+        {
+            cout<<"assume default hash"<<endl;
+            for(int i=0;i<nCells;i++)
+            {
+                cellID[i]=i;
+                hash[cellID[i]]=i;
+            }
+        }
 }
 
-void tecIO::genHash(string map)
-{
-}
 
 void tecIO::normalize(pMat *dataMat)
 {
     cout<<"Normalizing Matrix by Norm Factor"<<endl;
         int numFiles = dataMat->nelements / nPoints;
+        cout<<"proc "<<dataMat->pG->rank<<"has "<<numFiles<<" Files "<<endl;
         for (int i = 0; i < numFiles; i++)
         {
                 for (int j = 0; j < numVars; j++)
@@ -604,7 +643,7 @@ void tecIO::calcNorm(pMat *dataMat)
                 }
                 else
                 {
-                        cout<<varName[i]<<" is using specified normalization of "<< normFactor[i];
+                        cout<<varName[i]<<" is using specified normalization of "<< normFactor[i]<<endl;
                 }
         }
         mag.clear();
@@ -672,4 +711,12 @@ void tecIO::calcAvg(pMat *dataMat)
 
     if (dataMat->pG->rank == 0)
         writeSingle(snap0, average.data(), "average");
+}
+
+
+void tecIO::activateGEMSbin(string file)
+{
+    GEMSbin=true;
+    genHash(file);
+
 }

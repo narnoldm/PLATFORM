@@ -353,8 +353,6 @@ int pMat::matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia,
 
         if ((A->type == 0) && (B->type == 0) && (type == 0))
         {
-                if (printRank)
-                        cout << "Double Multiply" << endl;
                 int IA = ia + 1;
                 int JA = ja + 1;
                 int IB = ib + 1;
@@ -365,8 +363,6 @@ int pMat::matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia,
         }
         else if ((A->type == 1) && (B->type == 1) && (type == 1))
         {
-                if (printRank)
-                        cout << "Complex Multiply" << endl;
                 int IA = ia + 1;
                 int JA = ja + 1;
                 int IB = ib + 1;
@@ -508,9 +504,6 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
                 V->changeContext(VTp0);
                 VT->transpose(V);
                 delete V;
-
-                for(int i=0;i<S.size();i++)
-                        cout<<S[i]<<endl;
 
                 delete VTp0;
                 delete corMatp0;
