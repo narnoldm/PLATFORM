@@ -699,3 +699,13 @@ bool operator==(pMat const &p1, pMat const &p2)
 
         return true;
 }
+
+int pMat::commCreate(MPI_Comm &col_comm,int dim)
+{
+        if(dim==0)
+                MPI_Comm_split(MPI_COMM_WORLD,pG->pcol,pG->rank,&col_comm);
+        else if(dim==1)
+                MPI_Comm_split(MPI_COMM_WORLD,pG->prow,pG->rank,&col_comm);
+        else
+                throw(-1);
+}

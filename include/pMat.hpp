@@ -122,6 +122,9 @@ public:
 
 	//Other
 	int outerProductSum(pMat *U,char, pMat *VT,char, std::vector<double> &S,int inv);
+
+	int commCreate(MPI_Comm &col_com,int dim);
+
 };
 
 std::ostream &operator<<(std::ostream &, const pMat &);
