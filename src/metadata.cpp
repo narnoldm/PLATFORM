@@ -98,7 +98,8 @@ bool meta::readSingle(int fileID, double *point)
 
 bool meta::batchRead(pMat *loadMat)
 {
-    assert(loadMat->mb == nPoints);
+    if(loadMat->mb == nPoints)
+    {
     int iP = 0;
     int fileIndex = snap0;
     int localC = 0;
@@ -122,7 +123,32 @@ bool meta::batchRead(pMat *loadMat)
     miscProcessing(loadMat);
     cout<<"waiting for other processes read"<<endl;
     MPI_Barrier(MPI_COMM_WORLD);
-
+    }
+    else
+    {
+        cout<<"even Read"<<endl;
+        int currentCol=0;
+        vector<double> tempR;
+        tempR.resize(nPoints);
+        for(int j=0;j<nSets;j++)
+        {
+            if(loadMat->pG->mycol == (j/loadMat->nb)%loadMat->pG->pcol)
+            {
+                readSingle(snap0+j*snapSkip,tempR.data());
+                for(int i=0;i<nPoints;i++)
+                {
+                    int xi= i%loadMat->mb;
+                    int li= i/(loadMat->pG->prow*loadMat->mb);
+                    if(loadMat->pG->myrow == (i/loadMat->mb)%loadMat->pG->prow)
+                    {
+                        loadMat->dataD[currentCol*loadMat->myRC[0]+xi+li*loadMat->mb]=tempR[i];
+                    }
+                }
+                currentCol++;
+            }
+        }
+        tempR.clear();
+    }
 }
 
 bool meta::writeSingle(int fileID, double *point, string fpref)
@@ -152,7 +178,7 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref)
     if (!rank)
         system(("mkdir " + dir).c_str());
         cout<<loadMat->mb<<" "<<nPoints<<endl;
-    assert(loadMat->mb == nPoints);
+    
     int iP = 0, fileIndex, localC = 0;
     if (isInit)
         fileIndex = snap0;
@@ -161,6 +187,11 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref)
         fileIndex = 1;
         nSets = loadMat->N;
     }
+
+
+if(loadMat->block==2)
+{
+    assert(loadMat->mb == nPoints);
     for (int i = 0; i < nSets; i++)
     {
         iP = (int)(i / loadMat->nb);
@@ -176,6 +207,41 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref)
             writeSingle(fileIndex, loadMat->dataD.data() + nPoints * localC, dir + "/" + fpref);
             localC++;
         }
+    }
+}
+else
+{
+        int currentCol=0;
+        vector<double> tempR;
+        tempR.resize(nPoints);
+        MPI_Comm col_comms;
+        loadMat->commCreate(col_comms,0);
+    for (int j = 0; j < nSets; j++)
+    {
+
+            if(loadMat->pG->mycol == (j/loadMat->nb)%loadMat->pG->pcol)
+            {
+                
+                for(int i=0;i<nPoints;i++)
+                {
+                    int xi= i%loadMat->mb;
+                    int li= i/(loadMat->pG->prow*loadMat->mb);
+                    if(loadMat->pG->myrow == (i/loadMat->mb)%loadMat->pG->prow)
+                    {
+                        tempR[i]=loadMat->dataD[currentCol*loadMat->myRC[0]+xi+li*loadMat->mb];
+                    }
+                }
+                currentCol++;
+                
+            }
+            MPI_Allreduce(MPI_IN_PLACE,tempR.data(),tempR.size(),MPI_DOUBLE,MPI_MAX,col_comms);
+            if((loadMat->pG->mycol == (j/loadMat->nb)%loadMat->pG->pcol) && (loadMat->pG->myrow==0))
+                writeSingle(j,tempR.data(),dir+"/"+fpref);
+        }
+
+        cout<<endl;
+        tempR.clear();
+    MPI_Comm_free(&col_comms);
     }
 }
 
@@ -694,12 +760,17 @@ void tecIO::subAvg(pMat *dataMat)
 
 void tecIO::calcAvg(pMat *dataMat)
 {
+    
     if (average.size() != nPoints)
     {
-        cout << "Allocating Average as " << nPoints << " cells" << endl;
+        cout << "Allocating Average as " << nPoints << " data Points" << endl;
         average.resize(nPoints, 0.0);
         cout << "Average Allocated" << endl;
     }
+
+
+    if(dataMat->block==2)
+    {
     int numFiles = dataMat->nelements / nPoints;
     for (int i = 0; i < nPoints; i++)
     {
@@ -714,6 +785,18 @@ void tecIO::calcAvg(pMat *dataMat)
 
     if (dataMat->pG->rank == 0)
         writeSingle(snap0, average.data(), "average");
+    }
+    else
+    {
+        
+        MPI_Comm rowComm;
+        dataMat->commCreate(rowComm,1);
+        for(int i=0;i<nPoints;i++)
+        {
+            dataMat->dSum(1,i,average[i]);
+            cout<<average[i]<<endl;
+        }
+    }
 }
 
 
