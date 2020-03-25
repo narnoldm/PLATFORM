@@ -97,9 +97,9 @@ add_executable(test_EvenRead tests/test_meta/test_EvenRead.cpp)
 target_include_directories(test_EvenRead PRIVATE include 3rd_Party/tecio/teciosrc)
 target_link_libraries(test_EvenRead meta)
 
-add_executable(test_EvenTec tests/test_meta/test_EvenRead.cpp)
-target_include_directories(test_EvenRead PRIVATE include 3rd_Party/tecio/teciosrc)
-target_link_libraries(test_EvenRead meta)
+add_executable(test_EvenTec tests/test_meta/test_EvenTec.cpp)
+target_include_directories(test_EvenTec PRIVATE include 3rd_Party/tecio/teciosrc)
+target_link_libraries(test_EvenTec meta)
 
 
 add_executable(test_binSVD tests/test_meta/test_binSVD.cpp)
@@ -112,6 +112,8 @@ add_test(NAME test_metadata_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 add_test(NAME test_metadata_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_meta)
 add_test(NAME test_EvenRead_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_EvenRead)
 add_test(NAME test_EvenRead_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_EvenRead)
+add_test(NAME test_EvenTec_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_EvenTec)
+add_test(NAME test_EvenTec_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_EvenTec)
 add_test(NAME test_tecplot_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_tec)
 add_test(NAME test_tecplot_paralllel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_tec)
 add_test(NAME test_tecplotSVD_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_tecSVD)

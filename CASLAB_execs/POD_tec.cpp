@@ -38,19 +38,15 @@ int main(int argc, char *argv[])
     string outfile="U";
 
 
-    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
-    dataset1->batchRead(loadMat);
-
-
-    dataset1->calcAvg(loadMat);
-    dataset1->subAvg(loadMat);
-    dataset1->calcNorm(loadMat);
-    dataset1->normalize(loadMat);
-
-
     evenMat=new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
-    evenMat->changeContext(loadMat);
-    delete loadMat;
+    dataset1->batchRead(evenMat);
+
+    
+    dataset1->calcAvg(evenMat);
+    dataset1->subAvg(evenMat);
+    dataset1->calcNorm(evenMat);
+    dataset1->normalize(evenMat);
+
 
     pMat *U,*VT;
     vector<double> S;
@@ -70,10 +66,7 @@ int main(int argc, char *argv[])
 
     printASCIIVecP0("S.txt",S.data(),S.size());
     VT->write_bin("VT.bin");
-    delete evenMat;
-
-    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
-    loadMat->changeContext(U);
+    
 
     tecIO *Uout=new tecIO();
     Uout->snap0 = 1;
@@ -93,11 +86,8 @@ int main(int argc, char *argv[])
 
 
     Uout->activateGEMSbin("");
-    Uout->batchWrite(loadMat);
+    Uout->batchWrite(U);
 
-
-    delete loadMat,evenMatFromLoad,evenMat;
-    delete evenG,dataset1;
 
 
     cout.rdbuf(strm_buffer);

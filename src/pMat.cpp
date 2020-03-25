@@ -579,11 +579,8 @@ int pMat::changeContext(pMat *A)
 
 int pMat::dMax(int dim, int rc, double &val)
 {
-        double max;
         int index = 0;
 
-        if (printRank)
-                cout << "finding max" << endl;
         if (dim == 0)
         {
                 int IA = 1, JA = rc + 1, i_one = 1;
@@ -595,14 +592,10 @@ int pMat::dMax(int dim, int rc, double &val)
                 pdamax(&N, &val, &index, dataD.data(), &IA, &JA, desc, &M);
         }
 
-        if (printRank)
-                cout << "max is " << val << " at " << index;
 }
 int pMat::dSum(int dim, int rc, double &val)
 {
 
-        if (printRank)
-                cout << "finding sum" << endl;
         if (dim == 0)
         {
                 int IA = 1, JA = rc + 1, i_one = 1;
@@ -613,9 +606,6 @@ int pMat::dSum(int dim, int rc, double &val)
                 int IA = rc + 1, JA = 1, i_one = 1;
                 pdasum(&N, &val, dataD.data(), &IA, &JA, desc, &M);
         }
-
-        if (printRank)
-                cout << "sum is " << val << endl;
 }
 
 
@@ -657,7 +647,21 @@ double pMat::getElement(int I, int J)
 {
         double item = 0.0;
         int l, m;
-        //l=(I)/(pG->prow*mb)
+        int x,y;
+
+        l= I/(pG->prow*mb);
+        m=J/(pG->pcol*nb);
+
+        x= I%mb;
+        y= J%nb;
+        double temp=0;
+        if((pG->myrow== (I/mb)%pG->prow) && (pG->mycol== (J/nb)%pG->pcol))
+        {
+                assert(((m*nb+y)*myRC[0]+ l*mb +x)<nelements);
+                temp=dataD[(m*nb+y)*myRC[0]+ l*mb +x];
+        }
+        MPI_Allreduce(MPI_IN_PLACE,&temp,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+        return temp;
 }
 
 bool operator==(pMat const &p1, pMat const &p2)
@@ -679,11 +683,25 @@ bool operator==(pMat const &p1, pMat const &p2)
                         for (int i = 0; i < p1.nelements; i++)
                         {
                                 double epsilon=.01;
+                                if(p1.dataD[i]>0)
+                                {
                                 if ( (p1.dataD[i]+p1.dataD[i]*epsilon) < p2.dataD[i] || (p1.dataD[i]-p1.dataD[i]*epsilon) > p2.dataD[i])
                                 {
                                         cout << "element " << i << " does not match" << endl;
-                                        cout<<p1.dataD[i]<<"!="<<p2.dataD[i];
+                                        cout<<(p1.dataD[i]-p1.dataD[i]*epsilon)<<"< "<< p2.dataD[i]<<" < "<<(p1.dataD[i]+p1.dataD[i]*epsilon)<<endl;
+                                        cout<<p1.dataD[i]<<"!="<<p2.dataD[i]<<endl;
                                         return false;
+                                }
+                                }
+                                else
+                                {
+                                        if ( (p1.dataD[i]+p1.dataD[i]*epsilon) > p2.dataD[i] || (p1.dataD[i]-p1.dataD[i]*epsilon) < p2.dataD[i])
+                                {
+                                        cout << "element " << i << " does not match" << endl;
+                                        cout<<(p1.dataD[i]-p1.dataD[i]*epsilon)<<"< "<< p2.dataD[i]<<" < "<<(p1.dataD[i]+p1.dataD[i]*epsilon)<<endl;
+                                        cout<<p1.dataD[i]<<"!="<<p2.dataD[i]<<endl;
+                                        return false;
+                                }
                                 }
                         }
                 }
@@ -703,9 +721,9 @@ bool operator==(pMat const &p1, pMat const &p2)
 int pMat::commCreate(MPI_Comm &col_comm,int dim)
 {
         if(dim==0)
-                MPI_Comm_split(MPI_COMM_WORLD,pG->pcol,pG->rank,&col_comm);
+                MPI_Comm_split(MPI_COMM_WORLD,pG->mycol,pG->rank,&col_comm);
         else if(dim==1)
-                MPI_Comm_split(MPI_COMM_WORLD,pG->prow,pG->rank,&col_comm);
+                MPI_Comm_split(MPI_COMM_WORLD,pG->myrow,pG->rank,&col_comm);
         else
                 throw(-1);
 }
