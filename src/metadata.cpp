@@ -189,7 +189,7 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref)
     }
 
 
-if(loadMat->block==2)
+if(loadMat->block==1)
 {
     assert(loadMat->mb == nPoints);
     for (int i = 0; i < nSets; i++)
@@ -633,6 +633,8 @@ void tecIO::genHash(string filename)
 void tecIO::normalize(pMat *dataMat)
 {
     cout<<"Normalizing Matrix by Norm Factor"<<endl;
+    if(dataMat->block==1)
+    {
         int numFiles = dataMat->nelements / nPoints;
         cout<<"proc "<<dataMat->pG->rank<<"has "<<numFiles<<" Files "<<endl;
         for (int i = 0; i < numFiles; i++)
@@ -645,31 +647,58 @@ void tecIO::normalize(pMat *dataMat)
                         }
                 }
         }
-
+    }
+    else
+    {
+        int currentCol=0;
+        for(int j=0;j<nSets;j++)
+        {
+            if(dataMat->pG->mycol == (j/dataMat->nb)%dataMat->pG->pcol)
+            {
+                for(int i=0;i<nPoints;i++)
+                {
+                    int xi= i%dataMat->mb;
+                    int li= i/(dataMat->pG->prow*dataMat->mb);
+                    if(dataMat->pG->myrow == (i/dataMat->mb)%dataMat->pG->prow)
+                    {
+                        dataMat->dataD[currentCol*dataMat->myRC[0]+xi+li*dataMat->mb]/=normFactor[i/nCells];
+                    }
+                }
+                currentCol++;
+            }
+        }
+    }
 }
 
 void tecIO::unNormalize(pMat *dataMat)
 {
     cout<<"UnNormalizing Matrix by Norm Factor"<<endl;
-        int numFiles = dataMat->nelements / nPoints;
-        for (int i = 0; i < numFiles; i++)
+       int currentCol=0;
+        for(int j=0;j<nSets;j++)
         {
-                for (int j = 0; j < numVars; j++)
+            if(dataMat->pG->mycol == (j/dataMat->nb)%dataMat->pG->pcol)
+            {
+                for(int i=0;i<nPoints;i++)
                 {
-                        for (int k = 0; k < nCells; k++)
-                        {
-                                dataMat->dataD[i * nPoints + j * nCells + k] *= normFactor[j];
-                        }
+                    int xi= i%dataMat->mb;
+                    int li= i/(dataMat->pG->prow*dataMat->mb);
+                    if(dataMat->pG->myrow == (i/dataMat->mb)%dataMat->pG->prow)
+                    {
+                        dataMat->dataD[currentCol*dataMat->myRC[0]+xi+li*dataMat->mb]*=normFactor[i/nCells];
+                    }
                 }
+                currentCol++;
+            }
         }
 
 }
 
 void tecIO::calcNorm(pMat *dataMat)
 {
+    if(dataMat->block==1)
+    {
      int numFiles = dataMat->nelements / nPoints;
         std::vector<double> mag(nCells * numFiles, 0.0);
-        //double *mag = new double[nCells*numFiles];
         double maxmag = 0.0;
         double group = 0.0;
         for (int i = 0; i < numVars; i++)
@@ -691,10 +720,12 @@ void tecIO::calcNorm(pMat *dataMat)
                                                 for (int n = 0; n < nCells; n++)
                                                 {
                                                         mag[f * nCells + n] += (dataMat->dataD[f * numVars * nCells + j * nCells + n]) * (dataMat->dataD[f * numVars * nCells + j * nCells + n]);
+                                                    
                                                 }
                                         }
                                 }
                         }
+                        
                         for (int n = 0; n < (nCells * numFiles); n++)
                         {
                                 mag[n] = sqrt(mag[n]);
@@ -736,8 +767,65 @@ void tecIO::calcNorm(pMat *dataMat)
                 normVec.clear();
                 //delete [] normVec;
         }
-
-
+    }
+        else
+        {
+ 
+            for(int k=0;k<numVars;k++)
+            {
+                    if(normFactor[k]<0)
+                    {
+                        double maxmag=0;  
+                        for(int j=0;j<nSets;j++)
+                        {
+                        for(int i=0;i<nCells;i++)
+                            {
+                            double mag=0.0;
+                               for(int g=0;g<numVars;g++)
+                                {
+                                    
+                                    if(normFactor[g]==normFactor[k])
+                                    {
+                                
+                                        mag+= std::pow(dataMat->getElement(g*nCells+i,j),2);
+                                    }
+                                }
+                                mag=sqrt(mag);
+                                if(mag>maxmag)
+                                    maxmag=mag;
+                            }
+                        }
+                        for(int g=0;g<numVars;g++)
+                        {
+                            if(g==k)
+                            {
+                                continue;
+                            }
+                            else if(normFactor[g]==normFactor[k])
+                            {
+                                normFactor[g]=maxmag;
+                            }
+                        }
+                        normFactor[k]=maxmag;
+                        
+                    }
+                    cout<<"Synched norm factor for "<<varName[k]<<" is : "<< normFactor[k]<<endl;
+            }
+        if(dataMat->pG->rank == 0)
+        {
+                std::vector<double> normVec(numVars * nCells);
+                for (int i = 0; i < numVars; i++)
+                {
+                        for (int j = 0; j < nCells; j++)
+                        {
+                                normVec[i * nCells + j] = normFactor[i];
+                        }
+                }
+                writeSingle(snap0, normVec.data(), "norm");
+                printASCIIVecP0("norm.data",normVec.data(),normVec.size());
+                normVec.clear();
+        }    
+        }
 
 }
 
@@ -750,11 +838,34 @@ void tecIO::subAvg(pMat *dataMat)
     }
     
     cout<<"Subtracting Average"<<endl;
+    if(dataMat->block==1)
+    {
     int numFiles = dataMat->nelements / nPoints;
     for (int i = 0; i < numFiles; i++)
     {
         for (int j = 0; j < nPoints; j++)
             dataMat->dataD[i * nPoints + j] -= average[j];
+    }
+    }
+    else
+    {
+        int currentCol=0;
+        for(int j=0;j<nSets;j++)
+        {
+            if(dataMat->pG->mycol == (j/dataMat->nb)%dataMat->pG->pcol)
+            {
+                for(int i=0;i<nPoints;i++)
+                {
+                    int xi= i%dataMat->mb;
+                    int li= i/(dataMat->pG->prow*dataMat->mb);
+                    if(dataMat->pG->myrow == (i/dataMat->mb)%dataMat->pG->prow)
+                    {
+                        dataMat->dataD[currentCol*dataMat->myRC[0]+xi+li*dataMat->mb]-=average[i];
+                    }
+                }
+                currentCol++;
+            }
+        }
     }
 }
 
@@ -767,9 +878,9 @@ void tecIO::calcAvg(pMat *dataMat)
         average.resize(nPoints, 0.0);
         cout << "Average Allocated" << endl;
     }
+    std::fill(average.begin(),average.end(),0.0);
 
-
-    if(dataMat->block==2)
+    if(dataMat->block==1)
     {
     int numFiles = dataMat->nelements / nPoints;
     for (int i = 0; i < nPoints; i++)
@@ -784,18 +895,27 @@ void tecIO::calcAvg(pMat *dataMat)
         average[i] /= nSets;
 
     if (dataMat->pG->rank == 0)
-        writeSingle(snap0, average.data(), "average");
+        writeSingle(snap0, average.data(), "average1");
     }
     else
     {
-        
-        MPI_Comm rowComm;
-        dataMat->commCreate(rowComm,1);
         for(int i=0;i<nPoints;i++)
         {
-            dataMat->dSum(1,i,average[i]);
-            cout<<average[i]<<endl;
+            for(int j=0;j<nSets;j++)
+            {
+
+                        average[i]+=dataMat->getElement(i,j);
+            }
         }
+        for(int i=0;i<nPoints;i++)
+        {
+            average[i]/=nSets;
+        }
+        cout<<"average calculated"<<endl;
+        if (dataMat->pG->rank == 0)
+            writeSingle(snap0, average.data(), "average0");
+        cout<<"average outputed"<<endl;
+        MPI_Barrier(MPI_COMM_WORLD);
     }
 }
 
