@@ -177,7 +177,6 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (!rank)
         system(("mkdir " + dir).c_str());
-        cout<<loadMat->mb<<" "<<nPoints<<endl;
     
     int iP = 0, fileIndex, localC = 0;
     if (isInit)

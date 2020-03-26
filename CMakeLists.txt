@@ -30,41 +30,37 @@ else()
 target_link_libraries(pMat -L/home/narnoldm/Dropbox/Michigan/Lab/0_2020/1Jan/ScaLAPACK/build/lib/libscalapack.a)
 endif()
 target_include_directories(pMat PUBLIC include ${EIGENDIR})
-target_link_libraries(pMat debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/allinea/forge/lib/64/libdmallocxx.a)
+target_link_libraries(pMat debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
 add_library(meta STATIC src/metadata.cpp src/misc_func.cpp)
 target_include_directories(meta PUBLIC include ${TECDIR})
 target_link_libraries(meta pMat ${TECDIR}/libtecio.a)
-target_link_libraries(meta debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/allinea/forge/lib/64/libdmallocxx.a)
+target_link_libraries(meta debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
 
 
 add_library(parser STATIC src/dataID.cpp src/executioner.cpp src/inputInfo.cpp src/inputReader.cpp src/misc_func.cpp src/operation.cpp src/sysInfo.cpp)
 target_include_directories(parser PRIVATE include)
 target_link_libraries(parser meta)
-target_link_libraries(parser debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/allinea/forge/lib/64/libdmallocxx.a)
+target_link_libraries(parser debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
 
 add_executable(parser_drive src/parser_drive.cpp)
 target_include_directories(parser_drive PUBLIC include)
 target_link_libraries(parser_drive parser meta)
-target_link_libraries(parser_drive debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/allinea/forge/lib/64/libdmallocxx.a)
+target_link_libraries(parser_drive debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
 
 add_executable(serial_norm src/serial_norm_calc.cpp)
 target_include_directories(serial_norm PUBLIC include)
 target_link_libraries(serial_norm parser meta)
-target_link_libraries(serial_norm debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/allinea/forge/lib/64/libdmallocxx.a)
+target_link_libraries(serial_norm debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
-add_executable(par_MOS src/ParallelIO_MOS.cpp)
-target_include_directories(par_MOS PUBLIC include)
-target_link_libraries(par_MOS parser meta)
-target_link_libraries(par_MOS debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/allinea/forge/lib/64/libdmallocxx.a)
 
 add_executable(POD CASLAB_execs/POD_tec.cpp)
 target_include_directories(POD PUBLIC include)
 target_link_libraries(POD parser meta)
-target_link_libraries(POD debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/allinea/forge/lib/64/libdmallocxx.a)
+target_link_libraries(POD debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
 
 
