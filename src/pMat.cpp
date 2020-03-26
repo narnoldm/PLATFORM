@@ -642,7 +642,6 @@ ostream &operator<<(std::ostream &os, const pMat &p)
                 std::cout << "Memory usage(data only) MB = " << p.MBs << std::endl;
         return os;
 }
-
 double pMat::getElement(int I, int J)
 {
         double item = 0.0;
@@ -661,6 +660,26 @@ double pMat::getElement(int I, int J)
                 temp=dataD[(m*nb+y)*myRC[0]+ l*mb +x];
         }
         MPI_Allreduce(MPI_IN_PLACE,&temp,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+        return temp;
+}
+
+double pMat::getLocalElement(int I, int J)
+{
+        double item = 0.0;
+        int l, m;
+        int x,y;
+
+        l= I/(pG->prow*mb);
+        m=J/(pG->pcol*nb);
+
+        x= I%mb;
+        y= J%nb;
+        double temp=0;
+        if((pG->myrow== (I/mb)%pG->prow) && (pG->mycol== (J/nb)%pG->pcol))
+        {
+                assert(((m*nb+y)*myRC[0]+ l*mb +x)<nelements);
+                temp=dataD[(m*nb+y)*myRC[0]+ l*mb +x];
+        }
         return temp;
 }
 

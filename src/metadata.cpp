@@ -307,17 +307,18 @@ void tecIO::checkSize()
 void tecIO::checkExists()
 {
     void *fH = NULL;
-    int rank;
+    int rank,size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (!rank)
-    {
+    MPI_Comm_size(MPI_COMM_WORLD,&size);
         for (int i = snap0; i <= snapF; i = i + snapSkip)
         {
+            if(i%size==rank)
+            {
             tecFileReaderOpen((prefix + std::to_string(i) + suffix).c_str(), &fH);
             assert(fH != NULL);
             tecFileReaderClose(&fH);
+            }
         }
-    }
 }
 bool tecIO::readSingle(int fileID, double *point)
 {
@@ -903,9 +904,10 @@ void tecIO::calcAvg(pMat *dataMat)
             for(int j=0;j<nSets;j++)
             {
 
-                        average[i]+=dataMat->getElement(i,j);
+                        average[i]+=dataMat->getLocalElement(i,j);
             }
         }
+        MPI_Allreduce(MPI_IN_PLACE, average.data(), nPoints, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
         for(int i=0;i<nPoints;i++)
         {
             average[i]/=nSets;
