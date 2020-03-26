@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     PGrid *evenG;
     evenG = new PGrid(rank,size,0);
 
-    pMat *loadMat, *evenMatFromLoad, *evenMat;
+    pMat *evenMat;
 
 
     tecIO *dataset1;
@@ -70,9 +70,9 @@ int main(int argc, char *argv[])
 
     tecIO *Uout=new tecIO();
     Uout->snap0 = 1;
-    Uout->snapF = loadMat->N;
+    Uout->snapF = U->N;
     Uout->snapSkip = 1;
-    Uout->nSets = loadMat->N;
+    Uout->nSets = U->N;
     Uout->prefix = "U";
     Uout->suffix = ".szplt";
     Uout->isInit = true;
