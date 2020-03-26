@@ -659,7 +659,9 @@ double pMat::getElement(int I, int J)
                 assert(((m*nb+y)*myRC[0]+ l*mb +x)<nelements);
                 temp=dataD[(m*nb+y)*myRC[0]+ l*mb +x];
         }
-        MPI_Allreduce(MPI_IN_PLACE,&temp,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+        MPI_Request request;
+        MPI_Iallreduce(MPI_IN_PLACE,&temp,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,&request);
+        MPI_Wait(&request,MPI_STATUS_IGNORE);
         return temp;
 }
 

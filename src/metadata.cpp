@@ -695,6 +695,7 @@ void tecIO::unNormalize(pMat *dataMat)
 
 void tecIO::calcNorm(pMat *dataMat)
 {
+    cout<<"calculating norms"<<endl;
     if(dataMat->block==1)
     {
      int numFiles = dataMat->nelements / nPoints;
@@ -778,22 +779,32 @@ void tecIO::calcNorm(pMat *dataMat)
                         double maxmag=0;  
                         for(int j=0;j<nSets;j++)
                         {
+                            
+                        vector<double> mag(nCells,0.0);
+                        std::fill(mag.begin(),mag.end(),0.0);
                         for(int i=0;i<nCells;i++)
                             {
-                            double mag=0.0;
                                for(int g=0;g<numVars;g++)
                                 {
                                     
                                     if(normFactor[g]==normFactor[k])
                                     {
                                 
-                                        mag+= std::pow(dataMat->getElement(g*nCells+i,j),2);
+                                        mag[i]+= std::pow(dataMat->getLocalElement(g*nCells+i,j),2);
                                     }
                                 }
-                                mag=sqrt(mag);
-                                if(mag>maxmag)
-                                    maxmag=mag;
                             }
+                            MPI_Allreduce(MPI_IN_PLACE,mag.data(),nCells,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+                            for(int i=0;i<nCells;i++)
+                            {
+                                if(mag[i]>maxmag)
+                                {
+                                    maxmag=mag[i];
+                                }
+                            }
+                            maxmag=sqrt(maxmag);
+
+
                         }
                         for(int g=0;g<numVars;g++)
                         {
@@ -867,6 +878,7 @@ void tecIO::subAvg(pMat *dataMat)
             }
         }
     }
+    cout<<"average subtraceted"<<endl;
 }
 
 void tecIO::calcAvg(pMat *dataMat)
