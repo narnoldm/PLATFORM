@@ -802,10 +802,11 @@ void tecIO::calcNorm(pMat *dataMat)
                                     maxmag=mag[i];
                                 }
                             }
-                            maxmag=sqrt(maxmag);
 
 
                         }
+                        
+                            maxmag=sqrt(maxmag);
                         for(int g=0;g<numVars;g++)
                         {
                             if(g==k)

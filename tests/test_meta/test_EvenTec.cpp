@@ -41,6 +41,8 @@ int main(int argc, char *argv[])
     token.push_back("150000");
     token.push_back("150100");
     token.push_back("10");
+    token.push_back("Static_Pressure");
+    token.push_back("-2");
     token.push_back("U");
     token.push_back("-1");
     token.push_back("V");
@@ -85,7 +87,7 @@ int main(int argc, char *argv[])
     {
         dataset1->normFactor[i]=-1;
     }
-    //dataset1->normFactor[2]=1.0;
+    dataset1->normFactor[0]=-2;
     
     dataset1->calcNorm(evenMatFromLoad);
     dataset1->normalize(evenMatFromLoad);
