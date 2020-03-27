@@ -34,7 +34,10 @@ int main(int argc, char *argv[])
     for(int i=0;i<5;i++)
         cout<<"element["<<i<<"] = "<<m2->getElement(i,0)<<endl; 
 
-    if(!(*m1==*m2));
+    for(int i=0;i<5;i++)
+        cout<<"element["<<i<<"] = "<<m1->getElement(i,0)<<endl;
+
+    if(!(*m1==*m2))
     {
         throw(-1);
     }
