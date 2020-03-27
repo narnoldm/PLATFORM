@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     pMat *m1,*m2;
     int M,N;
     string filename="test.bin";
-    assert(m1->check_bin_size(filename,M,N));
+    m1->check_bin_size(filename,M,N);
     m1=new pMat(M,N,p1,0,0,0.0);
     m1->read_bin(filename);
 
@@ -34,7 +34,10 @@ int main(int argc, char *argv[])
     for(int i=0;i<5;i++)
         cout<<"element["<<i<<"] = "<<m2->getElement(i,0)<<endl; 
 
-    assert(*m1==*m2);
+    if(!(*m1==*m2));
+    {
+        throw(-1);
+    }
 
     cout<<*m1<<endl;
     cout<<*m2<<endl;

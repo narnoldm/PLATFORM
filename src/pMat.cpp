@@ -470,11 +470,14 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         double t2, t1;
         cout<<"starting MOS"<<endl;
         int minMN=std::min(M,N);
+        pMat *corMat = new pMat(minMN,minMN,pG,0,0,0.0);
         pMat * corMatp0 = new pMat(minMN,minMN,pG,0,2,0.0);
         pMat * VTp0 = new pMat(minMN,minMN,pG,0,2,0.0);
         if(minMN==N)
         {
-                corMatp0->matrix_Product('T','N',minMN,minMN,M,this,0,0,this,0,0,1.0,0.0,0,0);
+                corMat->matrix_Product('T','N',minMN,minMN,M,this,0,0,this,0,0,1.0,0.0,0,0);
+                cout<<"cor Mat created"<<endl;
+                corMatp0->changeContext(corMat);
                 cout<<"start eigensolve"<<endl;
                  t1 = MPI_Wtime();
                 if(pG->rank==0)
