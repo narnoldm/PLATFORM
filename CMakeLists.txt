@@ -30,7 +30,7 @@ else()
 target_link_libraries(pMat -L/home/narnoldm/Dropbox/Michigan/Lab/0_2020/1Jan/ScaLAPACK/build/lib/libscalapack.a)
 endif()
 target_include_directories(pMat PUBLIC include ${EIGENDIR})
-target_link_libraries(pMat debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
+#target_link_libraries(pMat debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
 add_library(meta STATIC src/metadata.cpp src/misc_func.cpp)
 target_include_directories(meta PUBLIC include ${TECDIR})
