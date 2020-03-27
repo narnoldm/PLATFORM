@@ -52,7 +52,7 @@ void dataID::setInfo(string &d)
 }
 void dataID::setInfo(vector<int> &d)
 {
-        if(!(d.size>0) )
+        if(!(d.size()>0) )
                 throw(-1);
         dim = d.size();
         dims.resize(d.size());
