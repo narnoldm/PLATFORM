@@ -355,11 +355,12 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref)
     void *outfH = NULL;
     if (fixedMesh)
     {
-        cout<<"hi"<<endl;
         tecFileReaderOpen((meshFile).c_str(), &infH);
     }
     else
+    {
         tecFileReaderOpen((prefix + std::to_string(fileID) + suffix).c_str(), &infH);
+    }
     assert(infH != NULL);
     int zoneType;
     long iMax, jMax, kMax;
