@@ -64,16 +64,16 @@ bool inputReader::ScanFile()
                 switch (cBlock)
                 {
                 case info:
-                        assert(sys.ScanInfo(line));
+                        sys.ScanInfo(line);
                         break;
                 case input:
-                        assert(inp.ScanInput(line));
+                        inp.ScanInput(line);
                         break;
                 case operation:
-                        assert(op.ScanOperations(line));
+                        op.ScanOperations(line);
                         break;
                 case output:
-                        assert(out.ScanInput(line));
+                        out.ScanInput(line);
                         break;
                 }
         }
