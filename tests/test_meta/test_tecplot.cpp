@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
     string outdir="out";
     string outfile="stuff";
 
-
+    
     loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
     dataset1->batchRead(loadMat);
 

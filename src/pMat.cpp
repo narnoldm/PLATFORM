@@ -39,7 +39,7 @@ PGrid::PGrid(int r, int s, int type)
         cout << "local processor row"<<myrow<<" and column "<<mycol<<endl;
         cout << "PBLACS is row major by default and everything is else is Column major (because reasons)"<<endl;
         MPI_Barrier(MPI_COMM_WORLD);
-        delete order;
+        delete[] order;
 }
 PGrid::~PGrid()
 {

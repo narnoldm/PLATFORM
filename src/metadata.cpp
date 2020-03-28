@@ -283,6 +283,8 @@ void tecIO::init(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
     suffix = iSuffix;
     assert(snapF > snap0);
     nSets = 0;
+    varName.clear();
+    varIndex.clear();
     for (int i = snap0; i <= snapF; i = i + snapSkip)
         nSets++;
     checkSize();
@@ -299,6 +301,7 @@ void tecIO::checkSize()
     getDimNodes();
     for (int i = 0; i < token.size(); i = i + 2)
     {
+        cout<<"token "<<token[i]<<endl;
         addVar(token[i], token[i + 1]);
     }
     nPoints = nCells * numVars;
@@ -485,7 +488,8 @@ void tecIO::miscProcessing(pMat *Mat)
 void tecIO::addVar(string var, string &norm)
 {
     varName.push_back(var);
-    varIndex.push_back(getVariableIndex(var, prefix + to_string(snap0) + suffix));
+    int varI=getVariableIndex(var, prefix + to_string(snap0) + suffix);
+    varIndex.push_back(varI);
     normID.push_back(norm);
     double temp;
     temp = stod(norm);
@@ -499,12 +503,13 @@ int tecIO::getVariableIndex(string var, string file)
 {
     void *fH;
     int fileVars;
-    char *vName = NULL;
     int tecIndex = 0;
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (!rank)
+    if (rank==0)
     {
+        
+        char *vName = NULL;
         tecFileReaderOpen(file.c_str(), &fH);
         tecDataSetGetNumVars(fH, &fileVars);
         for (int i = 1; i <= fileVars; i++)
@@ -516,10 +521,10 @@ int tecIO::getVariableIndex(string var, string file)
                 tecIndex = i;
                 break;
             }
-            delete vName;
+            delete[] vName;
             vName = NULL;
         }
-        delete vName;
+        delete[] vName;
         vName = NULL;
         tecFileReaderClose(&fH);
         if (tecIndex == 0)
@@ -933,6 +938,59 @@ void tecIO::calcAvg(pMat *dataMat)
         MPI_Barrier(MPI_COMM_WORLD);
     }
 }
+
+
+void tecIO::readAvg(std::string filename)
+{
+        if (average.size() != nPoints)
+        {
+                printf("Allocating Average as %d cells\n", nPoints);
+                average.resize(nPoints, 0.0);
+                printf("Average Allocated\n");
+        }
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+        if (rank == 0)
+        {
+                void *fH;
+                tecFileReaderOpen(filename.c_str(), &fH);
+                int type;
+                std::vector<float> get;
+                for (int i = 0; i < numVars; i++)
+                {
+                        tecZoneVarGetType(fH, 1, i+dim+1, &type);
+                        if (type == 1)
+                        {
+                                //get= new float[nCells];
+                                get.resize(nCells);
+                                tecZoneVarGetFloatValues(fH, 1, i+dim+1, 1, nCells, get.data());
+                                for (int j = 0; j < nCells; j++)
+                                {
+                                        average[j + i * nCells] = (double)get[j];
+                                }
+                                //delete [] get;
+                                get.clear();
+                        }
+                        else if (type == 2)
+                        {
+                                tecZoneVarGetDoubleValues(fH, 1, i+dim+1, 1, nCells, &(average[i * nCells]));
+                        }
+                }
+                tecFileReaderClose(&fH);
+                std::cout<<"average loaded from :"<<filename<<std::endl;
+        }
+
+        MPI_Bcast(average.data(), nPoints, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        if(rank==0)
+                std::cout<<"average Broad-casted"<<std::endl;
+}
+
+
+
+
+
+
+
 
 
 void tecIO::activateGEMSbin(string file)
