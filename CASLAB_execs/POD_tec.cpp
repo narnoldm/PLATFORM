@@ -11,9 +11,14 @@ int main(int argc, char *argv[])
     std::ofstream sink("/dev/null");
     streambuf *strm_buffer = cout.rdbuf();
     int debug_proc=0;
+    string avgFile;
     if(argc>2)
     {
         debug_proc=atoi(argv[2]);
+        if(argc>3)
+        {
+            avgFile=argv[3];
+        }
     }
     if (rank != debug_proc)
     {
@@ -42,7 +47,14 @@ int main(int argc, char *argv[])
     dataset1->batchRead(evenMat);
 
     
-    dataset1->calcAvg(evenMat);
+    if(argc>3)
+    {
+        dataset1->readAvg(avgFile);
+    }
+    else
+    {
+        dataset1->calcAvg(evenMat);
+    }
     dataset1->subAvg(evenMat);
     dataset1->calcNorm(evenMat);
     dataset1->normalize(evenMat);
