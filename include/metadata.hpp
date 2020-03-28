@@ -54,7 +54,8 @@ public:
     bool fixedMesh = false;
     bool GEMSbin=false;
 
-    int numVars, dim, nCells;
+    int numVars, dim; 
+    long nCells;
 
     tecIO();
     tecIO(std::vector<std::string> &iToken);
@@ -80,6 +81,7 @@ public:
     void subAvg(pMat *dataMat);
     void addAvg(pMat *dataMat);
     void calcAvg(pMat *dataMat);
+    void readAvg(std::string filename);
 
     //misc
     void activateGEMSbin(std::string);
