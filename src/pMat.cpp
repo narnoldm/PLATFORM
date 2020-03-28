@@ -86,7 +86,7 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init)
                      << "M=" << M << " N=" << N << endl;
         if (block == 0) //square blocks
         {
-                nb = 2048;
+                nb = 128;
                 mb = nb;
                 if (mb > (M / pG->getDim(1)))
                         mb = std::max(1, M / (pG->getDim(1) * cycles));
@@ -98,7 +98,7 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init)
         }
         else if (block == 1) //load blocks
         {
-                nb = 2048;
+                nb = 128;
                 mb = M;
                 if (nb > (N / pG->getDim(0)))
                         nb = std::max(1,N / pG->getDim(0));
