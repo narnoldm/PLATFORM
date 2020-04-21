@@ -235,7 +235,7 @@ else
             }
             MPI_Allreduce(MPI_IN_PLACE,tempR.data(),tempR.size(),MPI_DOUBLE,MPI_SUM,col_comms);
             if((loadMat->pG->mycol == (j/loadMat->nb)%loadMat->pG->pcol) && (loadMat->pG->myrow==0))
-                writeSingle(j,tempR.data(),dir+"/"+fpref);
+                writeSingle(j+1,tempR.data(),dir+"/"+fpref);
             
             
         }
