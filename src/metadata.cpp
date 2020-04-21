@@ -212,12 +212,12 @@ else
 {
         int currentCol=0;
         vector<double> tempR;
-        tempR.resize(nPoints,0.0);
+        
         MPI_Comm col_comms;
         loadMat->commCreate(col_comms,0);
     for (int j = 0; j < nSets; j++)
     {
-
+            tempR.resize(nPoints,0.0);
             if(loadMat->pG->mycol == (j/loadMat->nb)%loadMat->pG->pcol)
             {
                 
