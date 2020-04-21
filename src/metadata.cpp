@@ -212,7 +212,7 @@ else
 {
         int currentCol=0;
         vector<double> tempR;
-        tempR.resize(nPoints);
+        tempR.resize(nPoints,0.0);
         MPI_Comm col_comms;
         loadMat->commCreate(col_comms,0);
     for (int j = 0; j < nSets; j++)
@@ -233,7 +233,7 @@ else
                 currentCol++;
                 
             }
-            MPI_Allreduce(MPI_IN_PLACE,tempR.data(),tempR.size(),MPI_DOUBLE,MPI_MAX,col_comms);
+            MPI_Allreduce(MPI_IN_PLACE,tempR.data(),tempR.size(),MPI_DOUBLE,MPI_SUM,col_comms);
             if((loadMat->pG->mycol == (j/loadMat->nb)%loadMat->pG->pcol) && (loadMat->pG->myrow==0))
                 writeSingle(j,tempR.data(),dir+"/"+fpref);
         }
