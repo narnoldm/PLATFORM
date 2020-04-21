@@ -212,12 +212,12 @@ else
 {
         int currentCol=0;
         vector<double> tempR;
-        
+        tempR.resize(nPoints,0);
         MPI_Comm col_comms;
         loadMat->commCreate(col_comms,0);
     for (int j = 0; j < nSets; j++)
     {
-            tempR.resize(nPoints,0.0);
+        std::fill(tempR.begin(),tempR.end(),0.0);
             if(loadMat->pG->mycol == (j/loadMat->nb)%loadMat->pG->pcol)
             {
                 
@@ -236,10 +236,11 @@ else
             MPI_Allreduce(MPI_IN_PLACE,tempR.data(),tempR.size(),MPI_DOUBLE,MPI_SUM,col_comms);
             if((loadMat->pG->mycol == (j/loadMat->nb)%loadMat->pG->pcol) && (loadMat->pG->myrow==0))
                 writeSingle(j,tempR.data(),dir+"/"+fpref);
+            
+            
         }
-
-        cout<<endl;
         tempR.clear();
+        cout<<endl;
     MPI_Comm_free(&col_comms);
     }
 }

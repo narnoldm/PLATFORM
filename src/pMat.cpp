@@ -745,9 +745,17 @@ bool operator==(pMat const &p1, pMat const &p2)
 int pMat::commCreate(MPI_Comm &col_comm,int dim)
 {
         if(dim==0)
+        {
+                cout<<pG->mycol<<" "<<pG->rank<<endl;
                 MPI_Comm_split(MPI_COMM_WORLD,pG->mycol,pG->rank,&col_comm);
+        }
         else if(dim==1)
-                MPI_Comm_split(MPI_COMM_WORLD,pG->myrow,pG->rank,&col_comm);
+        {
+                        MPI_Comm_split(MPI_COMM_WORLD,pG->myrow,pG->rank,&col_comm);
+        }
         else
                 throw(-1);
+
+
+        cout<<col_comm<<endl;
 }
