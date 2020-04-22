@@ -113,6 +113,7 @@ public:
 
 	int svd_run(int , int , int , int , pMat *&, pMat *&, std::vector<double> &);
 	int mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S);
+	int mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S, int mosStep, PGrid *procGrid);
 	//Utilities
 	int transpose(pMat *);
 	int transpose(pMat *, int , int , int , int );

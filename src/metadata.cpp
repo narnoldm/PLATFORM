@@ -218,29 +218,29 @@ else
     for (int j = 0; j < nSets; j++)
     {
         std::fill(tempR.begin(),tempR.end(),0.0);
-            if(loadMat->pG->mycol == (j/loadMat->nb)%loadMat->pG->pcol)
-            {
-                
-                for(int i=0;i<nPoints;i++)
-                {
-                    int xi= i%loadMat->mb;
-                    int li= i/(loadMat->pG->prow*loadMat->mb);
-                    if(loadMat->pG->myrow == (i/loadMat->mb)%loadMat->pG->prow)
-                    {
-                        tempR[i]=loadMat->dataD[currentCol*loadMat->myRC[0]+xi+li*loadMat->mb];
-                    }
-                }
-                currentCol++;
-                
-            }
-            MPI_Allreduce(MPI_IN_PLACE,tempR.data(),tempR.size(),MPI_DOUBLE,MPI_SUM,col_comms);
-            if((loadMat->pG->mycol == (j/loadMat->nb)%loadMat->pG->pcol) && (loadMat->pG->myrow==0))
-                writeSingle(j+1,tempR.data(),dir+"/"+fpref);
+        if(loadMat->pG->mycol == (j/loadMat->nb)%loadMat->pG->pcol)
+        {
             
+            for(int i=0;i<nPoints;i++)
+            {
+                int xi= i%loadMat->mb;
+                int li= i/(loadMat->pG->prow*loadMat->mb);
+                if(loadMat->pG->myrow == (i/loadMat->mb)%loadMat->pG->prow)
+                {
+                    tempR[i]=loadMat->dataD[currentCol*loadMat->myRC[0]+xi+li*loadMat->mb];
+                }
+            }
+            currentCol++;
             
         }
-        tempR.clear();
-        cout<<endl;
+        MPI_Allreduce(MPI_IN_PLACE,tempR.data(),tempR.size(),MPI_DOUBLE,MPI_SUM,col_comms);
+        if((loadMat->pG->mycol == (j/loadMat->nb)%loadMat->pG->pcol) && (loadMat->pG->myrow==0))
+            writeSingle(j+1,tempR.data(),dir+"/"+fpref);
+            
+            
+    }
+    tempR.clear();
+    cout<<endl;
     MPI_Comm_free(&col_comms);
     }
 }
