@@ -462,6 +462,147 @@ int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
 
         return 1;
 }
+
+
+int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S, int mosStep, PGrid *procGrid)
+{
+        int IA = ia + 1;
+        int JA = ja + 1;
+        int i_one = 1;
+        double t2, t1;
+        cout<<"starting MOS"<<endl;
+        int minMN=std::min(M,N);
+
+        pMat *corMat; 
+        pMat *corMatp0; 
+        pMat *VTp0;
+        pMat *V;
+
+        if ( (mosStep == 1) || (mosStep == 2) ) {
+                corMat = new pMat(minMN,minMN,procGrid,0,0,0.0);
+                if ( mosStep == 2 ) {
+                        corMatp0 = new pMat(minMN,minMN,procGrid,0,2,0.0);
+                        VTp0 = new pMat(minMN,minMN,procGrid,0,2,0.0);
+                }
+        }
+        
+        if(minMN==N)
+        {
+                // computing correlation matrix
+                if ( mosStep == 1 ) {
+                        corMat->matrix_Product('T','N',minMN,minMN,M,this,0,0,this,0,0,1.0,0.0,0,0);
+                        cout<<"cor Mat created"<<endl;
+
+                        corMat->write_bin("corMat.bin");
+                        delete corMat;
+                        return 0;
+                }
+
+                // computing singular values and right singular vectors
+                if ( mosStep == 2 ) {
+                        
+                        // configure corMat on proc 0
+                        std::string corMatString = "corMat.bin"; 
+                        corMat->read_bin(corMatString);
+                        corMatp0->changeContext(corMat);
+                        delete corMat;
+
+                        cout << minMN << endl;
+                        if(procGrid->rank==0)
+                        {
+                                cout<<"start eigensolve"<<endl;
+                                t1 = MPI_Wtime();
+
+                                // map corMatp0 to Eigen data structure
+                                Eigen::MatrixXd corMatEig= Eigen::Map<Eigen::MatrixXd>(corMatp0->dataD.data(),minMN,minMN);
+                                corMatEig = corMatEig.selfadjointView<Eigen::Upper>();
+
+                                // compute eigensolve
+                                Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(corMatEig);
+                                
+                                Eigen::MatrixXd VTEig(minMN,minMN);
+                                Eigen::VectorXd SEig(minMN);
+
+                                // Eigen gives eigenvalues in ascending order, reverse for descending order
+                                SEig=es.eigenvalues().reverse();
+                                VTEig=es.eigenvectors().rowwise().reverse();
+                                
+                                // map Eigen objects to double vectors
+                                Eigen::Map<Eigen::MatrixXd>(VTp0->dataD.data(),VTEig.rows(),VTEig.cols())=VTEig;
+                                Eigen::Map<Eigen::VectorXd>(S.data(),minMN)=SEig;
+
+                                cout << S.size() << endl;
+                                // singular values of A are square roots of eigenvalues of A^T*A
+                                for(int i=0;i<S.size();i++) {
+                                        if (S[i] < 0.0)
+                                                S[i] = 0.0;
+                                        S[i]=std::sqrt(S[i]);
+                                }
+                                t2 = MPI_Wtime();
+                                cout<<"finish eigensolve in " << t2 - t1 << " seconds" << endl;
+
+                                // write singular values
+                                FILE* fid;
+                                fid = fopen("S.bin","wb");
+                                fwrite(S.data(), sizeof(double), N, fid);
+                                fclose(fid);
+
+                        }
+                        MPI_Barrier(MPI_COMM_WORLD);
+
+                        // write right singular vectors
+                        V = new pMat(minMN, minMN, procGrid, 0, 0, 0.0);
+                        V->changeContext(VTp0);
+                        cout << "write V" << endl;
+                        V->write_bin("V.bin");
+
+                        delete corMatp0;
+                        delete VTp0;
+                
+                        return 0;
+
+                } else if ( mosStep == 3 ) {
+                        // compute left singular vectors
+
+                        V = new pMat(VT->M,VT->N,VT->pG,0,VT->block,0.0);
+                        std::string Vstring = "V.bin";
+                        V->read_bin(Vstring);
+
+                        FILE* fid;
+                        fid = fopen("S.bin","rb");
+                        fread(S.data(), sizeof(double), N, fid);
+
+                        VT->transpose(V);
+                        delete V;
+
+                        t1 = MPI_Wtime();
+                        for(int i=0;i<minMN;i++)
+                        {
+                                cout<<i<<endl;
+                                U->matrix_Product('N','T',M,1,minMN,this,0,0,VT,i,0,(1.0/S[i]),0.0,0,i);
+                        }
+                        t2 = MPI_Wtime();
+                        cout << "MOS SVD complete in " << t2 - t1 << " seconds" << endl;
+
+                        return 0;  
+
+                }
+
+                cout << "Invalid value of mosStep: " << mosStep << endl;
+                throw(-1);
+
+        }
+        
+
+
+        else
+        {
+                cout<<"min M not supported yet"<<endl;
+                throw(-1);
+        }
+}
+
+// mos_run for full run
 int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S)
 {
         int IA = ia + 1;
@@ -470,47 +611,60 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         double t2, t1;
         cout<<"starting MOS"<<endl;
         int minMN=std::min(M,N);
+        
         pMat *corMat = new pMat(minMN,minMN,pG,0,0,0.0);
-        pMat * corMatp0 = new pMat(minMN,minMN,pG,0,2,0.0);
-        pMat * VTp0 = new pMat(minMN,minMN,pG,0,2,0.0);
+        pMat *corMatp0 = new pMat(minMN,minMN,pG,0,2,0.0);
+        pMat *VTp0 = new pMat(minMN,minMN,pG,0,2,0.0);
+        
         if(minMN==N)
         {
                 corMat->matrix_Product('T','N',minMN,minMN,M,this,0,0,this,0,0,1.0,0.0,0,0);
                 cout<<"cor Mat created"<<endl;
+
                 corMatp0->changeContext(corMat);
+                delete corMat;
+
                 cout<<"start eigensolve"<<endl;
-                 t1 = MPI_Wtime();
                 if(pG->rank==0)
                 {
-                Eigen::MatrixXd corMatEig= Eigen::Map<Eigen::MatrixXd>(corMatp0->dataD.data(),minMN,minMN);
-                corMatEig = corMatEig.selfadjointView<Eigen::Upper>();
-                Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(corMatEig);
-                
-                Eigen::MatrixXd VTEig(minMN,minMN);
-                Eigen::VectorXd SEig(minMN);
+                        t1 = MPI_Wtime();
+                        Eigen::MatrixXd corMatEig= Eigen::Map<Eigen::MatrixXd>(corMatp0->dataD.data(),minMN,minMN);
+                        corMatEig = corMatEig.selfadjointView<Eigen::Upper>();
+                        Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(corMatEig);
+                        
+                        Eigen::MatrixXd VTEig(minMN,minMN);
+                        Eigen::VectorXd SEig(minMN);
 
-                SEig=es.eigenvalues().reverse();
-                VTEig=es.eigenvectors().rowwise().reverse();
-                
+                        // eigen gives eigenvalues in ascending order, reverse for descending order
+                        SEig=es.eigenvalues().reverse();
+                        VTEig=es.eigenvectors().rowwise().reverse();
+                        
+                        // map Eigen objects to double vectors
+                        Eigen::Map<Eigen::MatrixXd>(VTp0->dataD.data(),VTEig.rows(),VTEig.cols())=VTEig;
+                        Eigen::Map<Eigen::VectorXd>(S.data(),minMN)=SEig;
 
-                Eigen::Map<Eigen::MatrixXd>(VTp0->dataD.data(),VTEig.rows(),VTEig.cols())=VTEig;
-                Eigen::Map<Eigen::VectorXd>(S.data(),minMN)=SEig;
-
-                for(int i=0;i<S.size();i++)
-                        S[i]=std::sqrt(S[i]);
-
-
+                        // singular values of A are square roots of eigenvalues of A^T*A
+                        for(int i=0;i<S.size();i++) {
+                                if (S[i] < 0.0)
+                                        S[i] = 0.0;
+                                S[i]=std::sqrt(S[i]);
+                        }
+                        t2 = MPI_Wtime();
+                        cout<<"finish eigensolve in " << t2 - t1 << " seconds" << endl;
                 }
-                cout<<"finish eigensolve"<<endl;
+                        
+                delete corMatp0;
+
                 MPI_Bcast(S.data(), S.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
                 pMat *V = new pMat(VT->M,VT->N,VT->pG,0,VT->block,0.0);
                 V->changeContext(VTp0);
+                
+                delete VTp0;
+
                 VT->transpose(V);
                 delete V;
 
-                delete VTp0;
-                delete corMatp0;
-
+                t1 = MPI_Wtime();
                 for(int i=0;i<minMN;i++)
                 {
                         cout<<i<<endl;
@@ -519,9 +673,9 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
                 t2 = MPI_Wtime();
                 cout << "MOS SVD complete in " << t2 - t1 << " seconds" << endl;
 
-        }
-        
+                return 0;                
 
+        }
 
         else
         {

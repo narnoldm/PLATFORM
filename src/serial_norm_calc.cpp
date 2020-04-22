@@ -1,6 +1,7 @@
 #include "inputReader.hpp"
 
-
+#include <limits>
+typedef numeric_limits<double> dbl;
 
 int main(int argc, char *argv[])
 {
@@ -47,6 +48,7 @@ int main(int argc, char *argv[])
     for(int j=0;j<data.size();j++)
             average[j]/=M;
 
+    cout.precision(dbl::max_digits10);
     cout<<average[0]<<endl;
 
     for(int i=dataset1->snap0;i<=dataset1->snapF;i=i+dataset1->snapSkip)
