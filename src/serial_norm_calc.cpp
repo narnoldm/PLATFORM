@@ -16,9 +16,14 @@ int main(int argc, char *argv[])
     std::ofstream sink("/dev/null");
     streambuf *strm_buffer = cout.rdbuf();
     int debug_proc=0;
+    string avgFile;
     if(argc>2)
     {
         debug_proc=atoi(argv[2]);
+        if (argc > 3) {
+            avgFile = argv[3];
+        }
+
     }
     if (rank != debug_proc)
     {
@@ -39,33 +44,57 @@ int main(int argc, char *argv[])
     average.resize(N);
     sum.resize(N);
 
-    for(int i=dataset1->snap0;i<=dataset1->snapF;i=i+dataset1->snapSkip)
-    {
-        dataset1->readSingle(i,data.data());
+    cout.precision(dbl::max_digits10);
+    double val = 0.0;
+    if (argc < 4) {
+        for(int i=dataset1->snap0;i<=dataset1->snapF;i=i+dataset1->snapSkip)
+        {
+            dataset1->readSingle(i,data.data());
+            
+            for(int j=0;j<data.size();j++)
+                average[j]+=data[j];
+        }
         for(int j=0;j<data.size();j++)
-            average[j]+=data[j];
-    }
-    for(int j=0;j<data.size();j++)
             average[j]/=M;
 
-    cout.precision(dbl::max_digits10);
-    cout<<average[0]<<endl;
+        cout<<average[0]<<endl;
 
-    for(int i=dataset1->snap0;i<=dataset1->snapF;i=i+dataset1->snapSkip)
-    {
-        dataset1->readSingle(i,data.data());
+        for(int i=dataset1->snap0;i<=dataset1->snapF;i=i+dataset1->snapSkip)
+        {
+            dataset1->readSingle(i,data.data());
+            for(int j=0;j<data.size();j++)
+                sum[j]+=(data[j]-average[j])*(data[j]-average[j]);
+        }
         for(int j=0;j<data.size();j++)
-            sum[j]+=(data[j]-average[j])*(data[j]-average[j]);
+                sum[j]/=M;
+
+        
+        for(int j=0;j<data.size();j++)
+            val+=sum[j];
+
+        val/=N;
+        val=sqrt(val);
+
+    } else {
+        // load average file
+        dataset1->readAvg(avgFile);
+
+        for(int i = dataset1->snap0; i <= dataset1->snapF; i= i + dataset1->snapSkip)
+        {
+            dataset1->readSingle(i,data.data());
+            
+            for(int j = 0; j < data.size(); j++) {
+                sum[j] += (data[j] - dataset1->average[j])*(data[j] - dataset1->average[j]);
+            }
+        }
+
+        for(int j = 0; j < data.size(); j++)
+            val += sum[j];
+
+        val /= (M*N);
+        val = sqrt(val);
+
     }
-    for(int j=0;j<data.size();j++)
-            sum[j]/=M;
-
-    double val=0.0;
-    for(int j=0;j<data.size();j++)
-        val+=sum[j];
-
-    val/=N;
-    val=sqrt(val);
 
 
     cout<<val<<endl;
