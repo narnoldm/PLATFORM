@@ -108,6 +108,7 @@ public:
 	//PBLAS
 	int matrix_Product(char , char , int , int , int , pMat *, int , int , pMat *, int , int , double , double , int , int );
 	int matrix_Sum(char , int , int , pMat *, int , int , int , int , double , double );
+	int matrix_Product_sym(char uplo, char trans, int n, int k, double alpha, pMat *A, int ia, int ja, double beta, int ic, int jc);
 
 	//Scalapack
 
