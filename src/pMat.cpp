@@ -388,6 +388,18 @@ int pMat::matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia,
         return 0;
 }
 
+// int pMat::matrix_SymProd(char uplo, char trans, int n, int k, double alpha, pMat *A, int ia, int ja, double beta, int ic, int jc)
+int pMat::matrix_Product_sym(char uplo, char trans, int n, int k, double alpha, pMat *A, int ia, int ja, double beta, int ic, int jc) {
+        
+        int IA = ia + 1;
+        int JA = ja + 1;
+        int IC = ic + 1;
+        int JC = jc + 1;
+        pdsyrk(&uplo, &trans, &n, &k, &alpha, A->dataD.data(), &IA, &JA, A->desc, &beta, dataD.data(), &IC, &JC, desc);
+
+        return 0;
+}
+
 int pMat::matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int jb, double alpha, double beta)
 {
 
@@ -490,8 +502,10 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         {
                 // computing correlation matrix
                 if ( mosStep == 1 ) {
-                        corMat->matrix_Product('T','N',minMN,minMN,M,this,0,0,this,0,0,1.0,0.0,0,0);
-                        cout<<"cor Mat created"<<endl;
+                        cout << "Calculating correlation matrix" << endl;
+                        corMat->matrix_Product_sym('U', 'T', minMN, M, 1.0, this, 0, 0, 0.0, 0, 0);
+                        // corMat->matrix_Product('T','N',minMN,minMN,M,this,0,0,this,0,0,1.0,0.0,0,0);
+                        cout << "Correlation matrix calculated" << endl;
 
                         corMat->write_bin("corMat.bin");
                         delete corMat;
