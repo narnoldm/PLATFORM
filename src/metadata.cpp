@@ -172,6 +172,14 @@ bool meta::batchWrite(pMat *loadMat)
 }
 bool meta::batchWrite(pMat *loadMat, string dir, string fpref)
 {
+    batchWrite(loadMat,dir,fpref,0,nSets,1);
+}
+bool meta::batchWrite(pMat *loadMat, string dir, string fpref,int nModes)
+{
+    batchWrite(loadMat,dir,fpref,0,nModes,1);
+}
+bool meta::batchWrite(pMat *loadMat, string dir, string fpref ,int mStart,int mEnd,int mSkip)
+{
     assert(system(NULL)); //check if system commands work
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -191,7 +199,7 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref)
 if(loadMat->block==1)
 {
     assert(loadMat->mb == nPoints);
-    for (int i = 0; i < nSets; i++)
+    for (int i = mStart-1; i < mEnd; i=i+mSkip)
     {
         iP = (int)(i / loadMat->nb);
         while (iP > (loadMat->pG->pcol - 1))
@@ -215,7 +223,7 @@ else
         tempR.resize(nPoints,0);
         MPI_Comm col_comms;
         loadMat->commCreate(col_comms,0);
-    for (int j = 0; j < nSets; j++)
+    for (int j = mStart-1; j < mEnd; j=j+mSkip)
     {
         std::fill(tempR.begin(),tempR.end(),0.0);
         if(loadMat->pG->mycol == (j/loadMat->nb)%loadMat->pG->pcol)

@@ -12,6 +12,7 @@ int main(int argc, char *argv[])
     streambuf *strm_buffer = cout.rdbuf();
     int debug_proc=0;
     int mosStep = 0;
+    int modeStart, modeEnd;
     string avgFile;
     if(argc>2)
     {
@@ -20,8 +21,17 @@ int main(int argc, char *argv[])
         {
             avgFile=argv[3];
              
-            if (argc>4) {
+            if (argc > 4) {
                 mosStep = atoi(argv[4]);
+
+                // modeStart and modeEnd
+                if (argc > 5) {
+                    modeStart = atoi(argv[5]);
+                    if (argc > 6) {
+                        modeEnd = atoi(argv[6]);
+                    }
+                }
+
             }
 
         }
@@ -71,26 +81,33 @@ int main(int argc, char *argv[])
     vector<double> S;
 
     if ( (mosStep == 0) || (mosStep == 3) ) {
-        U=new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
+        if (argc < 7) {
+            modeEnd = dataset1->nSets;
+            if (argc < 6) {
+                modeStart = 1;
+            }
+        }
+        int nModes = modeEnd - modeStart + 1;
+        U=new pMat(dataset1->nPoints,nModes,evenG,0,0,0.0);
         VT=new pMat(dataset1->nSets,dataset1->nSets,evenG,0,0,0.0);
     }
     if ( (mosStep == 0) || (mosStep == 2) || (mosStep == 3) ) {
         S.resize(dataset1->nSets);
     }
 
-    if(dataset1->nPoints/dataset1->nSets >=100)
-    {
+    // if(dataset1->nPoints/dataset1->nSets >=100)
+    // {
         if (mosStep == 0) {
             evenMat->mos_run(dataset1->nPoints,dataset1->nSets,0,0,U,VT,S);
         } else {
-            evenMat->mos_run(dataset1->nPoints,dataset1->nSets,0,0,U,VT,S,mosStep,evenG);
+            evenMat->mos_run(dataset1->nPoints,dataset1->nSets,0,0,U,VT,S,modeStart,modeEnd,mosStep,evenG);
         }
         
-    }
-    else
-    {
-        evenMat->svd_run(dataset1->nPoints,dataset1->nSets,0,0,U,VT,S);
-    }
+    // }
+    // else
+    // {
+    //     evenMat->svd_run(dataset1->nPoints,dataset1->nSets,0,0,U,VT,S);
+    // }
 
     if ( (mosStep == 0) || (mosStep == 2) ) {
         if (evenG->rank == 0) {
@@ -120,7 +137,7 @@ int main(int argc, char *argv[])
 
 
         Uout->activateGEMSbin("");
-        Uout->batchWrite(U);
+        Uout->batchWrite(U,"Spatial_Modes", "Spatial_Mode_", modeStart, modeEnd, 1);
 
     }
     
