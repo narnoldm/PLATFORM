@@ -109,12 +109,19 @@ public:
 	int matrix_Product(char , char , int , int , int , pMat *, int , int , pMat *, int , int , double , double , int , int );
 	int matrix_Sum(char , int , int , pMat *, int , int , int , int , double , double );
 	int matrix_Product_sym(char uplo, char trans, int n, int k, double alpha, pMat *A, int ia, int ja, double beta, int ic, int jc);
+	int matrix_vec_product(char trans, int m, int n, double alpha, pMat *A, int ia, int ja, pMat* B, int ib, int jb, 
+                             double beta, int ic, int jc);
 
 	//Scalapack
 
 	int svd_run(int , int , int , int , pMat *&, pMat *&, std::vector<double> &);
+
+	// MOS
 	int mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S);
-	int mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S, int mosStep, PGrid *procGrid);
+	int mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S, int modeStart, int modeEnd);
+	int mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S, int modeStart, int modeEnd, 
+				int mosStep, PGrid *procGrid);
+	
 	//Utilities
 	int transpose(pMat *);
 	int transpose(pMat *, int , int , int , int );

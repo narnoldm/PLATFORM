@@ -388,7 +388,7 @@ int pMat::matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia,
         return 0;
 }
 
-// int pMat::matrix_SymProd(char uplo, char trans, int n, int k, double alpha, pMat *A, int ia, int ja, double beta, int ic, int jc)
+// symmetric matrix product A^T*A or A*A^T
 int pMat::matrix_Product_sym(char uplo, char trans, int n, int k, double alpha, pMat *A, int ia, int ja, double beta, int ic, int jc) {
         
         int IA = ia + 1;
@@ -398,6 +398,25 @@ int pMat::matrix_Product_sym(char uplo, char trans, int n, int k, double alpha, 
         pdsyrk(&uplo, &trans, &n, &k, &alpha, A->dataD.data(), &IA, &JA, A->desc, &beta, dataD.data(), &IC, &JC, desc);
 
         return 0;
+}
+
+// matrix vector product A*X, where X is a subvector of pMat* B
+int pMat::matrix_vec_product(char trans, int m, int n, double alpha, pMat *A, int ia, int ja, pMat* B, int ib, int jb, 
+                             double beta, int ic, int jc) {
+
+        int IA = ia + 1;
+        int JA = ja + 1;
+        int IB = ib + 1;
+        int JB = jb + 1;
+        int IC = ic + 1;
+        int JC = jc + 1;
+        int INCB = 1;
+        int INCC = 1;
+        pdgemv(&trans, &m, &n, &alpha, A->dataD.data(), &IA, &JA, A->desc, B->dataD.data(), &IB, &JB, B->desc, &INCB, &beta, dataD.data(), &IC, &JC, desc, &INCC);
+
+        return 0;                             
+        
+
 }
 
 int pMat::matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int jb, double alpha, double beta)
@@ -476,7 +495,8 @@ int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
 }
 
 
-int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S, int mosStep, PGrid *procGrid)
+int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S, int modeStart, int modeEnd,
+                  int mosStep, PGrid *procGrid)
 {
         int IA = ia + 1;
         int JA = ja + 1;
@@ -586,17 +606,23 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
                         fid = fopen("S.bin","rb");
                         fread(S.data(), sizeof(double), N, fid);
 
-                        VT->transpose(V);
-                        delete V;
+                        // VT->transpose(V);
+                        // delete V;
 
                         t1 = MPI_Wtime();
-                        for(int i=0;i<minMN;i++)
+                        int modeCount = 0;
+                        for(int i = modeStart - 1; i < modeEnd; i++)
                         {
-                                cout<<i<<endl;
-                                U->matrix_Product('N','T',M,1,minMN,this,0,0,VT,i,0,(1.0/S[i]),0.0,0,i);
+                                cout << "Processing left singular vector " << (i+1) << endl;
+                                // U->matrix_Product('N','N',M,1,minMN,this,0,0,V,0,i,(1.0/S[i]),0.0,0,modeCount);
+                                U->matrix_vec_product('N', M, N, (1.0/S[i]), this, 0, 0, V, 0, i, 0.0, 0, modeCount);
+                                modeCount++;
                         }
                         t2 = MPI_Wtime();
                         cout << "MOS SVD complete in " << t2 - t1 << " seconds" << endl;
+
+                        VT->transpose(V);
+                        delete V;
 
                         return 0;  
 
@@ -617,7 +643,15 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
 }
 
 // mos_run for full run
-int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S)
+int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S) {
+
+        int modeStart = 1;
+        int modeEnd = N;
+        mos_run(M, N, ia, ja, U, VT, S, modeStart, modeEnd);
+
+}
+
+int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S, int modeStart, int modeEnd)
 {
         int IA = ia + 1;
         int JA = ja + 1;
