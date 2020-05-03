@@ -602,36 +602,36 @@ void tecIO::genHash(string filename)
         if(filename!="")
         {
             int var_index = 0;
-        var_index = getVariableIndex("cell_id",filename);
-        if (!rank)
-        {
-                int hashType;
-                cellID.resize(nCells);
-                tecFileReaderOpen(filename.c_str(), &fH);
-                tecZoneVarGetType(fH, 1, var_index, &hashType);
-                if (hashType == 3)
-                {
-                        tecZoneVarGetInt32Values(fH, 1, var_index, 1, nCells, cellID.data());
-                }
-                if (hashType == 2)
-                {
-                        std::vector<float> hashTemp(nCells, 0.0);
-                        tecZoneVarGetFloatValues(fH, 1, var_index, 1, nCells, hashTemp.data());
-                        for (int i = 0; i < hash.size(); i++)
-                                hash[i] = (int)(hashTemp[i]);
-                        hashTemp.clear();
-                }
-                tecFileReaderClose(&fH);
-                for (int i = 0; i < nCells; i++)
-                {
-                        cellID[i]--;
-                        hash[cellID[i]] = i;
-                }
-                printf("hash table built\nDistributing to procs\n");
-        }
-        
-        MPI_Bcast(hash.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
-        MPI_Bcast(cellID.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
+            var_index = getVariableIndex("cell_id",filename);
+            if (!rank)
+            {
+                    int hashType;
+                    cellID.resize(nCells);
+                    tecFileReaderOpen(filename.c_str(), &fH);
+                    tecZoneVarGetType(fH, 1, var_index, &hashType);
+                    if (hashType == 3)
+                    {
+                            tecZoneVarGetInt32Values(fH, 1, var_index, 1, nCells, cellID.data());
+                    }
+                    if (hashType == 2)
+                    {
+                            std::vector<float> hashTemp(nCells, 0.0);
+                            tecZoneVarGetFloatValues(fH, 1, var_index, 1, nCells, hashTemp.data());
+                            for (int i = 0; i < hash.size(); i++)
+                                    hash[i] = (int)(hashTemp[i]);
+                            hashTemp.clear();
+                    }
+                    tecFileReaderClose(&fH);
+                    for (int i = 0; i < nCells; i++)
+                    {
+                            cellID[i]--;
+                            hash[cellID[i]] = i;
+                    }
+                    printf("hash table built\nDistributing to procs\n");
+            }
+            
+            MPI_Bcast(hash.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
+            MPI_Bcast(cellID.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
         }
         else
         {
