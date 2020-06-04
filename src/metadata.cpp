@@ -243,8 +243,10 @@ else
         }
         MPI_Allreduce(MPI_IN_PLACE,tempR.data(),tempR.size(),MPI_DOUBLE,MPI_SUM,col_comms);
         if((loadMat->pG->mycol == (j/loadMat->nb)%loadMat->pG->pcol) && (loadMat->pG->myrow==0))
-            writeSingle(j+1,tempR.data(),dir+"/"+fpref);
-            
+        {
+	    printf("proc %d is writing %d\n",loadMat->pG->rank,j);
+	    writeSingle(j+1,tempR.data(),dir+"/"+fpref);
+        }    
             
     }
     tempR.clear();
@@ -297,7 +299,7 @@ void tecIO::init(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
     for (int i = snap0; i <= snapF; i = i + snapSkip)
         nSets++;
     checkSize();
-    checkExists();
+    //checkExists();
     isInit = true;
     cout << nPoints << " " << nSets << endl;
 }
@@ -468,7 +470,7 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref)
 
     if(GEMSbin)
     {
-    cout << "bin write single" << endl;
+    cout << "bin write single "<<fileID << endl;
     FILE *fid;
     fid = fopen((fpref + to_string(fileID) + ".bin").c_str(), "wb");
 
@@ -953,26 +955,28 @@ void tecIO::readAvg(std::string filename)
 {
         if (average.size() != nPoints)
         {
-                printf("Allocating Average as %d cells\n", nPoints);
+		cout<<"Allocating Average as "<<nPoints<<" cells"<<endl;
                 average.resize(nPoints, 0.0);
-                printf("Average Allocated\n");
+                cout<<"Average Allocated"<<endl;
         }
         int rank;
         MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-        if (rank == 0)
-        {
+        //if (rank == 0)
+        //{
                 void *fH;
                 tecFileReaderOpen(filename.c_str(), &fH);
                 int type;
                 std::vector<float> get;
+		int ii;
                 for (int i = 0; i < numVars; i++)
                 {
-                        tecZoneVarGetType(fH, 1, i+dim+1, &type);
+			ii=getVariableIndex(varName[i],filename);
+                        tecZoneVarGetType(fH, 1, ii, &type);
                         if (type == 1)
                         {
                                 //get= new float[nCells];
                                 get.resize(nCells);
-                                tecZoneVarGetFloatValues(fH, 1, i+dim+1, 1, nCells, get.data());
+                                tecZoneVarGetFloatValues(fH, 1, ii, 1, nCells, get.data());
                                 for (int j = 0; j < nCells; j++)
                                 {
                                         average[j + i * nCells] = (double)get[j];
@@ -982,15 +986,16 @@ void tecIO::readAvg(std::string filename)
                         }
                         else if (type == 2)
                         {
-                                tecZoneVarGetDoubleValues(fH, 1, i+dim+1, 1, nCells, &(average[i * nCells]));
+                                tecZoneVarGetDoubleValues(fH, 1, ii, 1, nCells, &(average[i * nCells]));
                         }
                 }
                 tecFileReaderClose(&fH);
                 std::cout<<"average loaded from :"<<filename<<std::endl;
-        }
-
-        MPI_Bcast(average.data(), nPoints, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-        if(rank==0)
+        //}
+        //printf("%d\n",nPoints);
+	MPI_Barrier(MPI_COMM_WORLD);
+        //MPI_Bcast(average.data(), nPoints, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        //if(rank==0)
                 std::cout<<"average Broad-casted"<<std::endl;
 }
 
