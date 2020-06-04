@@ -33,6 +33,19 @@ int main(int argc, char *argv[])
     cout<<"input string is: "<<input<<endl;
     vector<string> tokens;
     tokenparse(input,"|",tokens);
+    tokens.push_back("Static_Pressure");
+    tokens.push_back("-1");
+    tokens.push_back("W");
+    tokens.push_back("-1");
+    tokens.push_back("Temperature");
+    tokens.push_back("-1");
+    tokens.push_back("Flamelet_Scalar_Mean");
+    tokens.push_back("-1");
+    tokens.push_back("Flamelet_Scalar_Variance");
+    tokens.push_back("-1");
+    tokens.push_back("Flamelet_Parameter");
+    tokens.push_back("-1");
+
 
     tecIO *dataset1=new tecIO(tokens);
     //check for non standard input file name
@@ -65,13 +78,15 @@ int main(int argc, char *argv[])
             for(int j=0;j<data.size();j++)
                 sum[j]+=(data[j]-average[j])*(data[j]-average[j]);
         }
+        cout<<sum[0]<<endl;
         for(int j=0;j<data.size();j++)
                 sum[j]/=M;
 
-        
+        cout<<sum[0]<<endl;
         for(int j=0;j<data.size();j++)
             val+=sum[j];
 
+	cout<<val<<endl;
         val/=N;
         val=sqrt(val);
 
@@ -82,18 +97,28 @@ int main(int argc, char *argv[])
         for(int i = dataset1->snap0; i <= dataset1->snapF; i= i + dataset1->snapSkip)
         {
             dataset1->readSingle(i,data.data());
-            
+            cout<<sum[0]<<endl;           
+            cout<<data[0]<<"-"<<dataset1->average[0]<<"="<<data[0] - dataset1->average[0]<<endl;
             for(int j = 0; j < data.size(); j++) {
                 sum[j] += (data[j] - dataset1->average[j])*(data[j] - dataset1->average[j]);
             }
         }
+    	cout<<sum[0]<<endl;
+        for(int j=0;j<data.size();j++)
+                sum[j]/=M;
+	cout<<sum[0]<<endl;
+        
+	for(int k =0; k<dataset1->numVars;k++)
+	{
+	val =0;
+	for(int j = 0; j < dataset1->nCells; j++)
+            val += sum[k*dataset1->nCells+j];
 
-        for(int j = 0; j < data.size(); j++)
-            val += sum[j];
-
-        val /= (M*N);
+	cout<<val<<endl;
+        val /= dataset1->nCells;
         val = sqrt(val);
-
+	cout<<val<<endl;
+	}
     }
 
 
