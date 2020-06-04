@@ -114,7 +114,9 @@ int main(int argc, char *argv[])
             printASCIIVecP0("S.txt",S.data(),S.size());
         }
     }
-
+    
+    delete evenMat;
+    
     if ( (mosStep == 0) || (mosStep == 3) ) {
 
         VT->write_bin("VT.bin");
