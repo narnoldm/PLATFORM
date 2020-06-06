@@ -245,7 +245,7 @@ else
         if((loadMat->pG->mycol == (j/loadMat->nb)%loadMat->pG->pcol) && (loadMat->pG->myrow==0))
         {
 	    printf("proc %d is writing %d\n",loadMat->pG->rank,j);
-	    writeSingle(j+1,tempR.data(),dir+"/"+fpref);
+	    writeSingle(j+snap0,tempR.data(),dir+"/"+fpref);
         }    
             
     }
