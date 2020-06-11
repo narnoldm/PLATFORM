@@ -113,6 +113,18 @@ int main(int argc, char *argv[])
             prepConsVarProc(dataset1, pIdx, tIdx, densityIdx, enthalpyIdx, vIdxs, scalarIdxs, groupRef, normFactor_int);
             nUniqueGroups = normFactor_int.size();
 
+            // cout << "groupref size: " << groupRef.size() << endl;
+            // cout << "number unique groups: " << nUniqueGroups << endl;
+            // for (int i = 0; i < nUniqueGroups; ++i) {
+            //     cout << "group " << i << endl;
+            //     for (int j = 0; j < groupRef[i].size(); ++j) 
+            //         cout << groupRef[i][j] << endl;
+
+            //     cout << "norm fac" << endl;
+            //     cout << normFactor_int[i] << endl;
+            // }
+            // exit(0);
+
         // otherwise do this in a more general manner
         } else {
             // get sorted list of unique norm factors
@@ -200,6 +212,12 @@ int main(int argc, char *argv[])
             }
         }
 
+        vector<double> dataSnap_consv;
+        if (calcConsv) {
+            dataSnap_consv.resize(dataSizeGroup);
+            sum_consv.resize(dataSizeGroup);
+        }
+
         // read through each snapshot
         cout << "Calculating L2 norm for mean-subtracted values..." << endl;
         for(int i = dataset1->snap0; i <= dataset1->snapF; i= i + dataset1->snapSkip) {
@@ -229,10 +247,7 @@ int main(int argc, char *argv[])
             }
 
             // compute running sum for conservative variable magnitudes
-            vector<double> dataSnap_consv;
             if (calcConsv) {
-                dataSnap_consv.resize(dataSizeGroup);
-                sum_consv.resize(dataSizeGroup);
                 for (int iCell = 0; iCell < dataset1->nCells; ++iCell) {
                     // collect data necessary to compute conservative variables
                     pressure  = dataSnap[iCell];
@@ -361,11 +376,13 @@ void prepConsVarProc(tecIO* dataset, int& pressIdx, int& tempIdx, int& densIdx, 
     //      i.e. pressure, velocity, temperature, transported scalars
     vector<int> pressVec; pressVec.push_back(pressIdx);
     vector<int> tempVec; tempVec.push_back(tempIdx);
+    vector<int> scalarVec(1);
     refIdxs.push_back(pressVec);
     refIdxs.push_back(velIdxs);
     refIdxs.push_back(tempVec);
     for (int i = 0; i < transScalarIdxs.size(); ++i) {
-        refIdxs.push_back(transScalarIdxs);
+        scalarVec[0] = transScalarIdxs[i];
+        refIdxs.push_back(scalarVec);
     }
 
     // there's definitely a more elegant way of doing this
