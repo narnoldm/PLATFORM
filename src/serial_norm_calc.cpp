@@ -113,18 +113,6 @@ int main(int argc, char *argv[])
             prepConsVarProc(dataset1, pIdx, tIdx, densityIdx, enthalpyIdx, vIdxs, scalarIdxs, groupRef, normFactor_int);
             nUniqueGroups = normFactor_int.size();
 
-            // cout << "groupref size: " << groupRef.size() << endl;
-            // cout << "number unique groups: " << nUniqueGroups << endl;
-            // for (int i = 0; i < nUniqueGroups; ++i) {
-            //     cout << "group " << i << endl;
-            //     for (int j = 0; j < groupRef[i].size(); ++j) 
-            //         cout << groupRef[i][j] << endl;
-
-            //     cout << "norm fac" << endl;
-            //     cout << normFactor_int[i] << endl;
-            // }
-            // exit(0);
-
         // otherwise do this in a more general manner
         } else {
             // get sorted list of unique norm factors
