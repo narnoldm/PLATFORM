@@ -83,6 +83,8 @@ int main(int argc, char *argv[])
         for(int k=0;k<10;k++)//q.nelements;k++)
         {
             //q.dataD[k]-=VVTq.dataD[k];
+            cout<<VTq.dataD[k]<<endl;
+            cout<<VVTq.dataD[k]<<endl;
             err[i]+=VVTq.dataD[k];//*q.dataD[k]; 
         }
     }
