@@ -418,12 +418,12 @@ bool tecIO::readSingle(int fileID, double *point)
             std::vector<double> temp(nCells,0.0); 
             for(int j=0;j<nCells;j++)
             {
-                temp[i]=point[i*nCells+j];
+                temp[j]=point[i*nCells+j];
             }
             for(int j=0;j<nCells;j++)
             {
-                point[i*nCells+j]=temp[hash[j]];
-                hash[j]=j; 
+                point[i*nCells+j]=temp[idx[j]];
+                //hash[j]=j; 
             }
             temp.clear();
         }
@@ -550,7 +550,7 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref)
     for (int i = 0; i < numVars; i++)
     {
         for (int j = 0; j < nCells; j++)
-           fwrite(&point[i * nCells + hash[j]], sizeof(double), 1, fid);
+           fwrite(&point[i * nCells + idx[j]], sizeof(double), 1, fid);
     }
     fclose(fid);
 
@@ -665,10 +665,11 @@ void tecIO::checkMeshDim(string filename)
 
 void tecIO::genHash(string filename)
 {
-        if(hash.size()!=0)
+        if(idx.size()!=0)
             return; 
 
-        hash.resize(nCells, 0);
+        idx.resize(nCells, 0);
+        iota(idx.begin(),idx.end(),0);
         cellID.resize(nCells, 0);
         void *fH;
         int rank;
@@ -687,25 +688,26 @@ void tecIO::genHash(string filename)
                     {
                             tecZoneVarGetInt32Values(fH, 1, var_index, 1, nCells, cellID.data());
                     }
-                    if (hashType == 2)
+                    else
                     {
-                            std::vector<float> hashTemp(nCells, 0.0);
-                            tecZoneVarGetFloatValues(fH, 1, var_index, 1, nCells, hashTemp.data());
-                            for (int i = 0; i < hash.size(); i++)
-                                    hash[i] = (int)(hashTemp[i]);
-                            hashTemp.clear();
+                        throw(-1);
                     }
                     tecFileReaderClose(&fH);
                     for (int i = 0; i < nCells; i++)
                     {
                             cellID[i]--;
-                            hash[cellID[i]] = i;
                     }
+
                     printf("hash table built\nDistributing to procs\n");
             }
             
-            MPI_Bcast(hash.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
+            MPI_Bcast(idx.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
             MPI_Bcast(cellID.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
+            stable_sort(idx.begin(),idx.end(),[&](int i,int j){return cellID[i]<cellID[j];} );
+            for(int i=0;i<5;i++)
+            {
+                cout<<idx[i]<<endl;
+            }
         }
         else
         {
@@ -713,7 +715,6 @@ void tecIO::genHash(string filename)
             for(int i=0;i<nCells;i++)
             {
                 cellID[i]=i;
-                hash[cellID[i]]=i;
             }
         }
 }
@@ -1066,12 +1067,12 @@ void tecIO::readAvg(std::string filename)
                             std::vector<double> temp(nCells,0.0); 
                             for(int j=0;j<nCells;j++)
                             {
-                                temp[i]=average[i*nCells+j];
+                                temp[j]=average[i*nCells+j];
                             }
                             for(int j=0;j<nCells;j++)
                             {
-                                average[i*nCells+j]=temp[hash[j]];
-                                hash[j]=j; 
+                                average[i*nCells+j]=temp[idx[j]];
+                                //hash[j]=j; 
                             }
                             temp.clear();
                         }
