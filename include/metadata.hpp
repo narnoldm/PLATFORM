@@ -36,6 +36,7 @@ public:
     bool batchWrite(pMat *loadMat, std::string dir, std::string fpref,int, int,int);
     bool batchWrite(pMat *loadMat, std::string dir, std::string fpref);
     bool batchRead(pMat *loadMat);
+    bool batchRead(pMat *loadMat, int ii);
 };
 
 
@@ -55,6 +56,7 @@ public:
     bool outBin=false;
     bool fixedMesh = false;
     bool GEMSbin=false;
+    bool reorder=false;
 
     int numVars, dim; 
     long nCells;
@@ -87,6 +89,7 @@ public:
 
     //misc
     void activateGEMSbin(std::string);
+    void activateReorder(std::string);
 };
 
 

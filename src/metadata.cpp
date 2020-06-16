@@ -40,7 +40,7 @@ void meta::init(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
     snapSkip = ts;
     prefix = iPrefix;
     suffix = iSuffix;
-    assert(snapF > snap0);
+    assert(snapF >= snap0);
     nSets = 0;
     for (int i = snap0; i <= snapF; i = i + snapSkip)
         nSets++;
@@ -150,6 +150,59 @@ bool meta::batchRead(pMat *loadMat)
         tempR.clear();
     }
 }
+
+
+bool meta::batchRead(pMat *loadMat, int ii)
+{
+    if(loadMat->mb == nPoints)
+    {
+    int iP = 0;
+    int fileIndex = snap0;
+    int localC = 0;
+    int i=ii;
+        iP = (int)(i / loadMat->nb);
+        while (iP > (loadMat->pG->pcol - 1))
+        {
+            iP = iP - loadMat->pG->pcol;
+        }
+        if (loadMat->pG->rank == iP)
+        {
+            fileIndex = snap0 + i * snapSkip;
+
+            cout << "proc " << iP << " is reading file " << fileIndex << endl;
+
+            readSingle(fileIndex, loadMat->dataD.data() + nPoints * localC);
+            localC++;
+        }
+    miscProcessing(loadMat);
+    cout<<"waiting for other processes read"<<endl;
+    MPI_Barrier(MPI_COMM_WORLD);
+    }
+    else
+    {
+        cout<<"even Read"<<endl;
+        int currentCol=0;
+        vector<double> tempR;
+        tempR.resize(nPoints);
+        int j=ii;
+            if(loadMat->pG->mycol == (j/loadMat->nb)%loadMat->pG->pcol)
+            {
+                readSingle(snap0+j*snapSkip,tempR.data());
+                for(int i=0;i<nPoints;i++)
+                {
+                    int xi= i%loadMat->mb;
+                    int li= i/(loadMat->pG->prow*loadMat->mb);
+                    if(loadMat->pG->myrow == (i/loadMat->mb)%loadMat->pG->prow)
+                    {
+                        loadMat->dataD[currentCol*loadMat->myRC[0]+xi+li*loadMat->mb]=tempR[i];
+                    }
+                }
+                currentCol++;
+            }
+        tempR.clear();
+    }
+}
+
 
 bool meta::writeSingle(int fileID, double *point, string fpref)
 {
@@ -292,7 +345,7 @@ void tecIO::init(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
     snapSkip = ts;
     prefix = iPrefix;
     suffix = iSuffix;
-    assert(snapF > snap0);
+    assert(snapF >= snap0);
     nSets = 0;
     varName.clear();
     varIndex.clear();
@@ -359,8 +412,25 @@ bool tecIO::readSingle(int fileID, double *point)
         {
             tecZoneVarGetDoubleValues(fH, 1, varIndex[i], 1, nCells, &(point[i * nCells]));
         }
+        if(reorder)
+        {
+            cout<<"reording slice"<<endl;
+            std::vector<double> temp(nCells,0.0); 
+            for(int j=0;j<nCells;j++)
+            {
+                temp[i]=point[i*nCells+j];
+            }
+            for(int j=0;j<nCells;j++)
+            {
+                point[i*nCells+j]=temp[hash[j]];
+                hash[j]=j; 
+            }
+            temp.clear();
+        }
     }
     tecFileReaderClose(&fH);
+
+    
 }
 
 bool tecIO::writeSingle(int fileID, double *point, string fpref)
@@ -595,7 +665,9 @@ void tecIO::checkMeshDim(string filename)
 
 void tecIO::genHash(string filename)
 {
-        
+        if(hash.size()!=0)
+            return; 
+
         hash.resize(nCells, 0);
         cellID.resize(nCells, 0);
         void *fH;
@@ -1012,4 +1084,10 @@ void tecIO::activateGEMSbin(string file)
     GEMSbin=true;
     genHash(file);
 
+}
+
+void tecIO::activateReorder(string file)
+{
+    genHash(file);
+    reorder=true;
 }
