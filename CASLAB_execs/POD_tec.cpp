@@ -147,7 +147,6 @@ int main(int argc, char *argv[])
 
 
 
-    cout.rdbuf(strm_buffer);
-    MPI_Finalize();
+
     return 0;
 }
