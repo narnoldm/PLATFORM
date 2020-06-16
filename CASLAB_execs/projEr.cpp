@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 
 
 
-    
+    cout<<FOM<<endl;
     tokenparse(FOM,"|",token);
     tecIO set1(token);
     
@@ -73,20 +73,22 @@ int main(int argc, char *argv[])
     for(int i=0;i<set1.nSets;i++)
     {
         set1.batchRead(&q,i);
+        set1.subAvg(&q);
         set1.normalize(&q); 
-        VTq.matrix_vec_product('T',SpaModes.nSets,SpaModes.nPoints,1.0,&V,0,0,&q,0,0,0.0,0,0);
-        VVTq.matrix_vec_product('N',SpaModes.nPoints,SpaModes.nSets,1.0,&V,0,0,&VTq,0,0,0.0,0,0);
+        VTq.matrix_Product('T','N',SpaModes.nSets,1,SpaModes.nPoints,&V,0,0,&q,0,0,1.0,0.0,0,0);
+        VVTq.matrix_Product('N','N',SpaModes.nPoints,1,SpaModes.nSets,&V,0,0,&VTq,0,0,1.0,0.0,0,0);
         set2.batchRead(&q,i);
+        set1.subAvg(&q);
         set1.normalize(&q);
-        for(int k=0;k<q.nelements;k++)
+        for(int k=0;k<10;k++)//q.nelements;k++)
         {
-            q.dataD[k]-=VVTq.dataD[k];
-            err[i]+=std::pow(q.dataD[k],2); 
+            //q.dataD[k]-=VVTq.dataD[k];
+            err[i]+=VVTq.dataD[k];//*q.dataD[k]; 
         }
     }
     MPI_Allreduce(MPI_IN_PLACE,err.data(),err.size(),MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
-    for(int i=0;i<err.size();i++)
-        err[i]=std::sqrt(err[i]);
+    //for(int i=0;i<err.size();i++)
+    //    err[i]=std::sqrt(err[i]);
 
     if(rank==0)
         printASCIIVecP0("projErr.txt",err.data(),err.size());

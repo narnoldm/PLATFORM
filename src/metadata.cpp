@@ -180,7 +180,7 @@ bool meta::batchRead(pMat *loadMat, int ii)
     }
     else
     {
-        cout<<"even Read"<<endl;
+        cout<<"even Read single"<<endl;
         int currentCol=0;
         vector<double> tempR;
         tempR.resize(nPoints);
@@ -842,7 +842,7 @@ void tecIO::calcNorm(pMat *dataMat)
                 MPI_Allreduce(MPI_IN_PLACE, normFactor.data() + i, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
                 cout<<"Synched norm factor for "<<varName[i]<<" is : "<< normFactor[i]<<endl;
         }
-        if(dataMat->pG->rank == 0)
+        /*if(dataMat->pG->rank == 0)
         {
                 std::vector<double> normVec(numVars * nCells);
                 for (int i = 0; i < numVars; i++)
@@ -856,7 +856,7 @@ void tecIO::calcNorm(pMat *dataMat)
                 printASCIIVecP0("norm.data",normVec.data(),normVec.size());
                 normVec.clear();
                 //delete [] normVec;
-        }
+        }*/
     }
         else
         {
@@ -912,7 +912,7 @@ void tecIO::calcNorm(pMat *dataMat)
                     }
                     cout<<"Synched norm factor for "<<varName[k]<<" is : "<< normFactor[k]<<endl;
             }
-        if(dataMat->pG->rank == 0)
+        /*if(dataMat->pG->rank == 0)
         {
                 std::vector<double> normVec(numVars * nCells);
                 for (int i = 0; i < numVars; i++)
@@ -925,7 +925,7 @@ void tecIO::calcNorm(pMat *dataMat)
                 writeSingle(snap0, normVec.data(), "norm");
                 printASCIIVecP0("norm.data",normVec.data(),normVec.size());
                 normVec.clear();
-        }    
+        }*/    
         }
 
 }
