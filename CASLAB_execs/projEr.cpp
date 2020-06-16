@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
     pMat V(SpaModes.nPoints,SpaModes.nSets,evenG,0,0,0.0);
 
     SpaModes.batchRead(&V); 
-
+    //V.write_bin("V.bin");
     pMat q(SpaModes.nPoints,1,evenG,0,0,0.0);
     pMat VTq(SpaModes.nSets,1,evenG,0,0,0.0);
     pMat VVTq(SpaModes.nPoints,1,evenG,0,0,0.0);
@@ -77,11 +77,14 @@ int main(int argc, char *argv[])
     for(int i=0;i<set1.nSets;i++)
     {
         set1.batchRead(&q,i);
-        //set1.writeSingle(i,q.dataD.data(),"A");
         set1.subAvg(&q);
         set1.normalize(&q); 
+        //q.write_bin("q"+std::to_string(i)+".bin");
         VTq.matrix_Product('T','N',SpaModes.nSets,1,SpaModes.nPoints,&V,0,0,&q,0,0,1.0,0.0,0,0);
+        //VTq.write_bin("VTq"+std::to_string(i)+".bin");
+        //V.write_bin("Vafm"+std::to_string(i)+".bin");
         VVTq.matrix_Product('N','N',SpaModes.nPoints,1,SpaModes.nSets,&V,0,0,&VTq,0,0,1.0,0.0,0,0);
+        //VVTq.write_bin("VVTq"+std::to_string(i)+".bin");
         set2.batchRead(&q,i);
         set1.subAvg(&q);
         set1.normalize(&q);
@@ -96,11 +99,13 @@ int main(int argc, char *argv[])
     }
     MPI_Allreduce(MPI_IN_PLACE,err.data(),err.size(),MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
     for(int i=0;i<err.size();i++)
-        err[i]=std::sqrt(err[i])/set1.nPoints;
+        err[i]=std::sqrt(err[i]);//)/set1.nPoints;
 
     if(rank==0)
         printASCIIVecP0("projErr"+std::to_string(SpaModes.nSets)+".txt",err.data(),err.size());
-
+    for(int i=0;i<err.size();i++)
+        err[i]=err[i]/set1.nPoints;
+    printASCIIVecP0("projErrN"+std::to_string(SpaModes.nSets)+".txt",err.data(),err.size());
     cout.rdbuf(strm_buffer);
     MPI_Finalize();
     return 0; 
