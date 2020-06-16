@@ -59,7 +59,6 @@ int main(int argc, char *argv[])
 
     SpaModes.batchRead(&V); 
 
-
     pMat q(SpaModes.nPoints,1,evenG,0,0,0.0);
     pMat VTq(SpaModes.nSets,1,evenG,0,0,0.0);
     pMat VVTq(SpaModes.nPoints,1,evenG,0,0,0.0);
@@ -80,20 +79,21 @@ int main(int argc, char *argv[])
         set2.batchRead(&q,i);
         set1.subAvg(&q);
         set1.normalize(&q);
-        for(int k=0;k<10;k++)//q.nelements;k++)
+        for(int k=0;k<q.nelements;k++)
         {
-            //q.dataD[k]-=VVTq.dataD[k];
-            cout<<VTq.dataD[k]<<endl;
-            cout<<VVTq.dataD[k]<<endl;
-            err[i]+=VVTq.dataD[k];//*q.dataD[k]; 
+            q.dataD[k]-=VVTq.dataD[k];
+            /*cout<<VTq.dataD[k]<<endl;
+            cout<<V.dataD[k]<<endl;
+            cout<<VVTq.dataD[k]<<endl;*/
+            err[i]+=q.dataD[k]*q.dataD[k]; 
         }
     }
     MPI_Allreduce(MPI_IN_PLACE,err.data(),err.size(),MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
-    //for(int i=0;i<err.size();i++)
-    //    err[i]=std::sqrt(err[i]);
+    for(int i=0;i<err.size();i++)
+        err[i]=std::sqrt(err[i])/set1.nPoints;
 
     if(rank==0)
-        printASCIIVecP0("projErr.txt",err.data(),err.size());
+        printASCIIVecP0("projErr"+std::to_string(SpaModes.nSets)+".txt",err.data(),err.size());
 
     cout.rdbuf(strm_buffer);
     MPI_Finalize();
