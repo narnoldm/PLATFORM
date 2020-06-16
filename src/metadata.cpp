@@ -726,7 +726,7 @@ void tecIO::normalize(pMat *dataMat)
     {
         int numFiles = dataMat->nelements / nPoints;
         cout<<"proc "<<dataMat->pG->rank<<"has "<<numFiles<<" Files "<<endl;
-        for (int i = 0; i < numFiles; i++)
+        for (int i = 0; i < dataMat->N; i++)
         {
                 for (int j = 0; j < numVars; j++)
                 {
@@ -740,7 +740,7 @@ void tecIO::normalize(pMat *dataMat)
     else
     {
         int currentCol=0;
-        for(int j=0;j<nSets;j++)
+        for(int j=0;j<dataMat->N;j++)
         {
             if(dataMat->pG->mycol == (j/dataMat->nb)%dataMat->pG->pcol)
             {
@@ -942,7 +942,7 @@ void tecIO::subAvg(pMat *dataMat)
     if(dataMat->block==1)
     {
     int numFiles = dataMat->nelements / nPoints;
-    for (int i = 0; i < numFiles; i++)
+    for (int i = 0; i < dataMat->N; i++)
     {
         for (int j = 0; j < nPoints; j++)
             dataMat->dataD[i * nPoints + j] -= average[j];
@@ -951,7 +951,7 @@ void tecIO::subAvg(pMat *dataMat)
     else
     {
         int currentCol=0;
-        for(int j=0;j<nSets;j++)
+        for(int j=0;j<dataMat->N;j++)
         {
             if(dataMat->pG->mycol == (j/dataMat->nb)%dataMat->pG->pcol)
             {
@@ -1060,11 +1060,27 @@ void tecIO::readAvg(std::string filename)
                         {
                                 tecZoneVarGetDoubleValues(fH, 1, ii, 1, nCells, &(average[i * nCells]));
                         }
+                        if(reorder)
+                        {
+                            cout<<"reording slice"<<endl;
+                            std::vector<double> temp(nCells,0.0); 
+                            for(int j=0;j<nCells;j++)
+                            {
+                                temp[i]=average[i*nCells+j];
+                            }
+                            for(int j=0;j<nCells;j++)
+                            {
+                                average[i*nCells+j]=temp[hash[j]];
+                                hash[j]=j; 
+                            }
+                            temp.clear();
+                        }
                 }
                 tecFileReaderClose(&fH);
                 std::cout<<"average loaded from :"<<filename<<std::endl;
         //}
         //printf("%d\n",nPoints);
+        
 	MPI_Barrier(MPI_COMM_WORLD);
         //MPI_Bcast(average.data(), nPoints, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         //if(rank==0)

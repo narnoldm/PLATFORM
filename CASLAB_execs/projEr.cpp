@@ -31,6 +31,8 @@ int main(int argc, char *argv[])
     string centering=input.getParamString("CenterFile");
     string hashfile=input.getParamString("HashFile");
 
+    //int outRecon=input.getParamInt("outRecon");
+
     PGrid *evenG;
     evenG = new PGrid(rank,size,0);
     vector<string> token;
@@ -69,9 +71,13 @@ int main(int argc, char *argv[])
     set1.readAvg(centering);
     set1.calcNorm(&q);
 
+    //set1.activateGEMSbin(hashfile);
+    //set1.meshFile=hashfile;
+    //set1.fixedMesh=true;
     for(int i=0;i<set1.nSets;i++)
     {
         set1.batchRead(&q,i);
+        //set1.writeSingle(i,q.dataD.data(),"A");
         set1.subAvg(&q);
         set1.normalize(&q); 
         VTq.matrix_Product('T','N',SpaModes.nSets,1,SpaModes.nPoints,&V,0,0,&q,0,0,1.0,0.0,0,0);
