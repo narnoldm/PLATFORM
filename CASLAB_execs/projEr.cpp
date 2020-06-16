@@ -64,9 +64,11 @@ int main(int argc, char *argv[])
     pMat q(SpaModes.nPoints,1,evenG,0,0,0.0);
     pMat VTq(SpaModes.nSets,1,evenG,0,0,0.0);
     pMat VVTq(SpaModes.nPoints,1,evenG,0,0,0.0);
+    pMat pmVVTq(SpaModes.nPoints,1,evenG,0,0,0.0);
     
 
     vector<double> err(set1.nSets,0.0);
+    vector<double> norm(set1.nSets,0.0);
 
     set1.readAvg(centering);
     set1.calcNorm(&q);
@@ -77,30 +79,46 @@ int main(int argc, char *argv[])
     for(int i=0;i<set1.nSets;i++)
     {
         set1.batchRead(&q,i);
+        //q.write_bin("qraw"+std::to_string(i)+".bin");
+        for(int j=0;j<5;j++)
+            cout<<q.dataD[j]<<endl;
         set1.subAvg(&q);
-        set1.normalize(&q); 
+        //q.write_bin("qpert"+std::to_string(i)+".bin");
+        for(int j=0;j<5;j++)
+            cout<<q.dataD[j]<<endl;
+        set1.normalize(&q);
+        //q.write_bin("qpertn"+std::to_string(i)+".bin");
+        for(int j=0;j<5;j++)
+            cout<<q.dataD[j]<<endl;
         //q.write_bin("q"+std::to_string(i)+".bin");
         VTq.matrix_Product('T','N',SpaModes.nSets,1,SpaModes.nPoints,&V,0,0,&q,0,0,1.0,0.0,0,0);
-        //VTq.write_bin("VTq"+std::to_string(i)+".bin");
-        //V.write_bin("Vafm"+std::to_string(i)+".bin");
+        VTq.write_bin("VTq"+std::to_string(i)+".bin");
+        for(int j=0;j<5;j++)
+            cout<<VTq.dataD[j]<<endl;
         VVTq.matrix_Product('N','N',SpaModes.nPoints,1,SpaModes.nSets,&V,0,0,&VTq,0,0,1.0,0.0,0,0);
-        //VVTq.write_bin("VVTq"+std::to_string(i)+".bin");
+        VVTq.write_bin("VVTq"+std::to_string(i)+".bin");
         set2.batchRead(&q,i);
         set1.subAvg(&q);
         set1.normalize(&q);
         for(int k=0;k<q.nelements;k++)
         {
-            q.dataD[k]-=VVTq.dataD[k];
+            pmVVTq.dataD[k]=q.dataD[k]-VVTq.dataD[k];
+            //q.dataD[k]-=VVTq.dataD[k];
             /*cout<<VTq.dataD[k]<<endl;
             cout<<V.dataD[k]<<endl;
             cout<<VVTq.dataD[k]<<endl;*/
-            err[i]+=q.dataD[k]*q.dataD[k]; 
+            err[i]+=pmVVTq.dataD[k]*pmVVTq.dataD[k]; 
+            norm[i]+= (VVTq.dataD[k]*VVTq.dataD[k]);
         }
     }
     MPI_Allreduce(MPI_IN_PLACE,err.data(),err.size(),MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE,norm.data(),norm.size(),MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
     for(int i=0;i<err.size();i++)
+    {
         err[i]=std::sqrt(err[i]);//)/set1.nPoints;
-
+        norm[i]=std::sqrt(norm[i]);
+        err[i]/=norm[i];
+    }
     if(rank==0)
         printASCIIVecP0("projErr"+std::to_string(SpaModes.nSets)+".txt",err.data(),err.size());
     for(int i=0;i<err.size();i++)

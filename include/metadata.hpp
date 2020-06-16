@@ -6,6 +6,7 @@
 
 #include "TECIO.h"
 #include <string>
+#include <numeric>
 #include <assert.h>
 #include <vector>
 #include "pMat.hpp"
@@ -49,7 +50,7 @@ public:
     std::vector<int> varIndex;
     std::vector<std::string> normID;
     std::vector<double> normFactor;
-    std::vector<int> hash;
+    std::vector<int> idx;
     std::vector<int> cellID;
     std::vector<double> average;
     std::string meshFile;
