@@ -77,7 +77,12 @@ int main(int argc, char *argv[])
 
     loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
     loadMat->changeContext(U);
-    dataset1->batchWrite(loadMat,outdir,outfile);
+
+    dataset1->meshFile = dataset1->prefix+std::to_string(dataset1->snap0)+dataset1->suffix;
+    dataset1->fixedMesh = true;
+
+    dataset1->batchWrite(evenMat,"even",outfile);
+    dataset1->batchWrite(loadMat,"load",outfile);
 
     delete loadMat,evenMatFromLoad,evenMat;
     delete evenG,dataset1;
