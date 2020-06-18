@@ -523,7 +523,19 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref)
     ndDat.clear();
     for (int i = dim; i < (dim + numVars); i++)
     {
-        tecZoneVarWriteDoubleValues(outfH, 1, i + 1, 0, jMax, &point[(i - dim) * jMax]);
+        if(reorder)
+        {
+            vector<double> temp(jMax,0.0);
+            for(int n=0;n<jMax;n++)
+            {
+                temp[n] = point[(i-dim)*jMax+n];
+            }
+            tecZoneVarWriteDoubleValues(outfH, 1, i + 1, 0, jMax, temp.data());
+        }
+        else
+        {
+            tecZoneVarWriteDoubleValues(outfH, 1, i + 1, 0, jMax, &point[(i - dim) * jMax]);
+        }
     }
     long numValues;
     tecZoneNodeMapGetNumValues(infH, 1, jMax, &numValues);
