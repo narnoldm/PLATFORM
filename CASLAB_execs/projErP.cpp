@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
 
     for(int i=0;i<err.nelements;i++)
     {
-        err.dataD[i]=std::sqrt(err.dataD[i]);
+        err.dataD[i]=std::sqrt(err.dataD[i])/SpaModes.nPoints;
     }
     
     err.write_bin("error"+std::to_string(SpaModes.nSets)+".bin");
