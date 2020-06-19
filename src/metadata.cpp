@@ -528,7 +528,7 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref)
             vector<double> temp(jMax,0.0);
             for(int n=0;n<jMax;n++)
             {
-                temp[n] = point[(i-dim)*jMax+n];
+                temp[idx[n]] = point[(i-dim)*jMax+n];
             }
             tecZoneVarWriteDoubleValues(outfH, 1, i + 1, 0, jMax, temp.data());
         }
