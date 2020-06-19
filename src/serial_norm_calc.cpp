@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
     streambuf *strm_buffer = cout.rdbuf();
     int debug_proc = 0;
     int calcConsv = 0;
-    string avgFile; 
+    string avgFile;
     if(argc > 2)
     {
         debug_proc = atoi(argv[2]);
@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
     average.resize(N);
 
     cout.precision(dbl::max_digits10);
-    
+
     if (argc < 4) {
         double val = 0.0;
         sum.resize(N);
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
             std::sort(normFactor_int.begin(),normFactor_int.end());                                   // sort
             auto last = std::unique(normFactor_int.begin(), normFactor_int.end());                    // get unique elements
             normFactor_int.erase(last, normFactor_int.end());
-            
+
             nUniqueGroups = normFactor_int.size();
 
             groupRef.resize(nUniqueGroups);
@@ -162,10 +162,9 @@ int main(int argc, char *argv[])
                         idx_full = groupRef[j][k]*dataset1->nCells + iCell;
                         magVal += (dataset1->average[idx_full])*(dataset1->average[idx_full]);
                     }
-                    magVal = sqrt(magVal);                    
+                    magVal = sqrt(magVal);
                 }
                 dataAvg[j*dataset1->nCells + iCell] = magVal;
-                
             }
         }
 
@@ -178,8 +177,8 @@ int main(int argc, char *argv[])
         vector<double> consvVals;
         vector<double> dataAvg_consv;
         if (calcConsv) {
-            scalars.resize(scalarIdxs.size()); 
-            consvVals.resize(nUniqueGroups); 
+            scalars.resize(scalarIdxs.size());
+            consvVals.resize(nUniqueGroups);
             dataAvg_consv.resize(dataSizeGroup);
             for (int iCell = 0; iCell < dataset1->nCells; ++iCell) {
                 // collect data necessary to compute conservative variables
@@ -209,7 +208,7 @@ int main(int argc, char *argv[])
         // read through each snapshot
         cout << "Calculating L2 norm for mean-subtracted values..." << endl;
         for(int i = dataset1->snap0; i <= dataset1->snapF; i= i + dataset1->snapSkip) {
-            dataset1->readSingle(i,data.data()); 
+            dataset1->readSingle(i,data.data());
 
             // compute running sum for each group
             for (int j = 0; j < nUniqueGroups; ++j) {
@@ -217,7 +216,7 @@ int main(int argc, char *argv[])
                 // compute magnitude for each group
                 for (int iCell = 0; iCell < dataset1->nCells; ++iCell) {
 
-                    magVal = 0; 
+                    magVal = 0;
                     if (groupRef[j].size() == 1) {
                         magVal = data[groupRef[j][0]*dataset1->nCells + iCell];
                     } else {
@@ -255,7 +254,6 @@ int main(int argc, char *argv[])
                     }
                 }
             }
-
          }
 
         // compute final normalization factors
@@ -299,14 +297,13 @@ int main(int argc, char *argv[])
             }
 
         }
-
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
     cout.rdbuf(strm_buffer);
     MPI_Finalize();
     return 0;
-} 
+}
 
 // prep index references for computing conserved variables
 // pretty much entirely hard-coded, not sure of a better way to determine pressure, temperature, etc.
@@ -315,26 +312,25 @@ int main(int argc, char *argv[])
 //      totally agnostic to the order in which the user inputs the variables
 // TODO: assert that all primitive variables have been included, somehow. Otherwise calcs will fail
 void prepConsVarProc(tecIO* dataset, int& pressIdx, int& tempIdx, int& densIdx, int& enthIdx,
-                     vector<int>& velIdxs, vector<int>& transScalarIdxs, 
+                     vector<int>& velIdxs, vector<int>& transScalarIdxs,
                      vector<vector<int>>& refIdxs, vector<int>& normFacs) {
 
-    
     // get indices of variables
     for (int i = 0; i < dataset->numVars; ++i) {
 
         // transported scalars (ending in "_mf" or is a flamelet variable)
         if (dataset->varName[i].length() >= 3) {
             if ((dataset->varName[i].substr(dataset->varName[i].length() - 3) == "_mf") ||
-                    (dataset->varName[i] == "Flamelet_Scalar_Mean") || 
-                    (dataset->varName[i] == "Flamelet_Scalar_Variance") || 
+                    (dataset->varName[i] == "Flamelet_Scalar_Mean") ||
+                    (dataset->varName[i] == "Flamelet_Scalar_Variance") ||
                     (dataset->varName[i] == "Flamelet_Parameter")) {
                 transScalarIdxs.push_back(i);
                 continue;
-            } 
+            }
         }
 
         // velocity
-        if ((dataset->varName[i] == "U") || 
+        if ((dataset->varName[i] == "U") ||
                 (dataset->varName[i] == "V") ||
                 (dataset->varName[i] == "W")) {
             velIdxs.push_back(i);
@@ -378,7 +374,7 @@ void prepConsVarProc(tecIO* dataset, int& pressIdx, int& tempIdx, int& densIdx, 
         if (dataset->varName[i] == "Static_Pressure") {
             normFacs.push_back(dataset->normFactor[i]);
             break;
-        }   
+        }
     }
 
     // assume that all velocity variable have same group ID
@@ -392,27 +388,25 @@ void prepConsVarProc(tecIO* dataset, int& pressIdx, int& tempIdx, int& densIdx, 
         if (dataset->varName[i] == "Temperature") {
             normFacs.push_back(dataset->normFactor[i]);
             break;
-        }  
+        }
     }
 
     // assumes that all transported scalars have different group IDs
     for (int i = 0; i < dataset->numVars; ++i) {
         if (dataset->varName[i].length() >= 3) {
             if ((dataset->varName[i].substr(dataset->varName[i].length() - 3) == "_mf") ||
-                    (dataset->varName[i] == "Flamelet_Scalar_Mean") || 
+                    (dataset->varName[i] == "Flamelet_Scalar_Mean") ||
                     (dataset->varName[i] == "Flamelet_Scalar_Variance") ||
                     (dataset->varName[i] == "Flamelet_Parameter")) {
                 normFacs.push_back(dataset->normFactor[i]);
-            }  
+            }
         }
     }
-
-
 
 }
 
 // compute conservative variables from primitives, density, enthalpy
-void calcConsVars(double press, double temp, double vMag, vector<double> transScalars, 
+void calcConsVars(double press, double temp, double vMag, vector<double> transScalars,
                   double dens, double enth, vector<double> &consvVars) {
 
     // ordered by density, momentum, total enthalpy, density-weighted transported scalars
