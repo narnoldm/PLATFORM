@@ -64,63 +64,47 @@ int main(int argc, char *argv[])
 
     SpaModes.batchRead(&V); 
     //V.write_bin("V.bin");
-    pMat q(SpaModes.nPoints,1,evenG,0,0,0.0);
-    pMat VTq(SpaModes.nSets,1,evenG,0,0,0.0);
-    pMat VVTq(SpaModes.nPoints,1,evenG,0,0,0.0);
-    pMat pmVVTq(SpaModes.nPoints,1,evenG,0,0,0.0);
+    pMat q(SpaModes.nPoints,set1.nSets,evenG,0,0,0.0);
+    pMat VTq(SpaModes.nSets,set1.nSets,evenG,0,0,0.0);
+    pMat VVTq(SpaModes.nPoints,set1.nSets,evenG,0,0,0.0);
+    pMat pmVVTq(SpaModes.nPoints,set1.nSets,evenG,0,0,0.0);
     
 
-    vector<double> err(set1.nSets,0.0);
-    vector<double> norm(set1.nSets,0.0);
+    //vector<double> err(set1.nSets,0.0);
+    //vector<double> norm(set1.nSets,0.0);
 
     set1.readAvg(centering);
     set1.calcNorm(&q);
 
-    //set1.activateGEMSbin(hashfile);
-    //set1.meshFile=hashfile;
-    //set1.fixedMesh=true;
-    for(int i=0;i<set1.nSets;i++)
+    set1.batchRead(&q);
+    set1.subAvg(&q);
+    set1.normalize(&q);
+    cout<<"computing VTq"<<endl;
+    VTq.matrix_Product('T','N',SpaModes.nSets,set1.nSets,SpaModes.nPoints,&V,0,0,&q,0,0,1.0,0.0,0,0);
+    cout<<"computing VVTq"<<endl;
+    VVTq.matrix_Product('N','N',SpaModes.nPoints,set1.nSets,SpaModes.nSets,&V,0,0,&VTq,0,0,1.0,0.0,0,0);
+    cout<<"done"<<endl;
+
+    set2.batchRead(&q);
+    set1.subAvg(&q);
+    set1.normalize(&q);
+    for(int k=0;k<q.nelements;k++)
     {
-        set1.batchRead(&q,i);
-        for(int j=0;j<5;j++)
-            cout<<q.dataD[j]<<endl;
-        set1.subAvg(&q);
-        for(int j=0;j<5;j++)
-            cout<<q.dataD[j]<<endl;
-        set1.normalize(&q);
-        for(int j=0;j<5;j++)
-            cout<<q.dataD[j]<<endl;
-        VTq.matrix_Product('T','N',SpaModes.nSets,1,SpaModes.nPoints,&V,0,0,&q,0,0,1.0,0.0,0,0);
-        for(int j=0;j<5;j++)
-            cout<<VTq.dataD[j]<<endl;
-        VVTq.matrix_Product('N','N',SpaModes.nPoints,1,SpaModes.nSets,&V,0,0,&VTq,0,0,1.0,0.0,0,0);
-        set2.batchRead(&q,i);
-        set1.subAvg(&q);
-        set1.normalize(&q);
-        for(int k=0;k<q.nelements;k++)
-        {
-            pmVVTq.dataD[k]=std::fabs(q.dataD[k]-VVTq.dataD[k]);
-            err[i]+=pmVVTq.dataD[k]*pmVVTq.dataD[k]; 
-            norm[i]+= (VVTq.dataD[k]*VVTq.dataD[k]);
-        }
-        if(outProj)
-            set1.writeSingle(set1.snap0+i,VVTq.dataD.data(),"proj_"+std::to_string(SpaModes.nSets)+"_");
-        if(outErr)
-            set1.writeSingle(set1.snap0+i,pmVVTq.dataD.data(),"err_"+std::to_string(SpaModes.nSets)+"_");
+        pmVVTq.dataD[k]=std::fabs(q.dataD[k]-VVTq.dataD[k]);
+        pmVVTq.dataD[k]=pmVVTq.dataD[k]*pmVVTq.dataD[k];
     }
-    MPI_Allreduce(MPI_IN_PLACE,err.data(),err.size(),MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE,norm.data(),norm.size(),MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
-    for(int i=0;i<err.size();i++)
+    pMat ones(1,set1.nPoints,evenG,0,0,1.0);
+    pMat err(1,set1.nSets,evenG,0,0,0.0);
+
+    err.matrix_Product('N','N',1,set1.nSets,set1.nPoints,&ones,0,0,&pmVVTq,0,0,1.0,0.0,0,0);
+
+    for(int i=0;i<err.nelements;i++)
     {
-        err[i]=std::sqrt(err[i]);//)/set1.nPoints;
-        norm[i]=std::sqrt(norm[i]);
-        //err[i]/=norm[i];
+        err.dataD[i]=std::sqrt(err.dataD[i]);
     }
-    if(rank==0)
-        printASCIIVecP0("projErr"+std::to_string(SpaModes.nSets)+".txt",err.data(),err.size());
-    for(int i=0;i<err.size();i++)
-        err[i]=err[i]/norm[i];
-    printASCIIVecP0("projErrN"+std::to_string(SpaModes.nSets)+".txt",err.data(),err.size());
+    
+    err.write_bin("error"+std::to_string(SpaModes.nSets)+".bin");
+
     cout.rdbuf(strm_buffer);
     MPI_Finalize();
     return 0; 
