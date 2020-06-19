@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
         set1.batchWrite(&VVTq,"ProjectedSol","Projeectedsol_");
 
     if(outErr)
-        set1.batchWrite(&pmVVTq,"Error","Error_")
+        set1.batchWrite(&pmVVTq,"Error","Error_");
 
     err.matrix_Product('N','N',1,set1.nSets,set1.nPoints,&ones,0,0,&pmVVTq,0,0,1.0,0.0,0,0);
 
