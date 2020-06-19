@@ -128,14 +128,15 @@ int main(int argc, char *argv[])
         pMat ones(1,set1.nCells,evenG,0,0,1.0);
         pMat err(1,set1.nSets,evenG,0,0,0.0);
         pMat norm(1,set1.nSets,evenG,0,0,0.0);
-        for(int v=0;v<set1.numVars;v++)
-        {
-            
-            if(outProj)
+        if(outProj)
                 set1.batchWrite(&VVTq,"ProjectedSol","Projeectedsol_");
             if(outErr)
                 set1.batchWrite(&pmVVTq,"Error","Error_");
 
+        for(int v=0;v<set1.numVars;v++)
+        {
+            
+            
             err.matrix_Product('N','N',1,set1.nSets,set1.nCells,&ones,0,0,&pmVVTq,v*set1.nCells,0,1.0,0.0,0,0);
             norm.matrix_Product('N','N',1,set1.nSets,set1.nCells,&ones,0,0,&q,v*set1.nCells,0,1.0,0.0,0,0);
             
