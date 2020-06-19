@@ -115,7 +115,9 @@ int main(int argc, char *argv[])
         }
     }
     
-    delete evenMat;
+    if ( (mosStep == 0) || (mosStep == 1) || (mosStep == 3) ) {
+        delete evenMat;
+    }
     
     if ( (mosStep == 0) || (mosStep == 3) ) {
 
