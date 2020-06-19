@@ -95,19 +95,19 @@ int main(int argc, char *argv[])
         S.resize(dataset1->nSets);
     }
 
-    // if(dataset1->nPoints/dataset1->nSets >=100)
-    // {
+    if(dataset1->nPoints/dataset1->nSets >=100)
+    {
         if (mosStep == 0) {
             evenMat->mos_run(dataset1->nPoints,dataset1->nSets,0,0,U,VT,S);
         } else {
             evenMat->mos_run(dataset1->nPoints,dataset1->nSets,0,0,U,VT,S,modeStart,modeEnd,mosStep,evenG);
         }
         
-    // }
-    // else
-    // {
-    //     evenMat->svd_run(dataset1->nPoints,dataset1->nSets,0,0,U,VT,S);
-    // }
+    }
+    else
+    {
+        evenMat->svd_run(dataset1->nPoints,dataset1->nSets,0,0,U,VT,S);
+    }
 
     if ( (mosStep == 0) || (mosStep == 2) ) {
         if (evenG->rank == 0) {
