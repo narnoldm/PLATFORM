@@ -31,9 +31,13 @@ int main(int argc, char *argv[])
     string centering=input.getParamString("CenterFile");
     string hashfile=input.getParamString("HashFile");
 
+    int FOMproj = input.getParamInt("FOM/ROM"); //1 for pojected FOM 2 for ROM
+    int comp = input.getParamInt("Comp");//1 for normalized 2 for unnormalized
+
     int outProj=input.getParamInt("outProj");
     int outErr=input.getParamInt("outErr");
 
+    int subVar=input.getParamInt("SubVar");//0 for no 1 for yes
     //int outRecon=input.getParamInt("outRecon");
 
     PGrid *evenG;
@@ -47,9 +51,11 @@ int main(int argc, char *argv[])
     tokenparse(FOM,"|",token);
     tecIO set1(token);
     
-    tokenparse(ROM,"|",token);
+    if(FOMproj==2)
+        tokenparse(ROM,"|",token);
+
     tecIO set2(token);
-    
+
     set1.activateReorder(hashfile);
     set2.activateReorder(hashfile);
 
@@ -79,37 +85,70 @@ int main(int argc, char *argv[])
     set1.batchRead(&q);
     set1.subAvg(&q);
     set1.normalize(&q);
+
     cout<<"computing VTq"<<endl;
     VTq.matrix_Product('T','N',SpaModes.nSets,set1.nSets,SpaModes.nPoints,&V,0,0,&q,0,0,1.0,0.0,0,0);
     cout<<"computing VVTq"<<endl;
     VVTq.matrix_Product('N','N',SpaModes.nPoints,set1.nSets,SpaModes.nSets,&V,0,0,&VTq,0,0,1.0,0.0,0,0);
     cout<<"done"<<endl;
 
+    if(comp==2)
+    {
+        set1.unNormalize(&VVTq);
+    }
+
     set2.batchRead(&q);
     set1.subAvg(&q);
-    set1.normalize(&q);
+    if(comp==1)
+    {
+        set1.normalize(&q);
+    }
     for(int k=0;k<q.nelements;k++)
     {
         pmVVTq.dataD[k]=std::fabs(q.dataD[k]-VVTq.dataD[k]);
         pmVVTq.dataD[k]=pmVVTq.dataD[k]*pmVVTq.dataD[k];
     }
-    pMat ones(1,set1.nPoints,evenG,0,0,1.0);
-    pMat err(1,set1.nSets,evenG,0,0,0.0);
-
-    if(outProj)
-        set1.batchWrite(&VVTq,"ProjectedSol","Projeectedsol_");
-
-    if(outErr)
-        set1.batchWrite(&pmVVTq,"Error","Error_");
-
-    err.matrix_Product('N','N',1,set1.nSets,set1.nPoints,&ones,0,0,&pmVVTq,0,0,1.0,0.0,0,0);
-
-    for(int i=0;i<err.nelements;i++)
+    if(subVar==0)
     {
-        err.dataD[i]=std::sqrt(err.dataD[i])/SpaModes.nPoints;
+        pMat ones(1,set1.nPoints,evenG,0,0,1.0);
+        pMat err(1,set1.nSets,evenG,0,0,0.0);
+        if(outProj)
+            set1.batchWrite(&VVTq,"ProjectedSol","Projeectedsol_");
+        if(outErr)
+            set1.batchWrite(&pmVVTq,"Error","Error_");
+        err.matrix_Product('N','N',1,set1.nSets,set1.nPoints,&ones,0,0,&pmVVTq,0,0,1.0,0.0,0,0);
+        for(int i=0;i<err.nelements;i++)
+        {
+            err.dataD[i]=std::sqrt(err.dataD[i])/SpaModes.nPoints;
+        }  
+        err.write_bin("errorV"+std::to_string(SpaModes.nSets)+".bin");
     }
-    
-    err.write_bin("error"+std::to_string(SpaModes.nSets)+".bin");
+    if(subVar==1)
+    {
+        pMat ones(1,set1.nCells,evenG,0,0,1.0);
+        pMat err(1,set1.nSets,evenG,0,0,0.0);
+        pMat norm(1,set1.nSets,evenG,0,0,0.0);
+        for(int v=0;v<set1.numVars;v++)
+        {
+            
+            if(outProj)
+                set1.batchWrite(&VVTq,"ProjectedSol","Projeectedsol_");
+            if(outErr)
+                set1.batchWrite(&pmVVTq,"Error","Error_");
+
+            err.matrix_Product('N','N',1,set1.nSets,set1.nCells,&ones,0,0,&pmVVTq,v*set1.nCells,0,1.0,0.0,0,0);
+            norm.matrix_Product('N','N',1,set1.nSets,set1.nCells,&ones,0,0,&q,v*set1.nCells,0,1.0,0.0,0,0);
+            
+            for(int i=0;i<err.nelements;i++)
+            {
+                norm.dataD[i]=std::sqrt(norm.dataD[i]);
+                err.dataD[i]=std::sqrt(err.dataD[i])/norm.dataD[i];
+            }  
+            err.write_bin("error_"+set1.varName[v]+std::to_string(SpaModes.nSets)+".bin");
+        }
+    }
+
+
 
     cout.rdbuf(strm_buffer);
     MPI_Finalize();
