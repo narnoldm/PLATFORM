@@ -774,9 +774,26 @@ void tecIO::normalize(pMat *dataMat)
 
 void tecIO::unNormalize(pMat *dataMat)
 {
-    cout<<"UnNormalizing Matrix by Norm Factor"<<endl;
-       int currentCol=0;
-        for(int j=0;j<nSets;j++)
+    cout<<"UNNormalizing Matrix by Norm Factor"<<endl;
+    if(dataMat->block==1)
+    {
+        int numFiles = dataMat->nelements / nPoints;
+        cout<<"proc "<<dataMat->pG->rank<<"has "<<numFiles<<" Files "<<endl;
+        for (int i = 0; i < dataMat->N; i++)
+        {
+                for (int j = 0; j < numVars; j++)
+                {
+                        for (int k = 0; k < nCells; k++)
+                        {
+                                dataMat->dataD[i * nPoints + j * nCells + k] *= normFactor[j];
+                        }
+                }
+        }
+    }
+    else
+    {
+        int currentCol=0;
+        for(int j=0;j<dataMat->N;j++)
         {
             if(dataMat->pG->mycol == (j/dataMat->nb)%dataMat->pG->pcol)
             {
@@ -792,7 +809,7 @@ void tecIO::unNormalize(pMat *dataMat)
                 currentCol++;
             }
         }
-
+    }
 }
 
 void tecIO::calcNorm(pMat *dataMat)
