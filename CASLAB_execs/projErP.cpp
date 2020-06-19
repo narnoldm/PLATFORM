@@ -34,6 +34,8 @@ int main(int argc, char *argv[])
     int FOMproj = input.getParamInt("FOM/ROM"); //1 for pojected FOM 2 for ROM
     int comp = input.getParamInt("Comp");//1 for normalized 2 for unnormalized
 
+    int outPert = input.getParamInt("outPert");
+
     int outProj=input.getParamInt("outProj");
     int outErr=input.getParamInt("outErr");
 
@@ -84,6 +86,10 @@ int main(int argc, char *argv[])
 
     set1.batchRead(&q);
     set1.subAvg(&q);
+    if(outPert==1)
+        set1.batchWrite(&pmVVTq,"Pert","Pert_");
+
+
     set1.normalize(&q);
 
     cout<<"computing VTq"<<endl;
@@ -99,6 +105,8 @@ int main(int argc, char *argv[])
 
     set2.batchRead(&q);
     set1.subAvg(&q);
+
+
     if(comp==1)
     {
         set1.normalize(&q);
