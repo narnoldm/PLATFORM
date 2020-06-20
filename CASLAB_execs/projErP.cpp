@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     string hashfile=input.getParamString("HashFile");
 
     int FOMproj = input.getParamInt("FOM/ROM"); //1 for pojected FOM 2 for ROM
-    int comp = input.getParamInt("Comp");//1 for normalized 2 for unnormalized
+    int comp = input.getParamInt("Comp");//1 for normalized 2 for unnormalized 3 for uncentered
 
     int outPert = input.getParamInt("outPert");
 
@@ -98,18 +98,21 @@ int main(int argc, char *argv[])
     VVTq.matrix_Product('N','N',SpaModes.nPoints,set1.nSets,SpaModes.nSets,&V,0,0,&VTq,0,0,1.0,0.0,0,0);
     cout<<"done"<<endl;
 
-    if(comp==2)
+    if(comp>=2)
     {
         set1.unNormalize(&VVTq);
+        if(comp>=3)
+            set1.addAvg(&VVTq);
     }
 
     set2.batchRead(&q);
-    set1.subAvg(&q);
-
-
-    if(comp==1)
+    if(comp<3)
     {
-        set1.normalize(&q);
+        set1.subAvg(&q);
+        if(comp<2)
+        {
+            set1.normalize(&q);
+        }
     }
     for(int k=0;k<q.nelements;k++)
     {
