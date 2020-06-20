@@ -1001,6 +1001,53 @@ void tecIO::subAvg(pMat *dataMat)
     cout<<"average subtraceted"<<endl;
 }
 
+void tecIO::addAvg(pMat *dataMat)
+{
+    if (average.size() == 0)
+    {
+        cout<<"Average isn't setup call calcAvg first"<<endl;
+        throw(-1);
+    }
+    
+    cout<<"Subtracting Average"<<endl;
+    if(dataMat->block==1)
+    {
+    int numFiles = dataMat->nelements / nPoints;
+    for (int i = 0; i < dataMat->N; i++)
+    {
+        for (int j = 0; j < nPoints; j++)
+            dataMat->dataD[i * nPoints + j] += average[j];
+    }
+    }
+    else
+    {
+        int currentCol=0;
+        for(int j=0;j<dataMat->N;j++)
+        {
+            if(dataMat->pG->mycol == (j/dataMat->nb)%dataMat->pG->pcol)
+            {
+                for(int i=0;i<nPoints;i++)
+                {
+                    int xi= i%dataMat->mb;
+                    int li= i/(dataMat->pG->prow*dataMat->mb);
+                    if(dataMat->pG->myrow == (i/dataMat->mb)%dataMat->pG->prow)
+                    {
+                        dataMat->dataD[currentCol*dataMat->myRC[0]+xi+li*dataMat->mb]+=average[i];
+                    }
+                }
+                currentCol++;
+            }
+        }
+    }
+    cout<<"average subtraceted"<<endl;
+}
+
+
+
+
+
+
+
 void tecIO::calcAvg(pMat *dataMat)
 {
     
