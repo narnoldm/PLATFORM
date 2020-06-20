@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
     set1.batchRead(&q);
     set1.subAvg(&q);
     if(outPert==1)
-        set1.batchWrite(&pmVVTq,"Pert","Pert_");
+        set1.batchWrite(&q,"Pert","Pert_");
 
 
     set1.normalize(&q);
