@@ -123,6 +123,7 @@ int main(int argc, char *argv[])
     for(int k=0;k<q.nelements;k++)
     {
         pmVVTq.dataD[k]=pmVVTq.dataD[k]*pmVVTq.dataD[k];
+        q.dataD[k]=q.dataD[k]*q.dataD[k];
     }
 
     if(subVar==0)
@@ -133,7 +134,7 @@ int main(int argc, char *argv[])
         err.matrix_Product('N','N',1,set1.nSets,set1.nPoints,&ones,0,0,&pmVVTq,0,0,1.0,0.0,0,0);
         for(int i=0;i<err.nelements;i++)
         {
-            err.dataD[i]=std::sqrt(err.dataD[i])/SpaModes.nPoints;
+            err.dataD[i]=std::sqrt(err.dataD[i]);
         }  
         err.write_bin("errorVector"+std::to_string(SpaModes.nSets)+".bin");
     }
