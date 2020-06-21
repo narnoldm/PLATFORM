@@ -1009,7 +1009,7 @@ void tecIO::addAvg(pMat *dataMat)
         throw(-1);
     }
     
-    cout<<"Subtracting Average"<<endl;
+    cout<<"Adding Average"<<endl;
     if(dataMat->block==1)
     {
     int numFiles = dataMat->nelements / nPoints;
