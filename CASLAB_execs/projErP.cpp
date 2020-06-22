@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
     if(outProj)
         set1.batchWrite(&VVTq,"ProjectedSol_"+std::to_string(SpaModes.nSets),"Projeectedsol_");
     if(outErr)
-        set1.batchWrite(&pmVVTq,"Error","Error_");
+        set1.batchWrite(&pmVVTq,"Error_"+std::to_string(SpaModes.nSets),"Error_");
 
     for(int k=0;k<q.nelements;k++)
     {
