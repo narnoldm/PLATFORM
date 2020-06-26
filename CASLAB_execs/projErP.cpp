@@ -134,6 +134,8 @@ int main(int argc, char *argv[])
         pMat ones(1,set1.nPoints,evenG,0,0,1.0);
         pMat err(1,set1.nSets,evenG,0,0,0.0);
         
+
+
         err.matrix_Product('N','N',1,set1.nSets,set1.nPoints,&ones,0,0,&pmVVTq,0,0,1.0,0.0,0,0);
         for(int i=0;i<err.nelements;i++)
         {
@@ -150,8 +152,11 @@ int main(int argc, char *argv[])
         for(int v=0;v<set1.numVars;v++)
         {
             err.matrix_Product('N','N',1,set1.nSets,set1.nCells,&ones,0,0,&pmVVTq,v*set1.nCells,0,1.0,0.0,0,0);
-            norm.matrix_Product('N','N',1,set1.nSets,set1.nCells,&ones,0,0,&q,v*set1.nCells,0,1.0,0.0,0,0);
-            
+            if(FOMproj==1)
+                norm.matrix_Product('N','N',1,set1.nSets,set1.nCells,&ones,0,0,&q,v*set1.nCells,0,1.0,0.0,0,0);
+            else if(FOMproj==2)
+                norm.matrix_Product('N','N',1,set1.nSets,set1.nCells,&ones,0,0,&VVTq,v*set1.nCells,0,1.0,0.0,0,0);
+
             for(int i=0;i<err.nelements;i++)
             {
                 norm.dataD[i]=std::sqrt(norm.dataD[i]);
