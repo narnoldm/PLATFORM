@@ -199,7 +199,7 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref ,int mStart,int mE
 if(loadMat->block==1)
 {
     assert(loadMat->mb == nPoints);
-    for (int i = mStart-1; i < mEnd; i=i+mSkip)
+    for (int i = mStart; i < mEnd; i=i+mSkip)
     {
         iP = (int)(i / loadMat->nb);
         while (iP > (loadMat->pG->pcol - 1))
@@ -223,7 +223,7 @@ else
         tempR.resize(nPoints,0);
         MPI_Comm col_comms;
         loadMat->commCreate(col_comms,0);
-    for (int j = mStart-1; j < mEnd; j=j+mSkip)
+    for (int j = mStart; j < mEnd; j=j+mSkip)
     {
         std::fill(tempR.begin(),tempR.end(),0.0);
         if(loadMat->pG->mycol == (j/loadMat->nb)%loadMat->pG->pcol)
