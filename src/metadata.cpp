@@ -40,7 +40,7 @@ void meta::init(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
     snapSkip = ts;
     prefix = iPrefix;
     suffix = iSuffix;
-    assert(snapF > snap0);
+    assert(snapF >= snap0);
     nSets = 0;
     for (int i = snap0; i <= snapF; i = i + snapSkip)
         nSets++;
@@ -150,6 +150,59 @@ bool meta::batchRead(pMat *loadMat)
         tempR.clear();
     }
 }
+
+
+bool meta::batchRead(pMat *loadMat, int ii)
+{
+    if(loadMat->mb == nPoints)
+    {
+    int iP = 0;
+    int fileIndex = snap0;
+    int localC = 0;
+    int i=ii;
+        iP = (int)(i / loadMat->nb);
+        while (iP > (loadMat->pG->pcol - 1))
+        {
+            iP = iP - loadMat->pG->pcol;
+        }
+        if (loadMat->pG->rank == iP)
+        {
+            fileIndex = snap0 + i * snapSkip;
+
+            cout << "proc " << iP << " is reading file " << fileIndex << endl;
+
+            readSingle(fileIndex, loadMat->dataD.data() + nPoints * localC);
+            localC++;
+        }
+    miscProcessing(loadMat);
+    cout<<"waiting for other processes read"<<endl;
+    MPI_Barrier(MPI_COMM_WORLD);
+    }
+    else
+    {
+        cout<<"even Read single"<<endl;
+        int currentCol=0;
+        vector<double> tempR;
+        tempR.resize(nPoints);
+        int j=ii;
+            if(loadMat->pG->mycol == (j/loadMat->nb)%loadMat->pG->pcol)
+            {
+                readSingle(snap0+j*snapSkip,tempR.data());
+                for(int i=0;i<nPoints;i++)
+                {
+                    int xi= i%loadMat->mb;
+                    int li= i/(loadMat->pG->prow*loadMat->mb);
+                    if(loadMat->pG->myrow == (i/loadMat->mb)%loadMat->pG->prow)
+                    {
+                        loadMat->dataD[currentCol*loadMat->myRC[0]+xi+li*loadMat->mb]=tempR[i];
+                    }
+                }
+                currentCol++;
+            }
+        tempR.clear();
+    }
+}
+
 
 bool meta::writeSingle(int fileID, double *point, string fpref)
 {
@@ -292,7 +345,7 @@ void tecIO::init(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
     snapSkip = ts;
     prefix = iPrefix;
     suffix = iSuffix;
-    assert(snapF > snap0);
+    assert(snapF >= snap0);
     nSets = 0;
     varName.clear();
     varIndex.clear();
@@ -359,8 +412,25 @@ bool tecIO::readSingle(int fileID, double *point)
         {
             tecZoneVarGetDoubleValues(fH, 1, varIndex[i], 1, nCells, &(point[i * nCells]));
         }
+        if(reorder)
+        {
+            cout<<"reording slice"<<endl;
+            std::vector<double> temp(nCells,0.0); 
+            for(int j=0;j<nCells;j++)
+            {
+                temp[j]=point[i*nCells+j];
+            }
+            for(int j=0;j<nCells;j++)
+            {
+                point[i*nCells+j]=temp[idx[j]];
+                //hash[j]=j; 
+            }
+            temp.clear();
+        }
     }
     tecFileReaderClose(&fH);
+
+    
 }
 
 bool tecIO::writeSingle(int fileID, double *point, string fpref)
@@ -453,7 +523,19 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref)
     ndDat.clear();
     for (int i = dim; i < (dim + numVars); i++)
     {
-        tecZoneVarWriteDoubleValues(outfH, 1, i + 1, 0, jMax, &point[(i - dim) * jMax]);
+        if(reorder)
+        {
+            vector<double> temp(jMax,0.0);
+            for(int n=0;n<jMax;n++)
+            {
+                temp[idx[n]] = point[(i-dim)*jMax+n];
+            }
+            tecZoneVarWriteDoubleValues(outfH, 1, i + 1, 0, jMax, temp.data());
+        }
+        else
+        {
+            tecZoneVarWriteDoubleValues(outfH, 1, i + 1, 0, jMax, &point[(i - dim) * jMax]);
+        }
     }
     long numValues;
     tecZoneNodeMapGetNumValues(infH, 1, jMax, &numValues);
@@ -480,7 +562,7 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref)
     for (int i = 0; i < numVars; i++)
     {
         for (int j = 0; j < nCells; j++)
-           fwrite(&point[i * nCells + hash[j]], sizeof(double), 1, fid);
+           fwrite(&point[i * nCells + idx[j]], sizeof(double), 1, fid);
     }
     fclose(fid);
 
@@ -595,8 +677,11 @@ void tecIO::checkMeshDim(string filename)
 
 void tecIO::genHash(string filename)
 {
-        
-        hash.resize(nCells, 0);
+        if(idx.size()!=0)
+            return; 
+
+        idx.resize(nCells, 0);
+        iota(idx.begin(),idx.end(),0);
         cellID.resize(nCells, 0);
         void *fH;
         int rank;
@@ -615,25 +700,26 @@ void tecIO::genHash(string filename)
                     {
                             tecZoneVarGetInt32Values(fH, 1, var_index, 1, nCells, cellID.data());
                     }
-                    if (hashType == 2)
+                    else
                     {
-                            std::vector<float> hashTemp(nCells, 0.0);
-                            tecZoneVarGetFloatValues(fH, 1, var_index, 1, nCells, hashTemp.data());
-                            for (int i = 0; i < hash.size(); i++)
-                                    hash[i] = (int)(hashTemp[i]);
-                            hashTemp.clear();
+                        throw(-1);
                     }
                     tecFileReaderClose(&fH);
                     for (int i = 0; i < nCells; i++)
                     {
                             cellID[i]--;
-                            hash[cellID[i]] = i;
                     }
+
                     printf("hash table built\nDistributing to procs\n");
             }
             
-            MPI_Bcast(hash.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
+            MPI_Bcast(idx.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
             MPI_Bcast(cellID.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
+            stable_sort(idx.begin(),idx.end(),[&](int i,int j){return cellID[i]<cellID[j];} );
+            for(int i=0;i<5;i++)
+            {
+                cout<<idx[i]<<endl;
+            }
         }
         else
         {
@@ -641,7 +727,6 @@ void tecIO::genHash(string filename)
             for(int i=0;i<nCells;i++)
             {
                 cellID[i]=i;
-                hash[cellID[i]]=i;
             }
         }
 }
@@ -654,7 +739,7 @@ void tecIO::normalize(pMat *dataMat)
     {
         int numFiles = dataMat->nelements / nPoints;
         cout<<"proc "<<dataMat->pG->rank<<"has "<<numFiles<<" Files "<<endl;
-        for (int i = 0; i < numFiles; i++)
+        for (int i = 0; i < dataMat->N; i++)
         {
                 for (int j = 0; j < numVars; j++)
                 {
@@ -668,7 +753,7 @@ void tecIO::normalize(pMat *dataMat)
     else
     {
         int currentCol=0;
-        for(int j=0;j<nSets;j++)
+        for(int j=0;j<dataMat->N;j++)
         {
             if(dataMat->pG->mycol == (j/dataMat->nb)%dataMat->pG->pcol)
             {
@@ -689,9 +774,26 @@ void tecIO::normalize(pMat *dataMat)
 
 void tecIO::unNormalize(pMat *dataMat)
 {
-    cout<<"UnNormalizing Matrix by Norm Factor"<<endl;
-       int currentCol=0;
-        for(int j=0;j<nSets;j++)
+    cout<<"UNNormalizing Matrix by Norm Factor"<<endl;
+    if(dataMat->block==1)
+    {
+        int numFiles = dataMat->nelements / nPoints;
+        cout<<"proc "<<dataMat->pG->rank<<"has "<<numFiles<<" Files "<<endl;
+        for (int i = 0; i < dataMat->N; i++)
+        {
+                for (int j = 0; j < numVars; j++)
+                {
+                        for (int k = 0; k < nCells; k++)
+                        {
+                                dataMat->dataD[i * nPoints + j * nCells + k] *= normFactor[j];
+                        }
+                }
+        }
+    }
+    else
+    {
+        int currentCol=0;
+        for(int j=0;j<dataMat->N;j++)
         {
             if(dataMat->pG->mycol == (j/dataMat->nb)%dataMat->pG->pcol)
             {
@@ -707,7 +809,7 @@ void tecIO::unNormalize(pMat *dataMat)
                 currentCol++;
             }
         }
-
+    }
 }
 
 void tecIO::calcNorm(pMat *dataMat)
@@ -770,7 +872,7 @@ void tecIO::calcNorm(pMat *dataMat)
                 MPI_Allreduce(MPI_IN_PLACE, normFactor.data() + i, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
                 cout<<"Synched norm factor for "<<varName[i]<<" is : "<< normFactor[i]<<endl;
         }
-        if(dataMat->pG->rank == 0)
+        /*if(dataMat->pG->rank == 0)
         {
                 std::vector<double> normVec(numVars * nCells);
                 for (int i = 0; i < numVars; i++)
@@ -784,7 +886,7 @@ void tecIO::calcNorm(pMat *dataMat)
                 printASCIIVecP0("norm.data",normVec.data(),normVec.size());
                 normVec.clear();
                 //delete [] normVec;
-        }
+        }*/
     }
         else
         {
@@ -840,7 +942,7 @@ void tecIO::calcNorm(pMat *dataMat)
                     }
                     cout<<"Synched norm factor for "<<varName[k]<<" is : "<< normFactor[k]<<endl;
             }
-        if(dataMat->pG->rank == 0)
+        /*if(dataMat->pG->rank == 0)
         {
                 std::vector<double> normVec(numVars * nCells);
                 for (int i = 0; i < numVars; i++)
@@ -853,7 +955,7 @@ void tecIO::calcNorm(pMat *dataMat)
                 writeSingle(snap0, normVec.data(), "norm");
                 printASCIIVecP0("norm.data",normVec.data(),normVec.size());
                 normVec.clear();
-        }    
+        }*/    
         }
 
 }
@@ -870,7 +972,7 @@ void tecIO::subAvg(pMat *dataMat)
     if(dataMat->block==1)
     {
     int numFiles = dataMat->nelements / nPoints;
-    for (int i = 0; i < numFiles; i++)
+    for (int i = 0; i < dataMat->N; i++)
     {
         for (int j = 0; j < nPoints; j++)
             dataMat->dataD[i * nPoints + j] -= average[j];
@@ -879,7 +981,7 @@ void tecIO::subAvg(pMat *dataMat)
     else
     {
         int currentCol=0;
-        for(int j=0;j<nSets;j++)
+        for(int j=0;j<dataMat->N;j++)
         {
             if(dataMat->pG->mycol == (j/dataMat->nb)%dataMat->pG->pcol)
             {
@@ -898,6 +1000,53 @@ void tecIO::subAvg(pMat *dataMat)
     }
     cout<<"average subtraceted"<<endl;
 }
+
+void tecIO::addAvg(pMat *dataMat)
+{
+    if (average.size() == 0)
+    {
+        cout<<"Average isn't setup call calcAvg first"<<endl;
+        throw(-1);
+    }
+    
+    cout<<"Adding Average"<<endl;
+    if(dataMat->block==1)
+    {
+    int numFiles = dataMat->nelements / nPoints;
+    for (int i = 0; i < dataMat->N; i++)
+    {
+        for (int j = 0; j < nPoints; j++)
+            dataMat->dataD[i * nPoints + j] += average[j];
+    }
+    }
+    else
+    {
+        int currentCol=0;
+        for(int j=0;j<dataMat->N;j++)
+        {
+            if(dataMat->pG->mycol == (j/dataMat->nb)%dataMat->pG->pcol)
+            {
+                for(int i=0;i<nPoints;i++)
+                {
+                    int xi= i%dataMat->mb;
+                    int li= i/(dataMat->pG->prow*dataMat->mb);
+                    if(dataMat->pG->myrow == (i/dataMat->mb)%dataMat->pG->prow)
+                    {
+                        dataMat->dataD[currentCol*dataMat->myRC[0]+xi+li*dataMat->mb]+=average[i];
+                    }
+                }
+                currentCol++;
+            }
+        }
+    }
+    cout<<"average subtraceted"<<endl;
+}
+
+
+
+
+
+
 
 void tecIO::calcAvg(pMat *dataMat)
 {
@@ -988,11 +1137,27 @@ void tecIO::readAvg(std::string filename)
                         {
                                 tecZoneVarGetDoubleValues(fH, 1, ii, 1, nCells, &(average[i * nCells]));
                         }
+                        if(reorder)
+                        {
+                            cout<<"reording slice"<<endl;
+                            std::vector<double> temp(nCells,0.0); 
+                            for(int j=0;j<nCells;j++)
+                            {
+                                temp[j]=average[i*nCells+j];
+                            }
+                            for(int j=0;j<nCells;j++)
+                            {
+                                average[i*nCells+j]=temp[idx[j]];
+                                //hash[j]=j; 
+                            }
+                            temp.clear();
+                        }
                 }
                 tecFileReaderClose(&fH);
                 std::cout<<"average loaded from :"<<filename<<std::endl;
         //}
         //printf("%d\n",nPoints);
+        
 	MPI_Barrier(MPI_COMM_WORLD);
         //MPI_Bcast(average.data(), nPoints, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         //if(rank==0)
@@ -1012,4 +1177,10 @@ void tecIO::activateGEMSbin(string file)
     GEMSbin=true;
     genHash(file);
 
+}
+
+void tecIO::activateReorder(string file)
+{
+    genHash(file);
+    reorder=true;
 }

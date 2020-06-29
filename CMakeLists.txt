@@ -44,6 +44,9 @@ target_include_directories(parser PRIVATE include)
 target_link_libraries(parser meta)
 #target_link_libraries(parser debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
+add_library(param STATIC src/param.cpp)
+target_include_directories(param PRIVATE include)
+
 
 add_executable(parser_drive src/parser_drive.cpp)
 target_include_directories(parser_drive PUBLIC include)
@@ -63,10 +66,14 @@ target_link_libraries(POD parser meta)
 #target_link_libraries(POD debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
 
+add_executable(projEr CASLAB_execs/projEr.cpp)
+target_include_directories(projEr PUBLIC include)
+target_link_libraries(projEr parser param meta)
 
 
-
-
+add_executable(projErP CASLAB_execs/projErP.cpp)
+target_include_directories(projErP PUBLIC include)
+target_link_libraries(projErP parser param meta)
 
 
 
@@ -110,7 +117,7 @@ add_test(NAME test_EvenRead_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 add_test(NAME test_EvenRead_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_EvenRead)
 add_test(NAME test_EvenTec_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_EvenTec)
 add_test(NAME test_EvenTec_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_EvenTec)
-add_test(NAME test_EvenTec_parallel9 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 16 ${CMAKE_BINARY_DIR}/test_EvenTec)
+add_test(NAME test_EvenTec_parallel9 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 9 ${CMAKE_BINARY_DIR}/test_EvenTec)
 add_test(NAME test_tecplot_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_tec)
 add_test(NAME test_tecplot_paralllel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_tec)
 add_test(NAME test_tecplotSVD_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_tecSVD)
