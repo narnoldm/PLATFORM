@@ -6,6 +6,7 @@
 
 #include "TECIO.h"
 #include <string>
+#include <numeric>
 #include <assert.h>
 #include <vector>
 #include "pMat.hpp"
@@ -36,6 +37,7 @@ public:
     bool batchWrite(pMat *loadMat, std::string dir, std::string fpref,int, int,int);
     bool batchWrite(pMat *loadMat, std::string dir, std::string fpref);
     bool batchRead(pMat *loadMat);
+    bool batchRead(pMat *loadMat, int ii);
 };
 
 
@@ -48,13 +50,14 @@ public:
     std::vector<int> varIndex;
     std::vector<std::string> normID;
     std::vector<double> normFactor;
-    std::vector<int> hash;
+    std::vector<int> idx;
     std::vector<int> cellID;
     std::vector<double> average;
     std::string meshFile;
     bool outBin=false;
     bool fixedMesh = false;
     bool GEMSbin=false;
+    bool reorder=false;
 
     int numVars, dim; 
     long nCells;
@@ -87,6 +90,7 @@ public:
 
     //misc
     void activateGEMSbin(std::string);
+    void activateReorder(std::string);
 };
 
 
