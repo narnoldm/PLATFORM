@@ -8,9 +8,8 @@ void printASCIIVecP0(std::string fname, double *Mat, int N)
 {
         FILE *fid;
         fid = fopen(fname.c_str(), "w");
-        int i = 0;
-        for (i = 0; i < N; i++)
-                fprintf(fid, "%d %.9f\n", i, Mat[i]);
+        for (int i = 0; i < N; i++)
+                fprintf(fid, "%d %.9E\n", i, Mat[i]);
         fclose(fid);
 }
 

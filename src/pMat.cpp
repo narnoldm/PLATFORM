@@ -71,6 +71,7 @@ pMat::pMat(int m, int n, PGrid *pGp, int t, int b, int c, double init)
 }
 pMat::~pMat()
 {
+        if(pG->rank==0)
                 cout << "Deallocating Distributed Matrix" << endl;
 }
 void pMat::setupMat(int m, int n, int t, int b, int c, double init)
