@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
         Uout->nPoints = Uout->nCells*Uout->numVars;
 
         string firstFile = dataset1->prefix + std::to_string(dataset1->snap0) + dataset1->suffix;
-        U->write_bin("U.bin");
+        
         Uout->activateGEMSbin(firstFile.c_str());
         Uout->batchWrite(U,"Spatial_Modes", "Spatial_Mode_", modeStart-1, modeEnd-1, 1);
 
@@ -149,7 +149,8 @@ int main(int argc, char *argv[])
     
     
 
-
+cout.rdbuf(strm_buffer);
+    MPI_Finalize();
 
 
     return 0;
