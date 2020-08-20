@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
         dataset1->subAvg(evenMat);
         dataset1->calcNorm(evenMat);
         dataset1->normalize(evenMat);
-        evenMat->write_bin("A.bin");
+        //evenMat->write_bin("A.bin");
     } else {
 
     }
