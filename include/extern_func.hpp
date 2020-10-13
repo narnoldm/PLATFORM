@@ -15,6 +15,7 @@
 #include <mkl_cblas.h>
 #include <mkl_pblas.h>
 #include <mkl_scalapack.h>
+
 #endif
 //#include <pblas.h>
 
@@ -56,10 +57,22 @@ extern "C" void pdsyrk(const char *uplo, const char *trans, const int *n, const 
 extern "C" void pdgemv(const char *trans, const int *m, const int *n, const double *alpha, const double *a, const int *ia, const int *ja, const int *desca, const double *x, const int *ix, const int *jx, const int *descx, const int *incx, const double *beta, double *y, const int *iy, const int *jy, const int *descy, const int *incy);
 
 extern "C" void pdgesvd(const char *,const char *, const int *,const int *,const double *,const int *,const int *,const int *, const double *, const double *,const int *,const int *,const int *,const double *,const int *,const int *,const int *, const double *,const int *,const int *);
+extern "C" void pdgesvd(const char *,const char *, const int *,const int *,const double *,const int *,const int *,const int *, const double *, const double *,const int *,const int *,const int *,const double *,const int *,const int *,const int *, const double *,const int *,const int *);
+extern "C" void pdgeqpf(const int * , const int *, double *, const int *, const int *, const int * , const int * , double * , double *work , const int * , const int *);
+
+
+
 extern "C" void pdgemr2d(const int *,const int *,const double *,const int *,const int *,const int *,const double *,const int *,const int *,const int *,const int *);
 extern "C" void pzgemr2d(const int *,const int *,const complex16 *,const int *,const int *,const int *,const complex16 *,const int *,const int *,const int *,const int *);
 
 
 #endif
 
+
+
+
+
 #endif
+
+
+

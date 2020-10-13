@@ -22,7 +22,7 @@ bool to_bool(std::string str);
 
 void tokenparse(const std::string &input, std::string sep, std::vector<std::string> &tokens);
 
-
+void readMat(std::string filename, std::vector<int> & Mat);
 
 
 #endif
