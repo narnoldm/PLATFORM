@@ -1,8 +1,7 @@
 
 #include "misc_func.hpp"
 
-
-using namespace::std;
+using namespace ::std;
 
 void printASCIIVecP0(std::string fname, double *Mat, int N)
 {
@@ -12,7 +11,6 @@ void printASCIIVecP0(std::string fname, double *Mat, int N)
                 fprintf(fid, "%d %.9E\n", i, Mat[i]);
         fclose(fid);
 }
-
 
 bool to_bool(std::string str)
 {
@@ -52,4 +50,21 @@ void tokenparse(const string &input, string sep, vector<string> &tokens)
                         }
                 }
         }
+}
+
+void readMat(std::string filename, std::vector<int> &Mat)
+{
+        printf("Reading int file %s\n", filename.c_str());
+        FILE *fid;
+        int n, m; //check size
+        fid = fopen(filename.c_str(), "rb");
+        fread(&n, sizeof(int), 1, fid);
+        fread(&m, sizeof(int), 1, fid);
+        if (n*m != Mat.size())
+        {
+                printf("size does not match up resizing Mat\n");
+                Mat.resize(n*m,0);
+        }
+        fread(Mat.data(),sizeof(int),n*m,fid);
+        fclose(fid);
 }
