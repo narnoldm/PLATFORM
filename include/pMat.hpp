@@ -91,6 +91,7 @@ public:
 	pMat();
 	/// Will create copy pMat object of pointed one
 	pMat(pMat *);
+	pMat(int , int , PGrid *);
 	/// Creates pMat of dimension M,N on context pG with contant value
 	pMat(int , int , PGrid *, int , int , double );
 	/// Creates pMat of dimension M,N on context pG with contant value with cycles
@@ -129,6 +130,10 @@ public:
 	int mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S, int modeStart, int modeEnd, 
 				int mosStep, PGrid *procGrid);
 	
+
+	int qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv);
+
+
 	//Utilities
 	int transpose(pMat *);
 	int transpose(pMat *, int , int , int , int );
