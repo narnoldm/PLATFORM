@@ -98,8 +98,8 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init)
                         mb = std::max(1, M / (pG->getDim(1) * cycles));
                 if (nb > (N / pG->getDim(0)))
                         nb = std::max(1, N / (pG->getDim(0) * cycles));
-                mb = std::min(mb,nb);
-                nb=mb;
+                mb = std::min(mb, nb);
+                nb = mb;
                 cout << "mb/nb = " << nb << endl;
                 MPI_Barrier(MPI_COMM_WORLD);
         }
@@ -251,7 +251,7 @@ int pMat::write_bin(std::string filename)
         {
                 MPI_File_write(fH, &M, 1, MPI_INT, MPI_STATUS_IGNORE);
                 MPI_File_write(fH, &N, 1, MPI_INT, MPI_STATUS_IGNORE);
-                cout << "Write Start" << endl;
+                cout << "Write Start: " << filename << endl;
                 cout << "M=" << M << "mb=" << mb << "N=" << N << "nb=" << nb << endl;
         }
         MPI_File_close(&fH);
@@ -807,8 +807,8 @@ int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv)
         int JAnpm1 = JA + n - 1;
         int JAminMNm1 = JA + std::min(m, n) - 1;
 
-        int ipiv_LOCc = std::max(1,numroc_(&JAnpm1, &nb, &(pG->mycol), &(desc[7]), &(pG->pcol)));
-        int tau_LOCc = std::max(1,numroc_(&JAminMNm1, &nb, &(pG->mycol), &(desc[7]), &(pG->pcol)));
+        int ipiv_LOCc = std::max(1, numroc_(&JAnpm1, &nb, &(pG->mycol), &(desc[7]), &(pG->pcol)));
+        int tau_LOCc = std::max(1, numroc_(&JAminMNm1, &nb, &(pG->mycol), &(desc[7]), &(pG->pcol)));
         cout << "ipiv_LOCc= " << ipiv_LOCc << endl;
         cout << "tau_LOCc= " << tau_LOCc << endl;
         vector<double> tau(1);
@@ -837,9 +837,9 @@ int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv)
         WORK.resize(0);
 
         MPI_Barrier(MPI_COMM_WORLD);
-        int ONE=1;
+        int ONE = 1;
         MPI_File fH;
-        std::string pivot_name="P.bin";
+        std::string pivot_name = "P.bin";
         MPI_File_open(MPI_COMM_WORLD, pivot_name.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fH);
         if (printRank)
         {
@@ -864,7 +864,7 @@ int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv)
         {
                 cout << "Allocation via MPI " << mpiEls << " and pblacs " << myRC[1] << " is different" << endl;
         }
-        MPI_File_open(MPI_COMM_WORLD,pivot_name.c_str(), MPI_MODE_WRONLY, MPI_INFO_NULL, &fH);
+        MPI_File_open(MPI_COMM_WORLD, pivot_name.c_str(), MPI_MODE_WRONLY, MPI_INFO_NULL, &fH);
         if (printRank)
                 cout << "MPI Allocation " << mpiEls << " , pblacs Allocation " << myRC[1] << endl;
         t1 = MPI_Wtime();
@@ -874,8 +874,6 @@ int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv)
         t2 = MPI_Wtime();
         if (printRank)
                 cout << "Write time is " << t2 - t1 << endl;
-
-
 
         return 1;
 }
@@ -894,7 +892,7 @@ int pMat::transpose(pMat *A, int m, int n, int ia, int ja)
         if ((m != M) && (n != A->M))
         {
                 cout << "transpose dimension mismatch" << endl;
-                cout<<m<<" "<<M<<" "<<n<<" "<<A->M<<endl;
+                cout << m << " " << M << " " << n << " " << A->M << endl;
                 return -1;
         }
         int i_one = 1;
@@ -959,6 +957,27 @@ int pMat::dSum(int dim, int rc, double &val)
         }
 }
 
+void pMat::pinv(pMat *A)
+{
+        pMat *UU, *VV;
+        UU = new pMat(A->M, std::min(A->M, A->N), A->pG);
+        VV = new pMat(std::min(A->M, A->N), A->N, A->pG);
+        vector<double> SS(std::min(A->M, A->N), 0.0);
+
+        A->svd_run(A->M, A->N, 0, 0, UU, VV, SS);
+        cout << "summing outer products" << endl;
+        cout << "tol check " << SS[0] << " " << std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0] << endl;
+        this->matrix_Product('T', 'T', VV->N, UU->M, 1, VV, 0, 0, UU, 0, 0, 1 / SS[0], 0.0, 0, 0);
+        for (int i = 1; i < SS.size(); i++)
+        {
+                //check tolerance
+                cout << "tol check " << SS[i] << " " << std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0] << endl;
+                if (SS[i] < std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0])
+                        this->matrix_Product('T', 'T', VV->N, UU->M, 1, VV, i, 0, UU, 0, i, 1 / SS[i], 1.0, 0, 0);
+        }
+        delete UU;
+        delete VV;
+}
 int pMat::outerProductSum(pMat *U, char UT, pMat *VT, char VTT, std::vector<double> &S, int inv)
 {
         if (inv == 1)

@@ -3,14 +3,8 @@
 
 using namespace ::std;
 
-void printASCIIVecP0(std::string fname, double *Mat, int N)
-{
-        FILE *fid;
-        fid = fopen(fname.c_str(), "w");
-        for (int i = 0; i < N; i++)
-                fprintf(fid, "%d %.9E\n", i, Mat[i]);
-        fclose(fid);
-}
+
+
 
 bool to_bool(std::string str)
 {
@@ -54,7 +48,7 @@ void tokenparse(const string &input, string sep, vector<string> &tokens)
 
 void readMat(std::string filename, std::vector<int> &Mat)
 {
-        printf("Reading int file %s\n", filename.c_str());
+        cout<<"Reading int file "<< filename<<endl;
         FILE *fid;
         int n, m; //check size
         fid = fopen(filename.c_str(), "rb");
@@ -62,9 +56,26 @@ void readMat(std::string filename, std::vector<int> &Mat)
         fread(&m, sizeof(int), 1, fid);
         if (n*m != Mat.size())
         {
-                printf("size does not match up resizing Mat\n");
+                cout<<"size does not match up resizing Mat to "<<n*m<<endl;
                 Mat.resize(n*m,0);
         }
         fread(Mat.data(),sizeof(int),n*m,fid);
+        fclose(fid);
+}
+
+
+void writeMat(std::string filename,int m,int n, std::vector<int> &Mat)
+{
+        cout<<"Writing int file "<< filename<<endl;
+        FILE *fid;
+        fid = fopen(filename.c_str(), "wb");
+        fwrite(&n, sizeof(int), 1, fid);
+        fwrite(&m, sizeof(int), 1, fid);
+        if (n*m != Mat.size())
+        {
+                cout<<"size does not match up in parameters "<<n*m<<endl;
+                throw(-1);
+        }
+        fwrite(Mat.data(),sizeof(int),n*m,fid);
         fclose(fid);
 }

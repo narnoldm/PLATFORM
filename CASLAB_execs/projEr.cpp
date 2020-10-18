@@ -117,10 +117,10 @@ int main(int argc, char *argv[])
         //err[i]/=norm[i];
     }
     if(rank==0)
-        printASCIIVecP0("projErr"+std::to_string(SpaModes.nSets)+".txt",err.data(),err.size());
+        printASCIIVecP0("projErr"+std::to_string(SpaModes.nSets)+".txt",err,err.size());
     for(int i=0;i<err.size();i++)
         err[i]=err[i]/norm[i];
-    printASCIIVecP0("projErrN"+std::to_string(SpaModes.nSets)+".txt",err.data(),err.size());
+    printASCIIVecP0("projErrN"+std::to_string(SpaModes.nSets)+".txt",err,err.size());
     cout.rdbuf(strm_buffer);
     MPI_Finalize();
     return 0; 
