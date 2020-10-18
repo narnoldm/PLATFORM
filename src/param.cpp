@@ -117,3 +117,7 @@ std::string paramMap::getParamString(std::string parastr)
         throw(-1);
         return " ";
 }
+
+
+
+//std::string paramMap::buildString

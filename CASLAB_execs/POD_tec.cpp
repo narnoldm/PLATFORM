@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 
     if ( (mosStep == 0) || (mosStep == 2) ) {
         if (evenG->rank == 0) {
-            printASCIIVecP0("S.txt",S.data(),S.size());
+            printASCIIVecP0("S.txt",S,S.size());
         }
     }
     
