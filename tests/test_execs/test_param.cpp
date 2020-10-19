@@ -39,10 +39,10 @@ int main(int argc, char *argv[])
 
     string testString=p1.getParamString("testString");
     cout<<"test String is "<<testString<<endl;
-    assert(testString==HelloWorld!);
+    assert(testString=="HelloWorld!");
     testString=p1.getParamString("testStringSpace");
     cout<<"test String Space is "<<testString<<endl;
-    assert(testString==HelloWorld!);
+    assert(testString=="HelloWorld!");
 
 
     cout.rdbuf(strm_buffer);
