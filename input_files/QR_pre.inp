@@ -1,0 +1,12 @@
+stdout_proc = 0
+
+!This way for now need to add array input option
+inputString=input|tecplot|../forNick/FOM/UnsteadyFieldResults/gemsma_cmb_|.szplt|3001|3020|1|Static_Pressure|-1|Temperature|-1
+
+!Number of Modes to keep for QR
+numModes=16
+
+!percent of points to be sampled (If points is less than boundary cells will cause issues)
+pSampling=.2
+
+

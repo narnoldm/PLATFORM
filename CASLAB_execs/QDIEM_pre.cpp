@@ -15,6 +15,7 @@ int main(int argc, char *argv[])
 
     paramMap inputFile("QR_pre.inp",rank);
 
+    double t2,t1;
 
     int debug_proc;
     inputFile.getParamInt("stdout_proc",debug_proc);
@@ -26,6 +27,13 @@ int main(int argc, char *argv[])
 
     string input;
     inputFile.getParamString("inputString",input);
+
+    int numModes;
+    inputFile.getParamInt("numModes",numModes);
+    double pSampling;
+    inputFile.getParamDouble("pSampling",pSampling);
+    int numModesUsol = numModes;
+
 
 
     cout << "input string is: " << input << endl;
@@ -42,18 +50,22 @@ int main(int argc, char *argv[])
     pMat *A;
 
     A = new pMat(dataset1->nPoints, dataset1->nSets, evenG, 0, 0, 0.0);
+    t1=MPI_Wtime();
     dataset1->batchRead(A);
+    t2=MPI_Wtime();
+    cout<<"load took "<<t2-t1<<" seconds"<<endl;
+
+    t1=MPI_Wtime();
     dataset1->calcAvg(A);
     dataset1->subAvg(A);
     dataset1->calcNorm(A);
     dataset1->normalize(A);
-
-    A->write_bin("A.bin");
+    t2=MPI_Wtime();
+    cout<<"preprocessing took "<<t2-t1<<" seconds"<<endl;
+    //A->write_bin("A.bin");
     int M = dataset1->nPoints, N = dataset1->nSets;
 
-    int numModes = std::min(M, N) * .8;
-    double pSampling = .2;
-    int numModesUsol = numModes;
+    
 
     int PointsNeeded = dataset1->nCells * pSampling;
 
@@ -65,8 +77,8 @@ int main(int argc, char *argv[])
     S.resize(std::min(M, N));
 
     A->svd_run(M, N, 0, 0, U, VT, S);
-    for (int i = 0; i < numModes; i++)
-        cout << S[i] << endl;
+
+
     vector<int> P;
 
     UsT = new pMat(numModes, U->M, evenG);
@@ -77,6 +89,8 @@ int main(int argc, char *argv[])
     vector<int> gP;
     vector<int> itype;
     set<int> samplingPoints;
+
+    t1=MPI_Wtime();
     if (rank == 0)
     {
         readMat("P.bin", gP);
@@ -87,8 +101,7 @@ int main(int argc, char *argv[])
             //switch to physical points
             cout << i << " " << gP[i] << " ";
             gP[i] = gP[i] % dataset1->nCells;
-            cout << gP[i] << endl
-                 << endl;
+ 
             auto check = samplingPoints.emplace(gP[i]);
             if (!check.second)
             {
@@ -97,10 +110,10 @@ int main(int argc, char *argv[])
         }
         cout << "goal is " << PointsNeeded << "points" << endl;
         cout << "points after qr: " << samplingPoints.size() << " of " << PointsNeeded << endl;
-        for (std::set<int>::iterator it = samplingPoints.begin(); it != samplingPoints.end(); ++it)
+        /*for (std::set<int>::iterator it = samplingPoints.begin(); it != samplingPoints.end(); ++it)
         {
             cout << *it << endl;
-        }
+        }*/
         //add boundary cells
         readMat("dfd_itype.bin", itype);
         for (vector<int>::iterator it = itype.begin(); it != itype.end(); ++it)
@@ -160,6 +173,10 @@ int main(int argc, char *argv[])
         Pname.push_back(tempname);
         dataset1->writeSingleFile("sampling.szplt", Pname, gPD.data(), firstFile);
     }
+
+    t2=MPI_Wtime();
+    cout<<"figuring out samples took "<<t2-t1<<" seconds"<<endl;
+
     if (rank != 0)
     {
         gP.resize(PointsNeeded, 0);
@@ -170,19 +187,25 @@ int main(int argc, char *argv[])
     cout << "calculating DIEM interpolant" << endl;
 
     pMat *Usamp = new pMat(gP.size() * dataset1->numVars, numModes, evenG);
+
+    t1=MPI_Wtime();
     for (int i = 0; i < gP.size(); i++)
     {
-        cout << i << "\r";
+        cout << (double)i/gP.size()*100 <<"percent points extracted \r";
         for (int j = 0; j < dataset1->numVars; j++)
             Usamp->changeContext(U, 1, numModes, gP[i] + j * dataset1->nCells, 0, i + j * gP.size(), 0,false);
     }
 
-    Usamp->write_bin("Usamp.bin");
+    t2=MPI_Wtime();
+    cout<<"extraction took "<<t2-t1<<" seconds"<<endl;
 
+    //Usamp->write_bin("Usamp.bin");
+
+    t1=MPI_Wtime();
     pMat *pinvUsamp = new pMat(Usamp->N, Usamp->M, evenG);
     pinvUsamp->pinv(Usamp);
 
-    pinvUsamp->write_bin("pinvUsamp.bin");
+    //pinvUsamp->write_bin("pinvUsamp.bin");
 
     //Assuming Usol=U and numModes= numModesSol This will reduce to I, but doing math for when we have RHS
     pMat *Usol = U;
@@ -193,8 +216,10 @@ int main(int argc, char *argv[])
     pMat *deimInterp = new pMat(UsolU->N, pinvUsamp->N, evenG);
 
     deimInterp->matrix_Product('N', 'N', deimInterp->M, deimInterp->N, pinvUsamp->M, UsolU, 0, 0, pinvUsamp, 0, 0, 1.0, 0.0, 0, 0);
+    t2=MPI_Wtime();
+    cout<<"DEIM interpolant calculation took "<<t2-t1<<" seconds"<<endl;
 
-    deimInterp->write_bin("deimInterp.bin");
+    //deimInterp->write_bin("deimInterp.bin");
 
     //delete all the extras
     delete UsolU;
@@ -209,12 +234,17 @@ int main(int argc, char *argv[])
 
     U = new pMat(M, numModes, evenG);
     // 0 insertion for output
+    
+    t1=MPI_Wtime();
     for (int i = 0; i < gP.size(); i++)
     {
-        cout << i <<"\r";
+        cout << (double)i/gP.size()*100 <<"percent points emplaced \r";
         for (int j = 0; j < dataset1->numVars; j++)
             U->changeContext(deimInterp_T, 1, numModes, i + j * gP.size(), 0, gP[i] + j * dataset1->nCells, 0,false);
     }
+    t2=MPI_Wtime();
+    cout<<"DEIM emplacement took "<<t2-t1<<" seconds"<<endl;
+
 
     tecIO *Uout = new tecIO();
     Uout->snap0 = 1;
@@ -234,8 +264,10 @@ int main(int argc, char *argv[])
 
     Uout->activateReorder(firstFile.c_str());
     Uout->activateGEMSbin(firstFile.c_str());
+    t1=MPI_Wtime();
     Uout->batchWrite(U, "deimInterp", "Deim_mode_");
-
+    t2=MPI_Wtime();
+    cout<<"Output took "<<t2-t1<<" seconds"<<endl;
     /*string filename = "gemsma1.bin";
 
     if (A->check_bin_size(filename, M, N))
