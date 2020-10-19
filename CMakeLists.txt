@@ -67,7 +67,7 @@ target_link_libraries(POD parser meta)
 
 add_executable(QDIEM CASLAB_execs/QDIEM_pre.cpp)
 target_include_directories(QDIEM PUBLIC include)
-target_link_libraries(QDIEM parser meta)
+target_link_libraries(QDIEM parser param meta)
 #target_link_libraries(QDIEM debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
 
@@ -123,6 +123,9 @@ add_executable(test_binSVD tests/test_meta/test_binSVD.cpp)
 target_include_directories(test_binSVD PRIVATE include 3rd_Party/tecio/teciosrc)
 target_link_libraries(test_binSVD meta)
 
+
+add_test(NAME test_param_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_param)
+add_test(NAME test_param_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_param)
 add_test(NAME test_pMat_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_pMat)
 add_test(NAME test_pMat_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_pMat)
 add_test(NAME test_pinv_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_pinv)
@@ -147,7 +150,7 @@ add_test(NAME test_SVD_bin_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR
 
 
 
-add_test(NAME test_cleanup WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND rm -r out)
+add_test(NAME test_cleanup WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND rm -r out even load out1 )
 
 
 
