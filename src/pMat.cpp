@@ -900,28 +900,34 @@ int pMat::transpose(pMat *A, int m, int n, int ia, int ja)
         double ZERO = 0.0;
         pdtran(&m, &n, &ONE, A->dataD.data(), &IA, &JA, A->desc, &ZERO, dataD.data(), &i_one, &i_one, desc);
 }
-int pMat::changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb)
+int pMat::changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb, bool stdout)
 {
         int IA = ia + 1;
         int JA = ja + 1;
         int IB = ib + 1;
         int JB = jb + 1;
-        cout << "Copying Matrix" << endl
-             << "m = " << m << " , "
-             << "n = " << n << endl;
+        if (stdout)
+                cout << "Copying Matrix" << endl
+                     << "m = " << m << " , "
+                     << "n = " << n << endl;
         int i_one = 1;
         if (type == 0)
         {
-                cout << "Double changed pGrid" << endl;
+                if(stdout)
+                        cout << "Double changed pGrid" << endl;
                 pdgemr2d(&m, &n, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, &(pG->icntxt));
         }
         if (type == 1)
         {
-                cout << "Complex changed pGrid" << endl;
+                if(stdout)
+                        cout << "Complex changed pGrid" << endl;
                 pzgemr2d(&m, &n, A->dataC.data(), &IA, &JA, A->desc, dataC.data(), &IB, &JB, desc, &(pG->icntxt));
         }
 }
-
+int pMat::changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb)
+{
+        changeContext(A, m, n, ia, ja, ib, jb, true);
+}
 int pMat::changeContext(pMat *A)
 {
         changeContext(A, M, N, 0, 0, 0, 0);

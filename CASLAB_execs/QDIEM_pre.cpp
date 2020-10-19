@@ -1,4 +1,5 @@
 #include "metadata.hpp"
+#include "param.hpp"
 
 #include <set>
 
@@ -12,16 +13,21 @@ int main(int argc, char *argv[])
     std::ofstream sink("/dev/null");
     streambuf *strm_buffer = cout.rdbuf();
 
-    int debug_proc = 0;
-    if (argc > 2)
-    {
-        debug_proc = atoi(argv[2]);
-    }
+    paramMap inputFile("QR_pre.inp",rank);
+
+
+    int debug_proc;
+    inputFile.getParamInt("stdout_proc",debug_proc);
     if (rank != debug_proc)
     {
         std::cout.rdbuf(sink.rdbuf());
     }
-    string input = argv[1];
+
+
+    string input;
+    inputFile.getParamString("inputString",input);
+
+
     cout << "input string is: " << input << endl;
     vector<string> token;
     tokenparse(input, "|", token);
@@ -104,7 +110,7 @@ int main(int argc, char *argv[])
                 auto check = samplingPoints.emplace(it - itype.begin());
                 if (!check.second)
                 {
-                    cout << "repeated element " << it - itype.begin() << endl;
+                    cout << "repeated element " << it - itype.begin() <<"\r";
                 }
             }
         }
@@ -128,12 +134,12 @@ int main(int argc, char *argv[])
                     auto check = samplingPoints.emplace(*it);
                     if (!check.second)
                     {
-                        cout << "repeated element " << *it << endl;
+                        cout << "repeated element " << *it << "\r";
                     }
                 }
             }
             r++;
-            cout << "after sweep " << r << " need " << PointsNeeded - samplingPoints.size() << " Points" << endl;
+            cout << "after sweep " << r << " need " << PointsNeeded - samplingPoints.size() << " more Points" << endl;
             if (r >= 20)
             {
                 cout << "still don't have the points" << endl;
@@ -164,12 +170,11 @@ int main(int argc, char *argv[])
     cout << "calculating DIEM interpolant" << endl;
 
     pMat *Usamp = new pMat(gP.size() * dataset1->numVars, numModes, evenG);
-    U->write_bin("U.bin");
     for (int i = 0; i < gP.size(); i++)
     {
-        cout << i << endl;
+        cout << i << "\r";
         for (int j = 0; j < dataset1->numVars; j++)
-            Usamp->changeContext(U, 1, numModes, gP[i] + j * dataset1->nCells, 0, i + j * gP.size(), 0);
+            Usamp->changeContext(U, 1, numModes, gP[i] + j * dataset1->nCells, 0, i + j * gP.size(), 0,false);
     }
 
     Usamp->write_bin("Usamp.bin");
@@ -206,9 +211,9 @@ int main(int argc, char *argv[])
     // 0 insertion for output
     for (int i = 0; i < gP.size(); i++)
     {
-        cout << i << endl;
+        cout << i <<"\r";
         for (int j = 0; j < dataset1->numVars; j++)
-            U->changeContext(deimInterp_T, 1, numModes, i + j * gP.size(), 0, gP[i] + j * dataset1->nCells, 0);
+            U->changeContext(deimInterp_T, 1, numModes, i + j * gP.size(), 0, gP[i] + j * dataset1->nCells, 0,false);
     }
 
     tecIO *Uout = new tecIO();
