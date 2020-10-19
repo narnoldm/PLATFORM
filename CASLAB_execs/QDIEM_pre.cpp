@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
     A->write_bin("A.bin");
     int M = dataset1->nPoints, N = dataset1->nSets;
 
-    int numModes = std::min(M, N);
+    int numModes = std::min(M, N) * .8;
     double pSampling = .2;
     int numModesUsol = numModes;
 
@@ -163,13 +163,13 @@ int main(int argc, char *argv[])
 
     cout << "calculating DIEM interpolant" << endl;
 
-    pMat *Usamp = new pMat(gP.size() * dataset1->numVars, U->N, evenG);
+    pMat *Usamp = new pMat(gP.size() * dataset1->numVars, numModes, evenG);
     U->write_bin("U.bin");
     for (int i = 0; i < gP.size(); i++)
     {
         cout << i << endl;
         for (int j = 0; j < dataset1->numVars; j++)
-            Usamp->changeContext(U, 1, U->N, gP[i] + j * dataset1->nCells, 0, i + j * gP.size(), 0);
+            Usamp->changeContext(U, 1, numModes, gP[i] + j * dataset1->nCells, 0, i + j * gP.size(), 0);
     }
 
     Usamp->write_bin("Usamp.bin");
@@ -179,11 +179,11 @@ int main(int argc, char *argv[])
 
     pinvUsamp->write_bin("pinvUsamp.bin");
 
-    //Assuming Usol=U and numModes= numModesSol This will reduce to I but doing math for when we have RHS
+    //Assuming Usol=U and numModes= numModesSol This will reduce to I, but doing math for when we have RHS
     pMat *Usol = U;
-    pMat *UsolU = new pMat(Usol->N, U->N, evenG);
+    pMat *UsolU = new pMat(numModesUsol, numModes, evenG);
 
-    UsolU->matrix_Product('T', 'N', Usol->N, U->N, U->M, Usol, 0, 0, U, 0, 0, 1.0, 0.0, 0, 0);
+    UsolU->matrix_Product('T', 'N', numModesUsol, numModes, U->M, Usol, 0, 0, U, 0, 0, 1.0, 0.0, 0, 0);
 
     pMat *deimInterp = new pMat(UsolU->N, pinvUsamp->N, evenG);
 
@@ -191,8 +191,45 @@ int main(int argc, char *argv[])
 
     deimInterp->write_bin("deimInterp.bin");
 
-    meta *deimInterpMeta = new meta();
-    //deimInterpMeta->batchWrite(deimInterp,"deim_interp","mode");
+    //delete all the extras
+    delete UsolU;
+    delete pinvUsamp;
+    delete Usamp;
+    delete UsT;
+
+    pMat *deimInterp_T = new pMat(deimInterp->N, deimInterp->M, deimInterp->pG);
+    deimInterp_T->transpose(deimInterp);
+    delete deimInterp;
+    delete U;
+
+    U = new pMat(M, numModes, evenG);
+    // 0 insertion for output
+    for (int i = 0; i < gP.size(); i++)
+    {
+        cout << i << endl;
+        for (int j = 0; j < dataset1->numVars; j++)
+            U->changeContext(deimInterp_T, 1, numModes, i + j * gP.size(), 0, gP[i] + j * dataset1->nCells, 0);
+    }
+
+    tecIO *Uout = new tecIO();
+    Uout->snap0 = 1;
+    Uout->snapF = U->N;
+    Uout->snapSkip = 1;
+    Uout->nSets = U->N;
+    Uout->prefix = "deimInterp";
+    Uout->suffix = ".szplt";
+    Uout->isInit = true;
+    Uout->meshFile = dataset1->prefix + std::to_string(dataset1->snap0) + dataset1->suffix;
+    Uout->fixedMesh = true;
+    Uout->getDimNodes();
+    Uout->varName = dataset1->varName;
+    Uout->varIndex = dataset1->varIndex;
+    Uout->numVars = Uout->varName.size();
+    Uout->nPoints = Uout->nCells * Uout->numVars;
+
+    Uout->activateReorder(firstFile.c_str());
+    Uout->activateGEMSbin(firstFile.c_str());
+    Uout->batchWrite(U, "deimInterp", "Deim_mode_");
 
     /*string filename = "gemsma1.bin";
 
