@@ -170,7 +170,7 @@ bool meta::batchRead(pMat *loadMat, int ii)
         {
             fileIndex = snap0 + i * snapSkip;
 
-            cout << "proc " << iP << " is reading file " << fileIndex << endl;
+            cout << "proc " << iP << " is reading file " << fileIndex << "\r";
 
             readSingle(fileIndex, loadMat->dataD.data() + nPoints * localC);
             localC++;
@@ -265,7 +265,7 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
             {
                 fileIndex = snap0 + i * snapSkip;
 
-                cout << "proc " << iP << " is writing file " << fileIndex << endl;
+                cout << "proc " << iP << " is writing file " << fileIndex << "\r";
                 writeSingle(fileIndex, loadMat->dataD.data() + nPoints * localC, dir + "/" + fpref);
                 localC++;
             }
@@ -389,7 +389,7 @@ void tecIO::checkExists()
 }
 bool tecIO::readSingle(int fileID, double *point)
 {
-    cout << (prefix + std::to_string(fileID) + suffix) << endl;
+    cout << (prefix + std::to_string(fileID) + suffix) << "\r";
     void *fH = NULL;
     tecFileReaderOpen((prefix + std::to_string(fileID) + suffix).c_str(), &fH);
     int type;
@@ -414,7 +414,7 @@ bool tecIO::readSingle(int fileID, double *point)
         }
         if (reorder)
         {
-            cout << "reording slice" << endl;
+            
             std::vector<double> temp(nCells, 0.0);
             for (int j = 0; j < nCells; j++)
             {
@@ -550,7 +550,7 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref)
 
     if (GEMSbin)
     {
-        cout << "bin write single " << fileID << endl;
+        //cout << "bin write single " << fileID << endl;
         FILE *fid;
         fid = fopen((fpref + to_string(fileID) + ".bin").c_str(), "wb");
 
