@@ -90,6 +90,11 @@ add_executable(test_pMat tests/test_execs/pMat_test.cpp)
 target_include_directories(test_pMat PRIVATE include)
 target_link_libraries(test_pMat pMat)
 
+add_executable(test_pinv tests/test_execs/test_pinv.cpp)
+target_include_directories(test_pinv PRIVATE include)
+target_link_libraries(test_pinv pMat)
+
+
 add_executable(test_meta tests/test_meta/test_bin.cpp)
 target_include_directories(test_meta PRIVATE include 3rd_Party/tecio/teciosrc)
 target_link_libraries(test_meta meta)
@@ -117,6 +122,8 @@ target_link_libraries(test_binSVD meta)
 
 add_test(NAME test_pMat_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_pMat)
 add_test(NAME test_pMat_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_pMat)
+add_test(NAME test_pinv_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_pinv)
+add_test(NAME test_pinv_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_pinv)
 add_test(NAME test_metadata_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_meta)
 add_test(NAME test_metadata_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_meta)
 add_test(NAME test_EvenRead_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_EvenRead)
