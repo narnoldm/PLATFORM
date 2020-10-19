@@ -23,16 +23,23 @@ int main(int argc, char *argv[])
     string inpFile=argv[2];
     paramMap input(inpFile);
 
-    string FOM = input.getParamString("FOM");
-    string ROM = input.getParamString("ROM");
+    string FOM;
+    input.getParamString("FOM",FOM);
+    string ROM;
+    input.getParamString("ROM",ROM);
 
-    string basis=input.getParamString("V");
+    string basis;
+    input.getParamString("V",basis);
 
-    string centering=input.getParamString("CenterFile");
-    string hashfile=input.getParamString("HashFile");
+    string centering;
+    input.getParamString("CenterFile",centering);
+    string hashfile;
+    input.getParamString("HashFile",hashfile);
 
-    int outProj=input.getParamInt("outProj");
-    int outErr=input.getParamInt("outErr");
+    int outProj;
+    input.getParamInt("outProj",outProj);
+    int outErr;
+    input.getParamInt("outErr",outErr);
 
     //int outRecon=input.getParamInt("outRecon");
 

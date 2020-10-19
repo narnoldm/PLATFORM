@@ -16,10 +16,9 @@ paramMap::paramMap(std::string file,int r)
         intParam.clear();
         doubleParam.clear();
 }
-int paramMap::getParamInt(std::string parastr)
+bool paramMap::getParamInt(std::string parastr, int &Param)
 {
         //std::cout<<"Looking for "<<parastr<<std::endl;
-        int Param;
         std::fstream inFile;
         inFile.open(filename);
         std::string line;
@@ -47,7 +46,7 @@ int paramMap::getParamInt(std::string parastr)
                                         token=line.substr(eq + 1);
                                         token.erase(remove_if(token.begin(),token.end(),isspace),token.end());
                                         Param = std::stoi(token, nullptr);
-                                        return Param;
+                                        return true;
                                 }
                         }
                 }
@@ -57,12 +56,10 @@ int paramMap::getParamInt(std::string parastr)
                 throw(-1);
         if(isMPI==false)
                 throw(-1);
-        return 0;
+        return false;
 }
-double paramMap::getParamDouble(std::string parastr)
+bool paramMap::getParamDouble(std::string parastr, double &Param)
 {
-        //std::cout<<"Looking for "<<parastr<<std::endl;
-        double Param;
         std::fstream inFile;
         inFile.open(filename);
         std::string line;
@@ -88,7 +85,7 @@ double paramMap::getParamDouble(std::string parastr)
                                         token=line.substr(eq + 1);
                                         token.erase(remove_if(token.begin(),token.end(),isspace),token.end());
                                         Param = std::stod(token, nullptr);
-                                        return Param;
+                                        return true;
                                 }
                         }
                 }
@@ -98,12 +95,13 @@ double paramMap::getParamDouble(std::string parastr)
                 throw(-1);
         if(isMPI==false)
                 throw(-1);
+        return false;
 }
 
-std::string paramMap::getParamString(std::string parastr)
+bool paramMap::getParamString(std::string parastr,std::string &Param)
 {
         //std::cout<<"Looking for "<<parastr<<std::endl;
-        std::string Param;
+
         std::fstream inFile;
         inFile.open(filename);
         std::string line;
@@ -129,7 +127,7 @@ std::string paramMap::getParamString(std::string parastr)
                                         token=line.substr(eq + 1);
                                         token.erase(remove_if(token.begin(),token.end(),isspace),token.end());
                                         Param = token;
-                                        return Param;
+                                        return true;
                                 }
                         }
                 }
@@ -139,6 +137,8 @@ std::string paramMap::getParamString(std::string parastr)
                 throw(-1);
         if(isMPI==false)
                 throw(-1);
+
+        return false;
 }
 
 

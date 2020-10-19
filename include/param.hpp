@@ -25,9 +25,9 @@ class paramMap
   public:
 	paramMap(std::string file);
 	paramMap(std::string file,int r);
-	int getParamInt(std::string key);
-	double getParamDouble(std::string key);
-	std::string getParamString(std::string key);
+	bool getParamInt(std::string key,int & Param);
+	bool getParamDouble(std::string key,double & Param);
+	bool getParamString(std::string key,std::string & Param);
 };
 
 
