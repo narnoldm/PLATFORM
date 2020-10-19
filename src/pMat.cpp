@@ -965,6 +965,8 @@ void pMat::pinv(pMat *A)
         vector<double> SS(std::min(A->M, A->N), 0.0);
 
         A->svd_run(A->M, A->N, 0, 0, UU, VV, SS);
+        UU->write_bin("UU.bin");
+        VV->write_bin("VV.bin");
         cout << "summing outer products" << endl;
         cout << "tol check " << SS[0] << " " << std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0] << endl;
         this->matrix_Product('T', 'T', VV->N, UU->M, 1, VV, 0, 0, UU, 0, 0, 1.0 / SS[0], 0.0, 0, 0);
@@ -972,7 +974,7 @@ void pMat::pinv(pMat *A)
         {
                 //check tolerance
                 cout << "tol check " << SS[i] << " " << std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0] << endl;
-                if (SS[i] < std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0])
+                if (SS[i] > std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0])
                         this->matrix_Product('T', 'T', VV->N, UU->M, 1, VV, i, 0, UU, 0, i, 1.0 / SS[i], 1.0, 0, 0);
         }
         delete UU;
