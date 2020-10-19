@@ -7,7 +7,15 @@ paramMap::paramMap(std::string file)
         intParam.clear();
         doubleParam.clear();
 }
-
+paramMap::paramMap(std::string file,int r)
+{
+        isMPI=true;
+        rank=r;
+        filename = file;
+        keys.clear();
+        intParam.clear();
+        doubleParam.clear();
+}
 int paramMap::getParamInt(std::string parastr)
 {
         //std::cout<<"Looking for "<<parastr<<std::endl;
@@ -31,17 +39,24 @@ int paramMap::getParamInt(std::string parastr)
                         {
                                 //std::cout<<line.substr(0,eq)<<std::endl;
                                 //token>>line.substr(0,eq);
-                                if (parastr == line.substr(0, eq))
+                                std::string token=line.substr(0, eq);
+                                token.erase(remove_if(token.begin(),token.end(),isspace),token.end());
+                                if (parastr == token)
                                 {
                                         //	std::cout<<"found"<<std::endl;
-                                        Param = std::stoi(line.substr(eq + 1), nullptr);
+                                        token=line.substr(eq + 1);
+                                        token.erase(remove_if(token.begin(),token.end(),isspace),token.end());
+                                        Param = std::stoi(token, nullptr);
                                         return Param;
                                 }
                         }
                 }
         }
         std::cout << "param not found " << parastr << std::endl;
-        throw(-1);
+        if(isMPI&& (!rank))
+                throw(-1);
+        if(isMPI==false)
+                throw(-1);
         return 0;
 }
 double paramMap::getParamDouble(std::string parastr)
@@ -65,20 +80,24 @@ double paramMap::getParamDouble(std::string parastr)
                         //std::cout<<eq<<std::endl;
                         if (line.length() != eq)
                         {
-                                //std::cout<<line.substr(0,eq)<<std::endl;
-                                //token>>line.substr(0,eq);
-                                if (parastr == line.substr(0, eq))
+                                std::string token=line.substr(0, eq);
+                                token.erase(remove_if(token.begin(),token.end(),isspace),token.end());
+                                if (parastr == token)
                                 {
                                         //std::cout<<"found"<<std::endl;
-                                        Param = std::stod(line.substr(eq + 1), nullptr);
+                                        token=line.substr(eq + 1);
+                                        token.erase(remove_if(token.begin(),token.end(),isspace),token.end());
+                                        Param = std::stod(token, nullptr);
                                         return Param;
                                 }
                         }
                 }
         }
         std::cout << "param not found " << parastr << std::endl;
-        throw(-1);
-        return 0;
+        if(isMPI&& (!rank))
+                throw(-1);
+        if(isMPI==false)
+                throw(-1);
 }
 
 std::string paramMap::getParamString(std::string parastr)
@@ -102,20 +121,24 @@ std::string paramMap::getParamString(std::string parastr)
                         //std::cout<<eq<<std::endl;
                         if (line.length() != eq)
                         {
-                                //std::cout<<line.substr(0,eq)<<std::endl;
-                                //token>>line.substr(0,eq);
-                                if (parastr == line.substr(0, eq))
+                                std::string token=line.substr(0, eq);
+                                token.erase(remove_if(token.begin(),token.end(),isspace),token.end());
+                                if (parastr == token)
                                 {
                                         //std::cout<<"found"<<std::endl;
-                                        Param = line.substr(eq + 1);
+                                        token=line.substr(eq + 1);
+                                        token.erase(remove_if(token.begin(),token.end(),isspace),token.end());
+                                        Param = token;
                                         return Param;
                                 }
                         }
                 }
         }
         std::cout << "param not found " << parastr << std::endl;
-        throw(-1);
-        return " ";
+        if(isMPI&& (!rank))
+                throw(-1);
+        if(isMPI==false)
+                throw(-1);
 }
 
 

@@ -85,6 +85,9 @@ target_link_libraries(projErP parser param meta)
 
 enable_testing()
 
+add_executable(test_param tests/test_execs/test_param.cpp)
+target_include_directories(test_param PRIVATE include)
+target_link_libraries(test_param param ${MPI_C_LIBRARIES})
 
 add_executable(test_pMat tests/test_execs/pMat_test.cpp)
 target_include_directories(test_pMat PRIVATE include)
