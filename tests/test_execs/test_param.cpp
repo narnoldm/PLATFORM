@@ -47,6 +47,13 @@ int main(int argc, char *argv[])
     cout<<"test String Space is "<<testString<<endl;
     assert(testString=="HelloWorld!");
 
+    bool testBool;
+    assert(p1.getParamBool("testBool",testBool));
+    cout<<"test Bool is "<<testBool<<endl;
+    assert(testBool==true);
+    assert(p1.getParamBool("testBoolSpace",testBool));
+    cout<<"test Bool Space is "<<testBool<<endl;
+    assert(testBool==true);
 
     cout.rdbuf(strm_buffer);
     MPI_Finalize();

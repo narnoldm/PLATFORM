@@ -1,5 +1,5 @@
 #include "metadata.hpp"
-
+#include "param.hpp"
 
 using namespace::std;
 int main(int argc, char *argv[])
@@ -10,37 +10,34 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     std::ofstream sink("/dev/null");
     streambuf *strm_buffer = cout.rdbuf();
+
+
+    paramMap inputFile("POD_tec.inp",rank);
+
     int debug_proc=0;
-    int mosStep = 0;
-    int modeStart, modeEnd;
-    string avgFile;
-    if(argc>2)
-    {
-        debug_proc=atoi(argv[2]);
-        if(argc>3)
-        {
-            avgFile=argv[3];
-             
-            if (argc > 4) {
-                mosStep = atoi(argv[4]);
-
-                // modeStart and modeEnd
-                if (argc > 5) {
-                    modeStart = atoi(argv[5]);
-                    if (argc > 6) {
-                        modeEnd = atoi(argv[6]);
-                    }
-                }
-
-            }
-
-        }
-    }
-    if (rank != debug_proc)
+    inputFile.getParamInt("stdout_proc",debug_proc);
+     if (rank != debug_proc)
     {
         std::cout.rdbuf(sink.rdbuf());
     }
-    string input = argv[1];
+
+
+    int mosStep = 0;
+    inputFile.getParamInt("mosStep",mosStep);
+    int modeStart, modeEnd;
+    inputFile.getParamInt("modeStart",modeStart);
+    inputFile.getParamInt("modeEnd",modeEnd);
+
+
+    string avgFile="";
+    bool readAvg =false;
+    inputFile.getParamBool("readAvg",readAvg);
+    if(readAvg)
+        inputFile.getParamString("avgFile",avgFile);
+    
+   
+    string input = "";
+    inputFile.getParamString("inputString",input);
     cout<<"input string is: "<<input<<endl;
     vector<string> token;
     tokenparse(input,"|",token);
@@ -62,7 +59,7 @@ int main(int argc, char *argv[])
         evenMat=new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
         dataset1->batchRead(evenMat);
 
-        if(argc>3)
+        if(readAvg)
         {
             dataset1->readAvg(avgFile);
         }
@@ -82,12 +79,7 @@ int main(int argc, char *argv[])
     vector<double> S;
 
     if ( (mosStep == 0) || (mosStep == 3) ) {
-        if (argc < 7) {
-            modeEnd = dataset1->nSets;
-            if (argc < 6) {
-                modeStart = 1;
-            }
-        }
+        
         int nModes = modeEnd - modeStart + 1;
         U=new pMat(dataset1->nPoints,nModes,evenG,0,0,0.0);
         VT=new pMat(dataset1->nSets,dataset1->nSets,evenG,0,0,0.0);

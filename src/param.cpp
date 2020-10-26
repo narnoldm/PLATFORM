@@ -7,10 +7,10 @@ paramMap::paramMap(std::string file)
         intParam.clear();
         doubleParam.clear();
 }
-paramMap::paramMap(std::string file,int r)
+paramMap::paramMap(std::string file, int r)
 {
-        isMPI=true;
-        rank=r;
+        isMPI = true;
+        rank = r;
         filename = file;
         keys.clear();
         intParam.clear();
@@ -38,13 +38,13 @@ bool paramMap::getParamInt(std::string parastr, int &Param)
                         {
                                 //std::cout<<line.substr(0,eq)<<std::endl;
                                 //token>>line.substr(0,eq);
-                                std::string token=line.substr(0, eq);
-                                token.erase(remove_if(token.begin(),token.end(),isspace),token.end());
+                                std::string token = line.substr(0, eq);
+                                token.erase(remove_if(token.begin(), token.end(), isspace), token.end());
                                 if (parastr == token)
                                 {
                                         //	std::cout<<"found"<<std::endl;
-                                        token=line.substr(eq + 1);
-                                        token.erase(remove_if(token.begin(),token.end(),isspace),token.end());
+                                        token = line.substr(eq + 1);
+                                        token.erase(remove_if(token.begin(), token.end(), isspace), token.end());
                                         Param = std::stoi(token, nullptr);
                                         return true;
                                 }
@@ -52,9 +52,9 @@ bool paramMap::getParamInt(std::string parastr, int &Param)
                 }
         }
         std::cout << "param not found " << parastr << std::endl;
-        if(isMPI&& (!rank))
+        if (isMPI && (!rank))
                 throw(-1);
-        if(isMPI==false)
+        if (isMPI == false)
                 throw(-1);
         return false;
 }
@@ -77,13 +77,13 @@ bool paramMap::getParamDouble(std::string parastr, double &Param)
                         //std::cout<<eq<<std::endl;
                         if (line.length() != eq)
                         {
-                                std::string token=line.substr(0, eq);
-                                token.erase(remove_if(token.begin(),token.end(),isspace),token.end());
+                                std::string token = line.substr(0, eq);
+                                token.erase(remove_if(token.begin(), token.end(), isspace), token.end());
                                 if (parastr == token)
                                 {
                                         //std::cout<<"found"<<std::endl;
-                                        token=line.substr(eq + 1);
-                                        token.erase(remove_if(token.begin(),token.end(),isspace),token.end());
+                                        token = line.substr(eq + 1);
+                                        token.erase(remove_if(token.begin(), token.end(), isspace), token.end());
                                         Param = std::stod(token, nullptr);
                                         return true;
                                 }
@@ -91,14 +91,14 @@ bool paramMap::getParamDouble(std::string parastr, double &Param)
                 }
         }
         std::cout << "param not found " << parastr << std::endl;
-        if(isMPI&& (!rank))
+        if (isMPI && (!rank))
                 throw(-1);
-        if(isMPI==false)
+        if (isMPI == false)
                 throw(-1);
         return false;
 }
 
-bool paramMap::getParamString(std::string parastr,std::string &Param)
+bool paramMap::getParamString(std::string parastr, std::string &Param)
 {
         //std::cout<<"Looking for "<<parastr<<std::endl;
 
@@ -119,13 +119,13 @@ bool paramMap::getParamString(std::string parastr,std::string &Param)
                         //std::cout<<eq<<std::endl;
                         if (line.length() != eq)
                         {
-                                std::string token=line.substr(0, eq);
-                                token.erase(remove_if(token.begin(),token.end(),isspace),token.end());
+                                std::string token = line.substr(0, eq);
+                                token.erase(remove_if(token.begin(), token.end(), isspace), token.end());
                                 if (parastr == token)
                                 {
                                         //std::cout<<"found"<<std::endl;
-                                        token=line.substr(eq + 1);
-                                        token.erase(remove_if(token.begin(),token.end(),isspace),token.end());
+                                        token = line.substr(eq + 1);
+                                        token.erase(remove_if(token.begin(), token.end(), isspace), token.end());
                                         Param = token;
                                         return true;
                                 }
@@ -133,14 +133,67 @@ bool paramMap::getParamString(std::string parastr,std::string &Param)
                 }
         }
         std::cout << "param not found " << parastr << std::endl;
-        if(isMPI&& (!rank))
+        if (isMPI && (!rank))
                 throw(-1);
-        if(isMPI==false)
+        if (isMPI == false)
                 throw(-1);
 
         return false;
 }
 
+bool paramMap::getParamBool(std::string parastr, bool &Param)
+{
+        //std::cout<<"Looking for "<<parastr<<std::endl;
 
+        std::fstream inFile;
+        inFile.open(filename);
+        std::string line;
 
+        //std::stringstream token;
+
+        while (!inFile.eof())
+        {
+                std::getline(inFile, line);
+                //std::cout<<line<<std::endl;
+                if (line.length() != 0)
+                {
+                        //find =
+                        int eq = line.find("=");
+                        //std::cout<<eq<<std::endl;
+                        if (line.length() != eq)
+                        {
+                                std::string token = line.substr(0, eq);
+                                token.erase(remove_if(token.begin(), token.end(), isspace), token.end());
+                                if (parastr == token)
+                                {
+                                        //std::cout<<"found"<<std::endl;
+                                        token = line.substr(eq + 1);
+                                        token.erase(remove_if(token.begin(), token.end(), isspace), token.end());
+                                        std::transform(token.begin(), token.end(), token.begin(), [](unsigned char c) { return std::tolower(c); });
+                                        if (token == "true")
+                                                Param = true;
+                                        else if(token == "false")
+                                            Param = false;
+                                        else
+                                        {
+                                                std::cout << "param not found " << parastr << std::endl;
+                                                if (isMPI && (!rank))
+                                                        throw(-1);
+                                                if (isMPI == false)
+                                                        throw(-1);
+                                        }
+
+                                        return true;
+                                }
+                        }
+                }
+        }
+        std::cout << "param not found " << parastr << std::endl;
+        if (isMPI && (!rank))
+                throw(-1);
+        if (isMPI == false)
+                throw(-1);
+
+        return false;
+}
 //std::string paramMap::buildString
