@@ -21,6 +21,7 @@ class paramMap
 	std::vector<std::string> stringParam;
 	int rank;
 	bool isMPI=false;
+	bool catchMisInp=true;
 
   public:
 	paramMap(std::string file);
@@ -28,6 +29,11 @@ class paramMap
 	bool getParamInt(std::string key,int & Param);
 	bool getParamDouble(std::string key,double & Param);
 	bool getParamString(std::string key,std::string & Param);
+	bool getParamBool(std::string key, bool &Param);
+
+	template <class T>
+	bool parseSep(const std::string &input, std::string sep, std::vector<T> &tokens);
+
 };
 
 
