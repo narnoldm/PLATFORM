@@ -76,6 +76,7 @@ void meta::checkExists()
     {
         for (int i = snap0; i <= snapF; i = i + snapSkip)
         {
+            cout<<(prefix + to_string(i) + suffix)<<endl;
             fid = fopen((prefix + to_string(i) + suffix).c_str(), "rb");
             assert(fid != NULL);
             fclose(fid);
