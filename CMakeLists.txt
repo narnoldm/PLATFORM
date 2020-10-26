@@ -62,7 +62,7 @@ target_link_libraries(serial_norm parser meta)
 
 add_executable(POD CASLAB_execs/POD_tec.cpp)
 target_include_directories(POD PUBLIC include)
-target_link_libraries(POD parser meta)
+target_link_libraries(POD parser param meta)
 #target_link_libraries(POD debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
 add_executable(QDIEM CASLAB_execs/QDIEM_pre.cpp)
