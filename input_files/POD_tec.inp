@@ -1,0 +1,20 @@
+stdout_proc = 0
+
+!This way for now need to add array input option
+inputString=input|tecplot|../../forNick/FOM/UnsteadyFieldResults/gemsma_cmb_|.szplt|3001|3100|1|Static_Pressure|-1|Temperature|-1
+
+
+!Averaging
+readAvg=false
+avgFile=""
+
+
+!MOS option 
+mosStep=0
+
+modeStart=1
+modeEnd=100
+
+
+
+
