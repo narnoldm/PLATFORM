@@ -56,7 +56,7 @@ target_link_libraries(parser_drive parser meta)
 
 add_executable(serial_norm src/serial_norm_calc.cpp)
 target_include_directories(serial_norm PUBLIC include)
-target_link_libraries(serial_norm parser meta)
+target_link_libraries(serial_norm param meta)
 #target_link_libraries(serial_norm debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
 
