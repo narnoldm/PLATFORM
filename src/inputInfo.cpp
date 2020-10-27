@@ -1,8 +1,6 @@
 #include "inputInfo.hpp"
 
-
-using namespace::std;
-
+using namespace ::std;
 
 inputInfo::inputInfo()
 {

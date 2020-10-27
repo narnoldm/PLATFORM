@@ -1,7 +1,6 @@
 
 #include "sysInfo.hpp"
 
-
 sysInfo::sysInfo()
 {
         cout << "constructing system info" << endl;

@@ -172,8 +172,8 @@ bool paramMap::getParamBool(std::string parastr, bool &Param)
                                         std::transform(token.begin(), token.end(), token.begin(), [](unsigned char c) { return std::tolower(c); });
                                         if (token == "true")
                                                 Param = true;
-                                        else if(token == "false")
-                                            Param = false;
+                                        else if (token == "false")
+                                                Param = false;
                                         else
                                         {
                                                 std::cout << "param not found " << parastr << std::endl;

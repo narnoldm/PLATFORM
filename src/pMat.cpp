@@ -913,13 +913,13 @@ int pMat::changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb, b
         int i_one = 1;
         if (type == 0)
         {
-                if(stdout)
+                if (stdout)
                         cout << "Double changed pGrid" << endl;
                 pdgemr2d(&m, &n, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, &(pG->icntxt));
         }
         if (type == 1)
         {
-                if(stdout)
+                if (stdout)
                         cout << "Complex changed pGrid" << endl;
                 pzgemr2d(&m, &n, A->dataC.data(), &IA, &JA, A->desc, dataC.data(), &IB, &JB, desc, &(pG->icntxt));
         }
