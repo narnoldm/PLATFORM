@@ -132,7 +132,7 @@ public:
 	//Utilities
 	int transpose(pMat *);
 	int transpose(pMat *, int, int, int, int);
-	int changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb,bool stdout);
+	int changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb, bool stdout);
 	int changeContext(pMat *, int, int, int, int, int, int);
 	int changeContext(pMat *);
 	int dMax(int, int, double &);

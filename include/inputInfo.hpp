@@ -2,9 +2,7 @@
 #ifndef INPUTINFO_H
 #define INPUTINFO_H
 
-
 #include "dataID.hpp"
-
 
 /**
  * Input info is the parser for elements in the INPUT block of the input file
@@ -27,7 +25,6 @@ public:
         mat,
     };
 
-
     ///Pointer set to each of the dataID objects
     std::vector<dataID *> matList;
 
@@ -45,6 +42,5 @@ public:
 
 /// std out overload
 std::ostream &operator<<(std::ostream &os, const inputInfo &iID);
-
 
 #endif

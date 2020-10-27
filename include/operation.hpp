@@ -2,8 +2,8 @@
 #ifndef OPERATION_H
 #define OPERATION_H
 
-#include<vector>
-#include<string>
+#include <vector>
+#include <string>
 #include "operation.hpp"
 #include "dataID.hpp"
 #include "inputInfo.hpp"
@@ -15,7 +15,6 @@
 class operation
 {
 public:
-
     ///Input names
     std::vector<std::string> input;
     ///Output names
@@ -32,10 +31,9 @@ public:
     bool operation_ident;
 
     operation();
-    /// Take token set before equal sign and after it and assign input and output 
+    /// Take token set before equal sign and after it and assign input and output
     operation(std::string token1, std::string token2);
     ~operation();
-
 
     /// Take token and assign input name(s)
     void assignInput(std::string token);
@@ -43,20 +41,18 @@ public:
     void assignOutput(std::string token);
     /// Check that names exist in input list and assign associated pointers
     void checkMats(inputInfo &MatList);
-    
 
     /// Loops though inputs to make sure they are defined then assigns output dimensions
     bool inferDim();
     /// Assigns output dimension
     void assignOutputDim();
     /// checks that operation has correct number of inputs and outputs
-    void opInfoCheck(const int &,const int &);
+    void opInfoCheck(const int &, const int &);
     /// Attempts to execute operation
     void execute();
 };
 /// std out overload
 std::ostream &operator<<(std::ostream &os, const operation &op);
-
 
 /***
  * The operation queue has the set of operations from input file
