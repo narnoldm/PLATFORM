@@ -1,11 +1,9 @@
 #ifndef EXECUTIONER_H
 #define EXECUTIONER_H
 
-
-
 #include "inputReader.hpp"
-#include<vector>
-#include<iostream>
+#include <vector>
+#include <iostream>
 
 /***
  * Executioner is the top level parser. It holds the inputReader object and the set of required process Grid buffers
@@ -13,18 +11,17 @@
  * */
 class executioner
 {
-    public: 
+public:
     ///input file parser
-    inputReader * inpFile;
+    inputReader *inpFile;
     ///Process Grids used by all data structures
-    vector<PGrid*> pGs;
+    vector<PGrid *> pGs;
 
     ///Default Contructor
     executioner();
     ///Contructor with passed input file
-    executioner(inputReader * iF);
+    executioner(inputReader *iF);
     ~executioner();
-
 
     ///Will attempt to allocate (and load for input type) all required data structures
     void init();
@@ -39,6 +36,5 @@ class executioner
     ///Attempt to create all matracies
     void create_matricies();
 };
-
 
 #endif

@@ -3,7 +3,6 @@
 #ifndef INPUTREADER_H
 #define INPUTREADER_H
 
-
 #include "sysInfo.hpp"
 #include "inputInfo.hpp"
 #include "operation.hpp"
@@ -19,8 +18,6 @@
  */
 class inputReader
 {
-
-
 
 public:
     /// input file name
@@ -41,6 +38,5 @@ public:
     /// Explicit function that scans inputs and populates subset
     bool ScanFile();
 };
-
 
 #endif

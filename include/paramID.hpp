@@ -3,34 +3,31 @@
 #ifndef PARAMID_H
 #define PARAMID_H
 
-
 #include <iostream>
 #include <string>
 #include <typeinfo>
 #include "misc_func.hpp"
 
-using namespace::std;
-
+using namespace ::std;
 
 template <class T>
 class paramID
 {
 public:
-    string key;
-    bool set;
-    T value;
+        string key;
+        bool set;
+        T value;
 
-    paramID();
-    paramID(string kIn, T vIn);
-    paramID(string kIn);
-    ~paramID();
+        paramID();
+        paramID(string kIn, T vIn);
+        paramID(string kIn);
+        ~paramID();
 
-    bool checkInfo(string line);
+        bool checkInfo(string line);
 };
 
 template <typename T>
 std::ostream &operator<<(std::ostream &os, const paramID<T> &pID);
-
 
 template <typename T>
 ostream &operator<<(std::ostream &os, const paramID<T> &pID)
@@ -91,7 +88,5 @@ bool paramID<T>::checkInfo(string line)
                 return 1;
         }
 };
-
-
 
 #endif

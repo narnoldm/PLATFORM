@@ -47,13 +47,11 @@ int main(int argc, char *argv[])
     inputFile.getParamDouble("pSampling", pSampling);
     int numModesUsol = numModes;
 
-    // 
-    string deimFolder,deimPrefix,dfd_file;
-    inputFile.getParamString("deimModesFolder",deimFolder);
-    inputFile.getParamString("deimModesPrefix",deimPrefix);
-    inputFile.getParamString("dfd_itype_file",dfd_file);
-
-
+    //
+    string deimFolder, deimPrefix, dfd_file;
+    inputFile.getParamString("deimModesFolder", deimFolder);
+    inputFile.getParamString("deimModesPrefix", deimPrefix);
+    inputFile.getParamString("dfd_itype_file", dfd_file);
 
     cout << "input string is: " << input << endl;
     vector<string> token;
@@ -76,7 +74,8 @@ int main(int argc, char *argv[])
     PGrid *evenG;
     evenG = new PGrid(rank, size, 0);
 
-    pMat *A,*U, *VT;;
+    pMat *A, *U, *VT;
+    ;
     if (FOMInput)
     {
         A = new pMat(dataset1->nPoints, dataset1->nSets, evenG, 0, 0, 0.0);
@@ -98,7 +97,6 @@ int main(int argc, char *argv[])
         //A->write_bin("A.bin");
         int M = dataset1->nPoints, N = dataset1->nSets;
 
-        
         vector<double> S;
 
         U = new pMat(M, std::min(M, N), evenG);
@@ -121,12 +119,12 @@ int main(int argc, char *argv[])
         PointsNeeded = nCells * pSampling;
     }
     vector<int> P;
-    pMat *UsT,*Uread;
+    pMat *UsT, *Uread;
     if (FOMInput)
     {
-        Uread=new pMat(U->M, numModes, evenG);
+        Uread = new pMat(U->M, numModes, evenG);
         UsT = new pMat(numModes, U->M, evenG);
-        Uread->changeContext(U,U->M,numModes,0,0,0,0);
+        Uread->changeContext(U, U->M, numModes, 0, 0, 0, 0);
         UsT->transpose(U, UsT->M, UsT->N, 0, 0);
         delete U;
         Uread;
@@ -137,7 +135,7 @@ int main(int argc, char *argv[])
         dataset1->batchRead(Uread);
         UsT = new pMat(numModes, Uread->M, evenG);
         UsT->transpose(Uread);
-        assert(UsT->N==nCells*nVars);
+        assert(UsT->N == nCells * nVars);
     }
 
     UsT->qr_run(UsT->M, UsT->N, 0, 0, P);
@@ -156,9 +154,9 @@ int main(int argc, char *argv[])
             gP[i]--; //switch to 0 indexing
             //switch to physical points
             cout << i << " " << gP[i] << " ";
-            if(FOMInput)
+            if (FOMInput)
                 gP[i] = gP[i] % dynamic_cast<tecIO *>(dataset1)->nCells;
-            if(BasisInput)
+            if (BasisInput)
                 gP[i] = gP[i] % nCells;
             auto check = samplingPoints.emplace(gP[i]);
             if (!check.second)
@@ -193,9 +191,9 @@ int main(int argc, char *argv[])
         {
             //Random Points
             vector<int> rPoints;
-            if(FOMInput)
+            if (FOMInput)
                 rPoints.resize(dynamic_cast<tecIO *>(dataset1)->nCells, 0);
-            if(BasisInput)
+            if (BasisInput)
                 rPoints.resize(nCells);
             for (int i = 0; i < rPoints.size(); i++)
                 rPoints[i] = i;
@@ -224,17 +222,16 @@ int main(int argc, char *argv[])
         cout << "All points found " << endl;
         gP.resize(samplingPoints.size(), 0);
         vector<double> gPD;
-        if(FOMInput)
+        if (FOMInput)
             gPD.resize(dynamic_cast<tecIO *>(dataset1)->nCells, 0.0);
-        if(BasisInput)
-            gPD.resize(nCells,0.0);
+        if (BasisInput)
+            gPD.resize(nCells, 0.0);
         std::copy(samplingPoints.begin(), samplingPoints.end(), gP.begin());
 
-        for_each(gP.begin(),gP.end(),[](int & tt) {tt+=1;});
+        for_each(gP.begin(), gP.end(), [](int &tt) { tt += 1; });
         printASCIIVecP0("samplingPoints.txt", gP, gP.size());
         writeMat("Pall.bin", gP.size(), 1, gP);
-        for_each(gP.begin(),gP.end(),[](int & tt) {tt-=1;});
-
+        for_each(gP.begin(), gP.end(), [](int &tt) { tt -= 1; });
 
         for (int i = 0; i < samplingPoints.size(); i++)
             gPD[gP[i]] = 1.0;
@@ -369,8 +366,6 @@ int main(int argc, char *argv[])
         cout << "Output took " << t2 - t1 << " seconds" << endl;
     }
 
-
-
     if (BasisInput)
     {
         meta *Uout = new meta();
@@ -383,9 +378,9 @@ int main(int argc, char *argv[])
         Uout->isInit = true;
 
         Uout->nPoints = nCells * nVars;
-        assert(Uout->nPoints==nCells*nVars);
+        assert(Uout->nPoints == nCells * nVars);
         t1 = MPI_Wtime();
-        Uout->batchWrite(Uread,  deimFolder, deimPrefix);
+        Uout->batchWrite(Uread, deimFolder, deimPrefix);
         t2 = MPI_Wtime();
         cout << "Output took " << t2 - t1 << " seconds" << endl;
     }

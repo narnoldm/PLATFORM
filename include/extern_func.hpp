@@ -2,13 +2,11 @@
 #ifndef EXTERN_FUNC_H
 #define EXTERN_FUNC_H
 
-
 /***
  * Ideally all external functions will be interfaced here
  * */
 
 #include <mpi.h>
-
 
 #ifdef USE_MKL
 #include "mkl.h"
@@ -19,12 +17,6 @@
 #endif
 //#include <pblas.h>
 
-
-
-
-
-
-
 /// CBLACS functions
 extern "C" void Cblacs_pinfo(int *MYPNUM, int *NPROCS);
 extern "C" void Cblacs_get(int ICONTXT, int WHAT, int *VAL);
@@ -34,7 +26,6 @@ extern "C" void Cblacs_gridexit(int ICONTXT);
 
 #ifndef USE_MKL
 /// BLAS routines
-
 
 struct complex16
 {
@@ -56,23 +47,13 @@ extern "C" void pzgemm(const char *transa, const char *transb, const int *m, con
 extern "C" void pdsyrk(const char *uplo, const char *trans, const int *n, const int *k, const double *alpha, const double *a, const int *ia, const int *ja, const int *desca, const double *beta, double *c, const int *ic, const int *jc, const int *descc);
 extern "C" void pdgemv(const char *trans, const int *m, const int *n, const double *alpha, const double *a, const int *ia, const int *ja, const int *desca, const double *x, const int *ix, const int *jx, const int *descx, const int *incx, const double *beta, double *y, const int *iy, const int *jy, const int *descy, const int *incy);
 
-extern "C" void pdgesvd(const char *,const char *, const int *,const int *,const double *,const int *,const int *,const int *, const double *, const double *,const int *,const int *,const int *,const double *,const int *,const int *,const int *, const double *,const int *,const int *);
-extern "C" void pdgesvd(const char *,const char *, const int *,const int *,const double *,const int *,const int *,const int *, const double *, const double *,const int *,const int *,const int *,const double *,const int *,const int *,const int *, const double *,const int *,const int *);
-extern "C" void pdgeqpf(const int * , const int *, double *, const int *, const int *, const int * , const int * , double * , double *work , const int * , const int *);
+extern "C" void pdgesvd(const char *, const char *, const int *, const int *, const double *, const int *, const int *, const int *, const double *, const double *, const int *, const int *, const int *, const double *, const int *, const int *, const int *, const double *, const int *, const int *);
+extern "C" void pdgesvd(const char *, const char *, const int *, const int *, const double *, const int *, const int *, const int *, const double *, const double *, const int *, const int *, const int *, const double *, const int *, const int *, const int *, const double *, const int *, const int *);
+extern "C" void pdgeqpf(const int *, const int *, double *, const int *, const int *, const int *, const int *, double *, double *work, const int *, const int *);
 
-
-
-extern "C" void pdgemr2d(const int *,const int *,const double *,const int *,const int *,const int *,const double *,const int *,const int *,const int *,const int *);
-extern "C" void pzgemr2d(const int *,const int *,const complex16 *,const int *,const int *,const int *,const complex16 *,const int *,const int *,const int *,const int *);
-
+extern "C" void pdgemr2d(const int *, const int *, const double *, const int *, const int *, const int *, const double *, const int *, const int *, const int *, const int *);
+extern "C" void pzgemr2d(const int *, const int *, const complex16 *, const int *, const int *, const int *, const complex16 *, const int *, const int *, const int *, const int *);
 
 #endif
 
-
-
-
-
 #endif
-
-
-
