@@ -2,9 +2,8 @@
 #ifndef DATAID_H
 #define DATAID_H
 
-
-#include<vector>
-#include<string>
+#include <vector>
+#include <string>
 
 #include "metadata.hpp"
 #include "misc_func.hpp"
@@ -36,24 +35,23 @@ public:
     int type, dim;
 
     /// Tags for if matrix needs to be in input format, synched format, or single processor format
-    bool isInput=false,isPA=false,isP0=false;
-     
+    bool isInput = false, isPA = false, isP0 = false;
+
     ///Tags that even blocking is required for operation
-    bool compPGreq=false;
+    bool compPGreq = false;
     ///Tags that this is an IO matrix
-    bool IOPGreq=false;
+    bool IOPGreq = false;
 
     ///Pointer to pMat(ScaLAPACK) data structure
-    pMat *pMatpoint=NULL;
+    pMat *pMatpoint = NULL;
     ///Pointer to meta data input if input or output
-    meta *datasetInfo=NULL;
+    meta *datasetInfo = NULL;
     ///Token from input block for additional processing
     std::vector<std::string> token;
     ///Structure name
     std::string name;
-    ///Dimension of Structure 
+    ///Dimension of Structure
     std::vector<int> dims;
-
 
     dataID();
     ~dataID();
@@ -68,7 +66,5 @@ public:
 };
 /// stdout overload
 std::ostream &operator<<(std::ostream &os, const dataID &mID);
-
-
 
 #endif
