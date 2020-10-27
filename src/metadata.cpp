@@ -560,8 +560,16 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref)
         fwrite(&ONE, sizeof(int), 1, fid);
         for (int i = 0; i < numVars; i++)
         {
+            if(reorder)
+            {
+                for (int j = 0; j < nCells; j++)
+                    fwrite(&point[i * nCells + j], sizeof(double), 1, fid);
+            }
+            else
+            {            
             for (int j = 0; j < nCells; j++)
                 fwrite(&point[i * nCells + idx[j]], sizeof(double), 1, fid);
+            }
         }
         fclose(fid);
     }
@@ -818,10 +826,7 @@ void tecIO::genHash(string filename)
         MPI_Bcast(idx.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Bcast(cellID.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
         stable_sort(idx.begin(), idx.end(), [&](int i, int j) { return cellID[i] < cellID[j]; });
-        for (int i = 0; i < 5; i++)
-        {
-            cout << idx[i] << endl;
-        }
+
     }
     else
     {
@@ -1246,10 +1251,37 @@ void tecIO::readAvg(std::string filename)
     std::cout << "average loaded from :" << filename << std::endl;
     //}
     //printf("%d\n",nPoints);
-
+    genHash(filename);
     MPI_Barrier(MPI_COMM_WORLD);
-    //MPI_Bcast(average.data(), nPoints, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    //if(rank==0)
+    std::cout << "outputing ascii centering" << std::endl;
+    if(!rank)
+    {
+        FILE *fid;
+        string asciiName="centerProf.dat";
+        if ((fid = fopen(asciiName.c_str(), "w")) == NULL)
+        {
+                printf("error with file open\n");
+        }
+        fprintf(fid, "file= %s\n", asciiName.c_str());
+        if(reorder)
+        {
+            for(int i=0;i<average.size();i++)
+            {
+                fprintf(fid, "%16.16E\n", average[i]);
+            }
+        }
+        else
+        {
+            for (int i = 0; i < numVars; i++)
+            {
+                for (int j = 0; j < nCells; j++)
+                {
+                    fprintf(fid, "%16.16E\n", average[i*nCells+idx[j]]);
+                }
+            }
+        }
+        
+    }
     std::cout << "average Broad-casted" << std::endl;
 }
 
