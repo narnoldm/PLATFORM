@@ -1,8 +1,6 @@
 #include "executioner.hpp"
 
-
-using namespace::std;
-
+using namespace ::std;
 
 executioner::executioner()
 {
@@ -161,7 +159,7 @@ void executioner::create_matricies()
                 if (inpFile->inp.matList[i]->isPA)
                 {
                         cout << "Creating Synched data" << endl;
-                        pointMat = new pMat(inpFile->inp.matList[i]->dims[0]*pGs[0]->prow, pGs[0]->pcol, pGs[0], 0, 3, 0.0);
+                        pointMat = new pMat(inpFile->inp.matList[i]->dims[0] * pGs[0]->prow, pGs[0]->pcol, pGs[0], 0, 3, 0.0);
                 }
                 else if (inpFile->inp.matList[i]->isInput)
                 {
@@ -173,7 +171,7 @@ void executioner::create_matricies()
                 //point header to pMat
                 inpFile->inp.matList[i]->pMatpoint = pointMat;
 
-                cout<<(*pointMat);
+                cout << (*pointMat);
 
                 //input
                 if (inpFile->inp.matList[i]->isInput)

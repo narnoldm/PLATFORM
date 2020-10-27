@@ -1,8 +1,7 @@
 
 #include "dataID.hpp"
 
-
-using namespace::std;
+using namespace ::std;
 
 dataID::dataID()
 {
@@ -52,7 +51,7 @@ void dataID::setInfo(string &d)
 }
 void dataID::setInfo(vector<int> &d)
 {
-        if(!(d.size()>0) )
+        if (!(d.size() > 0))
                 throw(-1);
         dim = d.size();
         dims.resize(d.size());
@@ -62,7 +61,7 @@ void dataID::setInfo(vector<int> &d)
 }
 void dataID::switchPmatType(int newblock)
 {
-        cout<<newblock<<" "<<pMatpoint->block<<endl;
+        cout << newblock << " " << pMatpoint->block << endl;
         if (newblock != pMatpoint->block)
         {
                 cout << "in place copy this can be memory explosive" << endl;

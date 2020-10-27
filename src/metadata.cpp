@@ -33,8 +33,6 @@ meta::meta(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
     init(t0, tf, ts, iPrefix, iSuffix);
 }
 
-
-
 void meta::init(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
 {
     snap0 = t0;
@@ -76,7 +74,7 @@ void meta::checkExists()
     {
         for (int i = snap0; i <= snapF; i = i + snapSkip)
         {
-            cout<<(prefix + to_string(i) + suffix)<<endl;
+            cout << (prefix + to_string(i) + suffix) << endl;
             fid = fopen((prefix + to_string(i) + suffix).c_str(), "rb");
             assert(fid != NULL);
             fclose(fid);
@@ -248,7 +246,7 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
     else
     {
         fileIndex = 1;
-        nPoints=loadMat->M;
+        nPoints = loadMat->M;
         nSets = loadMat->N;
     }
 
@@ -415,7 +413,7 @@ bool tecIO::readSingle(int fileID, double *point)
         }
         if (reorder)
         {
-            
+
             std::vector<double> temp(nCells, 0.0);
             for (int j = 0; j < nCells; j++)
             {
@@ -560,15 +558,15 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref)
         fwrite(&ONE, sizeof(int), 1, fid);
         for (int i = 0; i < numVars; i++)
         {
-            if(reorder)
+            if (reorder)
             {
                 for (int j = 0; j < nCells; j++)
                     fwrite(&point[i * nCells + j], sizeof(double), 1, fid);
             }
             else
-            {            
-            for (int j = 0; j < nCells; j++)
-                fwrite(&point[i * nCells + idx[j]], sizeof(double), 1, fid);
+            {
+                for (int j = 0; j < nCells; j++)
+                    fwrite(&point[i * nCells + idx[j]], sizeof(double), 1, fid);
             }
         }
         fclose(fid);
@@ -826,7 +824,6 @@ void tecIO::genHash(string filename)
         MPI_Bcast(idx.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Bcast(cellID.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
         stable_sort(idx.begin(), idx.end(), [&](int i, int j) { return cellID[i] < cellID[j]; });
-
     }
     else
     {
@@ -1254,18 +1251,18 @@ void tecIO::readAvg(std::string filename)
     genHash(filename);
     MPI_Barrier(MPI_COMM_WORLD);
     std::cout << "outputing ascii centering" << std::endl;
-    if(!rank)
+    if (!rank)
     {
         FILE *fid;
-        string asciiName="centerProf.dat";
+        string asciiName = "centerProf.dat";
         if ((fid = fopen(asciiName.c_str(), "w")) == NULL)
         {
-                printf("error with file open\n");
+            printf("error with file open\n");
         }
         fprintf(fid, "file= %s\n", asciiName.c_str());
-        if(reorder)
+        if (reorder)
         {
-            for(int i=0;i<average.size();i++)
+            for (int i = 0; i < average.size(); i++)
             {
                 fprintf(fid, "%16.16E\n", average[i]);
             }
@@ -1276,11 +1273,10 @@ void tecIO::readAvg(std::string filename)
             {
                 for (int j = 0; j < nCells; j++)
                 {
-                    fprintf(fid, "%16.16E\n", average[i*nCells+idx[j]]);
+                    fprintf(fid, "%16.16E\n", average[i * nCells + idx[j]]);
                 }
             }
         }
-        
     }
     std::cout << "average Broad-casted" << std::endl;
 }

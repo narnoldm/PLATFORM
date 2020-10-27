@@ -1,8 +1,7 @@
 
 #include "operation.hpp"
 
-
-using namespace::std;
+using namespace ::std;
 
 operation::operation(string token1, string token2)
 {
@@ -98,11 +97,11 @@ void operation::assignOutputDim()
         if (opName == "svd")
         {
                 cout << opName << " recognized" << endl;
-                opInfoCheck(1,3);
+                opInfoCheck(1, 3);
                 //input contraints SVD requires mb=nb
                 inputMat[0]->compPGreq = true;
                 //output contraints
-                int minMN= min(inputMat[0]->dims[0], inputMat[0]->dims[1]);
+                int minMN = min(inputMat[0]->dims[0], inputMat[0]->dims[1]);
                 vector<int> temp;
                 temp.clear();
                 temp.push_back(inputMat[0]->dims[0]);
@@ -111,7 +110,6 @@ void operation::assignOutputDim()
                 temp[0] = minMN;
                 temp[1] = inputMat[0]->dims[1];
                 outputMat[2]->setInfo(temp);
-
 
                 temp.clear();
                 temp.push_back(minMN);
@@ -123,7 +121,7 @@ void operation::assignOutputDim()
         else if (opName == "M*M")
         {
                 cout << opName << " recognized" << endl;
-                opInfoCheck(2,1);
+                opInfoCheck(2, 1);
                 //input contraints SVD requires mb=nb
                 inputMat[0]->compPGreq = true;
                 inputMat[1]->compPGreq = true;
@@ -137,9 +135,8 @@ void operation::assignOutputDim()
         }
         else if (opName == "Transpose")
         {
-                cout<<opName<<"recognized"<<endl;
-                opInfoCheck(1,1);
-
+                cout << opName << "recognized" << endl;
+                opInfoCheck(1, 1);
         }
         else
         {
@@ -151,7 +148,7 @@ void operation::execute()
 {
         if (opName == "svd")
         {
-                cout << "executing"<< opName<< endl;
+                cout << "executing" << opName << endl;
                 pMat *A, *U, *S, *VT;
                 A = inputMat[0]->pMatpoint;
                 U = outputMat[0]->pMatpoint;
@@ -161,24 +158,23 @@ void operation::execute()
                 A->svd_run(A->M, A->N, 0, 0, U, VT, S->dataD);
                 cout << "SVD is destructive: Using or Outputing A is ill advised" << endl;
         }
-        else if(opName =="M*M")
+        else if (opName == "M*M")
         {
-                cout << "executing "<<opName << endl;
-                pMat *C,*A,*B; // C= A*B;
-                A=inputMat[0]->pMatpoint;
-                B=inputMat[1]->pMatpoint;
-                C=outputMat[0]->pMatpoint;
-                assert(inputMat[0]->dims[1]==inputMat[1]->dims[0]);
-                C->matrix_Product('N','N',outputMat[0]->dims[0],outputMat[0]->dims[1],inputMat[0]->dims[1],inputMat[0]->pMatpoint,0,0,inputMat[1]->pMatpoint,0,0,1.0,0.0,0,0);
+                cout << "executing " << opName << endl;
+                pMat *C, *A, *B; // C= A*B;
+                A = inputMat[0]->pMatpoint;
+                B = inputMat[1]->pMatpoint;
+                C = outputMat[0]->pMatpoint;
+                assert(inputMat[0]->dims[1] == inputMat[1]->dims[0]);
+                C->matrix_Product('N', 'N', outputMat[0]->dims[0], outputMat[0]->dims[1], inputMat[0]->dims[1], inputMat[0]->pMatpoint, 0, 0, inputMat[1]->pMatpoint, 0, 0, 1.0, 0.0, 0, 0);
         }
-
 }
 
-void operation::opInfoCheck(const int &in,const int &out)
+void operation::opInfoCheck(const int &in, const int &out)
 {
         if (inputMat.size() != in || outputMat.size() != out)
         {
-                cout << opName <<" should have "<<out<<" output(s) and "<<in<<" input(s)" << endl;
+                cout << opName << " should have " << out << " output(s) and " << in << " input(s)" << endl;
                 assert(inputMat.size() != in || outputMat.size() != out);
         }
         return;
@@ -211,7 +207,7 @@ bool operationQueue::ScanOperations(string token)
         if (split.size() != 2)
                 return 0;
         operation *point;
-        point=new operation(split[0], split[1]);
+        point = new operation(split[0], split[1]);
         taskQueue.push_back(point);
         return 1;
 }

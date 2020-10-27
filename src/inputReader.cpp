@@ -1,7 +1,5 @@
 #include "inputReader.hpp"
 
-
-
 inputReader::inputReader(string file)
 {
         cout << "file is :" << file << endl;
@@ -86,7 +84,7 @@ bool inputReader::ScanFile()
         cout << out;
 
         int i = 0;
-        if(!inp.checkMats())
+        if (!inp.checkMats())
         {
                 cout << "not all mats defined" << endl;
                 inp.assignInputInfo();
@@ -100,9 +98,9 @@ bool inputReader::ScanFile()
                 }
         }
 
-        if(out.matList.size()==0)
+        if (out.matList.size() == 0)
         {
-                cout<<"No outputs defined. Add an output"<<endl;
+                cout << "No outputs defined. Add an output" << endl;
                 throw(-1);
         }
 
