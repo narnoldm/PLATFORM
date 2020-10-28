@@ -53,10 +53,19 @@ int main(int argc, char *argv[])
     inputFile.getParamString("deimModesPrefix", deimPrefix);
     inputFile.getParamString("dfd_itype_file", dfd_file);
 
+    bool loadRHS=false;
+    string input2;
+    inputFile.getParamBool("RHS load",loadRHS);
+    if(loadRHS)
+    {
+        inputFile.getParamString("inputStringRHS",input2);
+    }
+
+
     cout << "input string is: " << input << endl;
     vector<string> token;
     tokenparse(input, "|", token);
-    meta *dataset1;
+    meta *dataset1,*dataset2;
     string firstFile;
     if (FOMInput)
     {
@@ -75,7 +84,7 @@ int main(int argc, char *argv[])
     evenG = new PGrid(rank, size, 0);
 
     pMat *A, *U, *VT;
-    ;
+    
     if (FOMInput)
     {
         A = new pMat(dataset1->nPoints, dataset1->nSets, evenG, 0, 0, 0.0);
@@ -197,7 +206,7 @@ int main(int argc, char *argv[])
                 rPoints.resize(nCells);
             for (int i = 0; i < rPoints.size(); i++)
                 rPoints[i] = i;
-
+            srand(1);
             random_shuffle(rPoints.begin(), rPoints.end());
             rPoints.resize(PointsNeeded - samplingPoints.size());
             for (vector<int>::iterator it = rPoints.begin(); it != rPoints.end(); ++it)
@@ -296,6 +305,8 @@ int main(int argc, char *argv[])
 
     //Assuming Usol=U and numModes= numModesSol This will reduce to I, but doing math for when we have RHS
     pMat *Usol = Uread;
+
+
     pMat *UsolU = new pMat(numModesUsol, numModes, evenG);
 
     UsolU->matrix_Product('T', 'N', numModesUsol, numModes, Uread->M, Usol, 0, 0, Uread, 0, 0, 1.0, 0.0, 0, 0);
