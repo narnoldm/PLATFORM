@@ -178,22 +178,38 @@ int main(int argc, char *argv[])
         }
         cout << "goal is " << PointsNeeded << " points" << endl;
         cout << "points after qr: " << samplingPoints.size() << " of " << PointsNeeded << endl;
-        
-        // add boundary cells
-        readMat(dfd_file, itype);
-        for (vector<int>::iterator it = itype.begin(); it != itype.end(); ++it)
-        {
-			if (*it != 0) {
-				auto check = samplingPoints.emplace(it - itype.begin()); //  add index of interator (i.e. cell_id, zero-indexed) 
-				if (!check.second)
-				{
-					cout << "repeated element " << it - itype.begin() << "\r";
+
+		// get desired boundary labels
+		int numSampledBounds = 0;
+		string labelInputString;
+		inputFile.getParamInt("numSampledBounds", numSampledBounds);
+		vector<int> bcLabels(numSampledBounds);
+		for (int i = 0; i < numSampledBounds; ++i) {
+			labelInputString = "boundLabel" + to_string(i+1);
+			inputFile.getParamInt(labelInputString, bcLabels[i]);
+			cout << "Extracting boundary w/ label: " << bcLabels[i] << endl;
+		}
+
+		// add boundary cells, if any
+		if (numSampledBounds > 0) {
+			readMat(dfd_file, itype);
+			for (vector<int>::iterator it = itype.begin(); it != itype.end(); ++it)
+			{
+				// check if we want to sample this cell's itype (i.e. itype is in bcLabels)
+				if (find(bcLabels.begin(), bcLabels.end(), *it) != bcLabels.end()) {
+					auto check = samplingPoints.emplace(it - itype.begin()); //  add index of interator (i.e. cell_id, zero-indexed) 
+					if (!check.second)
+					{
+						cout << "repeated element " << it - itype.begin() << "\r";
+					}
 				}
 			}
-        }
-        cout << "points after boundaries: " << samplingPoints.size() << " of " << PointsNeeded << endl;
-        assert(PointsNeeded > samplingPoints.size());
-        cout << "Need " << PointsNeeded - samplingPoints.size() << " more points" << endl;
+			cout << "points after boundaries: " << samplingPoints.size() << " of " << PointsNeeded << endl;
+			assert(PointsNeeded > samplingPoints.size());
+			cout << "Need " << PointsNeeded - samplingPoints.size() << " more points" << endl;
+		} else {
+			cout << "No boundaries sampled..." << endl;
+		}
 	}
 	MPI_Barrier(MPI_COMM_WORLD);
 
