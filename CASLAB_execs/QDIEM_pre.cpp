@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 
     bool loadRHS=false;
     string input2;
-    inputFile.getParamBool("RHS load",loadRHS);
+    inputFile.getParamBool("RHSload",loadRHS);
     if(loadRHS)
     {
         inputFile.getParamString("inputStringRHS",input2);
@@ -153,16 +153,19 @@ int main(int argc, char *argv[])
     vector<int> itype;
     set<int> samplingPoints;
 
+	// get QR and boundary points
     t1 = MPI_Wtime();
     if (rank == 0)
     {
-        readMat("P.bin", gP);
-        gP.resize(numModes);
+        readMat("P.bin", gP); 	// automatically resizes gP to nDOF (the size of P.bin)
+        gP.resize(numModes); 	// resize it back down to numModes. I feel like readMat just read the first numModes integers? Seems inefficient.
+
+		// sampled QR cells
         for (int i = 0; i < gP.size(); i++)
         {
             gP[i]--; //switch to 0 indexing
             //switch to physical points
-            cout << i << " " << gP[i] << " ";
+            cout << i << " " << gP[i] << " " << endl;
             if (FOMInput)
                 gP[i] = gP[i] % dynamic_cast<tecIO *>(dataset1)->nCells;
             if (BasisInput)
@@ -173,63 +176,76 @@ int main(int argc, char *argv[])
                 cout << "repeated element" << endl;
             }
         }
-        cout << "goal is " << PointsNeeded << "points" << endl;
+        cout << "goal is " << PointsNeeded << " points" << endl;
         cout << "points after qr: " << samplingPoints.size() << " of " << PointsNeeded << endl;
-        /*for (std::set<int>::iterator it = samplingPoints.begin(); it != samplingPoints.end(); ++it)
-        {
-            cout << *it << endl;
-        }*/
-        //add boundary cells
+        
+        // add boundary cells
         readMat(dfd_file, itype);
         for (vector<int>::iterator it = itype.begin(); it != itype.end(); ++it)
         {
-            if (*it != 0)
-            {
-                auto check = samplingPoints.emplace(it - itype.begin());
-                if (!check.second)
-                {
-                    cout << "repeated element " << it - itype.begin() << "\r";
-                }
-            }
+			if (*it != 0) {
+				auto check = samplingPoints.emplace(it - itype.begin()); //  add index of interator (i.e. cell_id, zero-indexed) 
+				if (!check.second)
+				{
+					cout << "repeated element " << it - itype.begin() << "\r";
+				}
+			}
         }
         cout << "points after boundaries: " << samplingPoints.size() << " of " << PointsNeeded << endl;
         assert(PointsNeeded > samplingPoints.size());
         cout << "Need " << PointsNeeded - samplingPoints.size() << " more points" << endl;
-        int r = 0;
-        while (PointsNeeded - samplingPoints.size() > 0)
-        {
-            //Random Points
-            vector<int> rPoints;
-            if (FOMInput)
-                rPoints.resize(dynamic_cast<tecIO *>(dataset1)->nCells, 0);
-            if (BasisInput)
-                rPoints.resize(nCells);
-            for (int i = 0; i < rPoints.size(); i++)
-                rPoints[i] = i;
-            srand(1);
-            random_shuffle(rPoints.begin(), rPoints.end());
-            rPoints.resize(PointsNeeded - samplingPoints.size());
-            for (vector<int>::iterator it = rPoints.begin(); it != rPoints.end(); ++it)
-            {
-                if (*it != 0)
-                {
-                    auto check = samplingPoints.emplace(*it);
-                    if (!check.second)
-                    {
-                        cout << "repeated element " << *it << "\r";
-                    }
-                }
-            }
-            r++;
-            cout << "after sweep " << r << " need " << PointsNeeded - samplingPoints.size() << " more Points" << endl;
-            if (r >= 20)
-            {
-                cout << "still don't have the points" << endl;
-                throw(-1);
-            }
-        }
-        cout << "All points found " << endl;
-        gP.resize(samplingPoints.size(), 0);
+	}
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	// oversampling
+	int sampType;
+	inputFile.getParamInt("sampType", sampType);
+	bool allPoints = false;
+
+	// random oversampling
+	if (sampType == 1) {
+		// do everything on rank 0
+		if (rank == 0) {
+			srand(1);				// seed random number generator
+			vector<int> rPoints;
+			if (FOMInput)
+				rPoints.resize(dynamic_cast<tecIO *>(dataset1)->nCells, 0);
+			if (BasisInput) {
+				rPoints.resize(nCells);
+			}
+			for (int i = 0; i < rPoints.size(); i++)
+				rPoints[i] = i;
+				
+			random_shuffle(rPoints.begin(), rPoints.end());
+			// rPoints.resize(PointsNeeded - samplingPoints.size());
+			for (vector<int>::iterator it = rPoints.begin(); it != rPoints.end(); ++it)
+			{
+				auto check = samplingPoints.emplace(*it);
+				if (!check.second)
+				{
+					cout << "repeated element " << *it << "\r";
+				}
+				if (samplingPoints.size() == PointsNeeded) {
+					cout << "All points found" << endl;
+					allPoints = true;
+					break;
+				}
+			}
+
+			// this should theoretically never happen
+        	if (!allPoints) {
+				cout << "Somehow, could not find enough sampled, this should never happen." << endl;
+				return(-1);
+			}
+
+		}
+	} else {
+		cout << "Invalid choice of sampling type: " << sampType << endl;
+	} 
+	MPI_Barrier(MPI_COMM_WORLD);
+	
+	if (rank == 0) {
+		gP.resize(samplingPoints.size(), 0);
         vector<double> gPD;
         if (FOMInput)
             gPD.resize(dynamic_cast<tecIO *>(dataset1)->nCells, 0.0);
@@ -279,7 +295,7 @@ int main(int argc, char *argv[])
     t1 = MPI_Wtime();
     for (int i = 0; i < gP.size(); i++)
     {
-        cout << (double)i / gP.size() * 100 << "percent points extracted \r";
+        cout << (double)i / gP.size() * 100 << " percent points extracted \r";
         if (FOMInput)
         {
             for (int j = 0; j < dynamic_cast<tecIO *>(dataset1)->numVars; j++)
@@ -336,7 +352,7 @@ int main(int argc, char *argv[])
     t1 = MPI_Wtime();
     for (int i = 0; i < gP.size(); i++)
     {
-        cout << (double)i / gP.size() * 100 << "percent points emplaced \r";
+        cout << (double)i / gP.size() * 100 << " percent points emplaced \r";
         if (FOMInput)
         {
             for (int j = 0; j < dynamic_cast<tecIO *>(dataset1)->numVars; j++)
