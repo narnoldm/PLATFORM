@@ -65,10 +65,10 @@ target_include_directories(POD PUBLIC include)
 target_link_libraries(POD parser param meta)
 #target_link_libraries(POD debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
-add_executable(QDIEM CASLAB_execs/QDIEM_pre.cpp)
-target_include_directories(QDIEM PUBLIC include)
-target_link_libraries(QDIEM parser param meta)
-#target_link_libraries(QDIEM debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
+add_executable(QDEIM CASLAB_execs/QDEIM_pre.cpp)
+target_include_directories(QDEIM PUBLIC include)
+target_link_libraries(QDEIM parser param meta)
+#target_link_libraries(QDEIM debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
 
 
