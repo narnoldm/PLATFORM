@@ -1292,3 +1292,30 @@ void tecIO::activateReorder(string file)
     genHash(file);
     reorder = true;
 }
+
+// check if metadata for two meta objects are the same, EXCEPT for file numbers
+int compareMeta(meta* meta1, meta* meta2) {
+
+	// check path members
+	if ( (meta1->prefix == meta2->prefix) && (meta1->suffix == meta2->suffix) ) {
+
+		if ( (meta1->snap0 == meta2->snap0) && 
+			 (meta1->snapF == meta2->snapF) &&
+			 (meta1->snapSkip == meta2->snapSkip) ) {
+			
+			// objects are identical
+			return(1);
+
+		} else {
+			// objects differ only in the file counts
+			return(2);
+
+		}
+		return(true);
+
+	} else {
+		// objects are totally different
+		return(0);
+	}
+
+}

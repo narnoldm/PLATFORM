@@ -91,4 +91,6 @@ public:
     void activateReorder(std::string);
 };
 
+int compareMeta(meta* meta1, meta* meta2);
+
 #endif
