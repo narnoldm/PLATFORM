@@ -4,13 +4,14 @@
 #include <set>
 
 using namespace ::std;
+
 int main(int argc, char *argv[])
 {
     MPI_Init(&argc, &argv);
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank); //Basic MPI intialization
     MPI_Comm_size(MPI_COMM_WORLD, &size);
-    std::ofstream sink("/dev/null");
+    ofstream sink("/dev/null");
     streambuf *strm_buffer = cout.rdbuf();
 
     paramMap inputFile("QR_pre.inp", rank); 	// input file
@@ -21,7 +22,7 @@ int main(int argc, char *argv[])
     inputFile.getParamInt("stdout_proc", debug_proc);
     if (rank != debug_proc)
     {
-        std::cout.rdbuf(sink.rdbuf());
+        cout.rdbuf(sink.rdbuf());
     }
 
     // check whether user wants to compute bases or load them
@@ -59,13 +60,13 @@ int main(int argc, char *argv[])
 	meta *datasetSol;
     if (readSolSnaps) {
         datasetSol = new tecIO(tokenSol);
-        firstFileSnaps = datasetSol->prefix + std::to_string(datasetSol->snap0) + datasetSol->suffix;
+        firstFileSnaps = datasetSol->prefix + to_string(datasetSol->snap0) + datasetSol->suffix;
         dynamic_cast<tecIO *>(datasetSol)->activateReorder(firstFileSnaps.c_str());	
     	inputFile.getParamInt("numModesSol", numModesSol); 			 
 
     } else {
 		datasetSol = new meta(tokenSol);
-        firstFileBasis = datasetSol->prefix + std::to_string(datasetSol->snap0) + datasetSol->suffix;
+        firstFileBasis = datasetSol->prefix + to_string(datasetSol->snap0) + datasetSol->suffix;
 		numModesSol = datasetSol->nSets;
 	}
 
@@ -73,7 +74,7 @@ int main(int argc, char *argv[])
 	meta *datasetRHS;
 	if (readRHSSnaps) {
 		datasetRHS = new tecIO(tokenRHS);
-		firstFileSnaps = datasetRHS->prefix + std::to_string(datasetRHS->snap0) + datasetRHS->suffix;
+		firstFileSnaps = datasetRHS->prefix + to_string(datasetRHS->snap0) + datasetRHS->suffix;
 		dynamic_cast<tecIO *>(datasetRHS)->activateReorder(firstFileSnaps.c_str());
 		inputFile.getParamInt("numModesRHS", numModesRHS);
 
@@ -87,7 +88,7 @@ int main(int argc, char *argv[])
 	// setup basis if reading basis
 	} else {
 		datasetRHS = new meta(tokenRHS);
-		firstFileBasis = datasetRHS->prefix + std::to_string(datasetRHS->snap0) + datasetRHS->suffix;
+		firstFileBasis = datasetRHS->prefix + to_string(datasetRHS->snap0) + datasetRHS->suffix;
 		numModesRHS = datasetRHS->nSets;
 
 		if (!readSolSnaps) {
@@ -113,11 +114,12 @@ int main(int argc, char *argv[])
 	PGrid *evenG;
     evenG = new PGrid(rank, size, 0);
 	pMat *U, *A, *VT; 	// temporary basis matrices
-	pMat *USol, *USol_T;
+	pMat *USol;
 	pMat *URHS, *URHS_T;
 
 	// ##### SETTING UP SOLUTION TRIAL BASIS ##### // 
-	
+	cout << "Loading solution basis..." << endl;
+
 	int nCells = 0, nVars = 0;
 
 	// compute SVD of FOM snapshots, if computing POD basis here
@@ -145,9 +147,9 @@ int main(int argc, char *argv[])
 
         vector<double> SSol;
 
-        U = new pMat(MSol, std::min(MSol, NSol), evenG);
-        VT = new pMat(std::min(MSol, NSol), NSol, evenG);
-        SSol.resize(std::min(MSol, NSol));
+        U = new pMat(MSol, min(MSol, NSol), evenG);
+        VT = new pMat(min(MSol, NSol), NSol, evenG);
+        SSol.resize(min(MSol, NSol));
 
         A->svd_run(MSol, NSol, 0, 0, U, VT, SSol);
         delete A;
@@ -175,10 +177,6 @@ int main(int argc, char *argv[])
 		}
 
 		delete U; // don't need this anymore
-		
-		// USol_T is just transpose of U
-        USol_T = new pMat(numModesSol, USol->M, evenG);
-        USol_T->transpose(USol, USol_T->M, USol_T->N, 0, 0);
 
     } else {
 		// have to provide number of cells and variables, since reading from binary here (not SZPLT)
@@ -187,7 +185,7 @@ int main(int argc, char *argv[])
 
 		// read modes from disk
 		USol = new pMat(datasetSol->nPoints, datasetSol->nSets, evenG);
-		if (inputMatch || (modesDiff && (numModesSol <= numModesMax))) {
+		if (inputMatch || (modesDiff && (numModesSol < numModesMax))) {
 			// if bases are identical, or if same basis set and RHS basis has more modes, just load it now
 			URHS = new pMat(datasetRHS->nPoints, datasetRHS->nSets, evenG);
 			datasetRHS->batchRead(URHS);
@@ -196,11 +194,6 @@ int main(int argc, char *argv[])
 			// if bases totally different, of solution basis set is same but has more modes than RHS basis, load solution basis now
 			datasetSol->batchRead(USol);
 		}
-        
-		// USol_T is just transpose of U
-        USol_T = new pMat(numModesSol, USol->M, evenG); 						
-        USol_T->transpose(USol);
-        assert(USol_T->N == nCells * nVars);
 
 	}
     
@@ -208,6 +201,7 @@ int main(int argc, char *argv[])
 	// ##### FINISH SOLUTION TRIAL BASIS ##### //
 
 	// ##### SETTING UP RHS BASIS ##### //
+	cout << "Loading RHS/residual basis..." << endl;
 
 	// compute SVD of FOM snapshots, if computing POD basis here
 	if (readRHSSnaps)
@@ -236,9 +230,9 @@ int main(int argc, char *argv[])
 
 			vector<double> SRHS;
 
-			U = new pMat(MRHS, std::min(MRHS, NRHS), evenG);
-			VT = new pMat(std::min(MRHS, NRHS), NRHS, evenG);
-			SRHS.resize(std::min(MRHS, NRHS));
+			U = new pMat(MRHS, min(MRHS, NRHS), evenG);
+			VT = new pMat(min(MRHS, NRHS), NRHS, evenG);
+			SRHS.resize(min(MRHS, NRHS));
 
 			A->svd_run(MRHS, NRHS, 0, 0, U, VT, SRHS);
 			delete A;
@@ -264,7 +258,7 @@ int main(int argc, char *argv[])
 			URHS = new pMat(datasetRHS->nPoints, datasetRHS->nSets, evenG);
 
 			// if same basis set, but RHS basis has fewer modes than solution basis, extract first numModesRHS modes from USol
-			if (modesDiff && (numModesRHS <= numModesMax)) {
+			if (modesDiff && (numModesRHS < numModesMax)) {
 				URHS->changeContext(USol, USol->M, numModesRHS, 0, 0, 0, 0);
 
 			// otherwise just load from disk
@@ -289,7 +283,8 @@ int main(int argc, char *argv[])
 	// This writes the pivot indices to disk, since it's easier to do this than collect to rank 0 process
 	int PointsNeeded = nCells * pSampling; // total number of cells that need to be sampled
 	vector<int> P;
-    URHS_T->qr_run(URHS_T->M, URHS_T->N, 0, 0, P); 	
+    URHS_T->qr_run(URHS_T->M, URHS_T->N, 0, 0, P); 
+	delete URHS_T; 
 
     vector<int> gP;		// gP will contain zero-indexed cell IDs of sampled cells
     vector<int> itype;
@@ -305,6 +300,7 @@ int main(int argc, char *argv[])
         gP.resize(numModesRHS); 	// resize it back down to numModesRHS. I feel like readMat just read the first numModesRHS integers? Seems inefficient.
 
 		// sampled QR cells
+		cout << "Extracting QR points..." << endl;
         for (int i = 0; i < gP.size(); i++)
         {
             gP[i]--; //switch to 0 indexing
@@ -334,6 +330,7 @@ int main(int argc, char *argv[])
 
 		// add boundary cells, if any
 		if (numSampledBounds > 0) {
+			cout << "Extracting boundary points..." << endl;
 			readMat(dfd_itype_file, itype);
 			for (vector<int>::iterator it = itype.begin(); it != itype.end(); ++it)
 			{
@@ -364,6 +361,9 @@ int main(int argc, char *argv[])
 	if (sampType == 1) {
 		// do everything on rank 0
 		if (rank == 0) {
+
+			cout << "Randomly oversampling..." << endl;
+
 			srand(1);				// seed random number generator
 			vector<int> rPoints;
 			rPoints.resize(nCells, 0);
@@ -380,7 +380,7 @@ int main(int argc, char *argv[])
 					cout << "repeated element " << *it << "\r";
 				}
 				if (samplingPoints.size() == PointsNeeded) {
-					cout << "All points found" << endl;
+					cout << "All points found..." << endl;
 					allPoints = true;
 					break;
 				}
@@ -402,8 +402,9 @@ int main(int argc, char *argv[])
 		gP.resize(samplingPoints.size(), 0);
         vector<double> gPD; // gP, but doubles
 		gPD.resize(nCells, 0.0);
-        std::copy(samplingPoints.begin(), samplingPoints.end(), gP.begin());
+        copy(samplingPoints.begin(), samplingPoints.end(), gP.begin());
 
+		cout << "Writing sampling points to disk..." << endl;
         for_each(gP.begin(), gP.end(), [](int &tt) { tt += 1; }); 	// put in one-indexed format for writing to disk
         printASCIIVecP0("samplingPoints.txt", gP, gP.size()); 		// writes sampling points to disk
         writeMat("Pall.bin", gP.size(), 1, gP); 					// also writing as bin file
@@ -414,7 +415,7 @@ int main(int argc, char *argv[])
             gPD[gP[i]] = 1.0;
 
         vector<string> Pname;
-        std::string tempname = "sampling";
+        string tempname = "sampling";
         Pname.push_back(tempname);
 
 		// could probably generalize this without the conditionals
@@ -427,16 +428,16 @@ int main(int argc, char *argv[])
     }
 
     t2 = MPI_Wtime();
-    cout << "figuring out samples took " << t2 - t1 << " seconds" << endl;
+    cout << "Finding all samples took " << t2 - t1 << " seconds" << endl;
 
     if (rank != 0)
     {
         gP.resize(PointsNeeded, 0);
     }
-    cout << "broadcasting points" << endl;
+    cout << "Broadcasting points..." << endl;
     MPI_Bcast(gP.data(), gP.size(), MPI_INT, 0, MPI_COMM_WORLD);
 
-    cout << "calculating DEIM interpolant" << endl;
+    cout << "Calculating DEIM interpolant..." << endl;
 	// URHS_samp is P^T * URHS
     pMat *URHS_samp;
 	URHS_samp = new pMat(gP.size() * nVars, numModesRHS, evenG);
@@ -450,28 +451,29 @@ int main(int argc, char *argv[])
 		for (int j = 0; j < nVars; j++)
 			URHS_samp->changeContext(URHS, 1, numModesRHS, gP[i] + j * nCells, 0, i + j * gP.size(), 0, false);
     }
-
     t2 = MPI_Wtime();
-    cout << "extraction took " << t2 - t1 << " seconds" << endl;
+    cout << "Extraction of RHS basis rows took " << t2 - t1 << " seconds" << endl;
 
-    URHS_samp->write_bin("URHS_samp.bin"); // write P^T * U to disk
+    // URHS_samp->write_bin("URHS_samp.bin"); // write P^T * U to disk
 
     t1 = MPI_Wtime();
 
 	// compute [P^T * URHS]^+ component of DEIM interpolant
 	// write to disk
+	cout << "Computing pseudo-inverse..." << endl;
     pMat *pinvURHS_samp = new pMat(URHS_samp->N, URHS_samp->M, evenG);
     pinvURHS_samp->pinv(URHS_samp);
-    pinvURHS_samp->write_bin("pinvURHS_samp.bin");
+    // pinvURHS_samp->write_bin("pinvURHS_samp.bin");
 	delete URHS_samp;
 
-
-	// TODO: this should be able to just use USol_T, or USol_T shouldn't exist
+	// compute USol^T * URHS
+	cout << "Computing V^T * U ..." << endl;
     pMat *USol_URHS = new pMat(numModesSol, numModesRHS, evenG);
-    USol_URHS->matrix_Product('T', 'N', numModesSol, numModesRHS, USol->M, USol, 0, 0, URHS, 0, 0, 1.0, 0.0, 0, 0);
+    USol_URHS->matrix_Product('T', 'N', numModesSol, numModesRHS, USol->M, USol, 0, 0, URHS, 0, 0, 1.0, 0.0, 0, 0); 
 
-	// compute full DEIM interpolant, V^T * U * [P^T * U]
-    pMat *deimInterp = new pMat(USol_URHS->N, pinvURHS_samp->N, evenG);
+	// compute full DEIM interpolant, USol^T * URHS * [P^T * URHS]^+
+	cout << "Computing complete DEIM interpolant..." << endl;
+    pMat *deimInterp = new pMat(USol_URHS->M, pinvURHS_samp->N, evenG);
     deimInterp->matrix_Product('N', 'N', deimInterp->M, deimInterp->N, pinvURHS_samp->M, USol_URHS, 0, 0, pinvURHS_samp, 0, 0, 1.0, 0.0, 0, 0);
     t2 = MPI_Wtime();
     cout << "DEIM interpolant calculation took " << t2 - t1 << " seconds" << endl;
@@ -479,23 +481,21 @@ int main(int argc, char *argv[])
     // clean up
     delete USol_URHS;
     delete pinvURHS_samp;
-    delete USol_T;
-    delete URHS_T;
 
     pMat *deimInterp_T = new pMat(deimInterp->N, deimInterp->M, deimInterp->pG);
     deimInterp_T->transpose(deimInterp);
     delete deimInterp;
 
-    pMat *deimInterpOut = new pMat(datasetRHS->nPoints, numModesRHS, evenG);
-
 	// write DEIM interpolant to disk
     // insert zeros where it is not sampled, for GEMS input
+	cout << "Emplacing zeros into DEIM interpolant..." << endl;
     t1 = MPI_Wtime();
+	pMat *deimInterpOut = new pMat(datasetRHS->nPoints, numModesSol, evenG);
     for (int i = 0; i < gP.size(); i++)
     {
         cout << (double)i / gP.size() * 100 << " percent points emplaced \r";
 		for (int j = 0; j < nVars; j++)
-			deimInterpOut->changeContext(deimInterp_T, 1, numModesRHS, i + j * gP.size(), 0, gP[i] + j * nCells, 0, false);
+			deimInterpOut->changeContext(deimInterp_T, 1, numModesSol, i + j * gP.size(), 0, gP[i] + j * nCells, 0, false);
     }
     t2 = MPI_Wtime();
     cout << "DEIM emplacement took " << t2 - t1 << " seconds" << endl;
@@ -512,11 +512,11 @@ int main(int argc, char *argv[])
         datasetOut->isInit = true;
 
 		if (readSolSnaps) {
-			datasetOut->meshFile = datasetSol->prefix + std::to_string(datasetSol->snap0) + datasetSol->suffix;
+			datasetOut->meshFile = datasetSol->prefix + to_string(datasetSol->snap0) + datasetSol->suffix;
 			datasetOut->varName = dynamic_cast<tecIO *>(datasetSol)->varName;
         	datasetOut->varIndex = dynamic_cast<tecIO *>(datasetSol)->varIndex;
 		} else {
-			datasetOut->meshFile = datasetRHS->prefix + std::to_string(datasetRHS->snap0) + datasetRHS->suffix;
+			datasetOut->meshFile = datasetRHS->prefix + to_string(datasetRHS->snap0) + datasetRHS->suffix;
 			datasetOut->varName = dynamic_cast<tecIO *>(datasetRHS)->varName;
         	datasetOut->varIndex = dynamic_cast<tecIO *>(datasetRHS)->varIndex;
 		}
