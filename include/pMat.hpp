@@ -89,14 +89,17 @@ public:
 	/// Will create copy pMat object of pointed one
 	pMat(pMat *);
 	pMat(int, int, PGrid *);
+	pMat(int, int, PGrid *, bool);
 	/// Creates pMat of dimension M,N on context pG with contant value
 	pMat(int, int, PGrid *, int, int, double);
+	pMat(int, int, PGrid *, int, int, double, bool);
 	/// Creates pMat of dimension M,N on context pG with contant value with cycles
 	pMat(int, int, PGrid *, int, int, int, double);
+	pMat(int, int, PGrid *, int, int, int, double, bool);
 	~pMat();
 
 	/// core setup routine called by different contructors
-	void setupMat(int, int, int, int, int, double);
+	void setupMat(int, int, int, int, int, double, bool);
 	/// Will swtich type
 	void switchType(int);
 
@@ -120,6 +123,7 @@ public:
 	//Scalapack
 
 	int svd_run(int, int, int, int, pMat *&, pMat *&, std::vector<double> &);
+	int svd_run(int, int, int, int, pMat *&, pMat *&, std::vector<double> &, bool);
 
 	// MOS
 	int mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S);
@@ -135,6 +139,7 @@ public:
 	int changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb, bool stdout);
 	int changeContext(pMat *, int, int, int, int, int, int);
 	int changeContext(pMat *);
+	int changeContext(pMat *, bool);
 	int dMax(int, int, double &);
 	int dSum(int, int, double &);
 
@@ -142,7 +147,11 @@ public:
 	int outerProductSum(pMat *U, char, pMat *VT, char, std::vector<double> &S, int inv);
 	void pinv(pMat *A);
 	int commCreate(MPI_Comm &col_com, int dim);
+	
 };
+
+void destroyPMat(pMat *);
+void destroyPMat(pMat *, bool);
 
 std::ostream &operator<<(std::ostream &, const pMat &);
 bool operator==(pMat const &, pMat const &);

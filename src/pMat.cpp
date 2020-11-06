@@ -57,29 +57,52 @@ pMat::pMat()
 pMat::pMat(pMat *point)
 {
         pG = point->pG;
-        setupMat(point->M, point->N, point->type, point->block, point->cycles, 0.0);
+        setupMat(point->M, point->N, point->type, point->block, point->cycles, 0.0, true);
 }
 pMat::pMat(int m, int n, PGrid *pGp)
 {
         pG = pGp;
-        setupMat(m, n, 0, 0, 1, 0.0);
+        setupMat(m, n, 0, 0, 1, 0.0, true);
+}
+pMat::pMat(int m, int n, PGrid *pGp, bool stdout)
+{
+        pG = pGp;
+        setupMat(m, n, 0, 0, 1, 0.0, stdout);
 }
 pMat::pMat(int m, int n, PGrid *pGp, int t, int b, double init)
 {
         pG = pGp;
-        setupMat(m, n, t, b, 1, init);
+        setupMat(m, n, t, b, 1, init, true);
+}
+pMat::pMat(int m, int n, PGrid *pGp, int t, int b, double init, bool stdout)
+{
+        pG = pGp;
+        setupMat(m, n, t, b, 1, init, stdout);
 }
 pMat::pMat(int m, int n, PGrid *pGp, int t, int b, int c, double init)
 {
         pG = pGp;
-        setupMat(m, n, t, b, c, init);
+        setupMat(m, n, t, b, c, init, true);
+}
+pMat::pMat(int m, int n, PGrid *pGp, int t, int b, int c, double init, bool stdout)
+{
+        pG = pGp;
+        setupMat(m, n, t, b, c, init, stdout);
 }
 pMat::~pMat()
 {
-        if (pG->rank == 0)
-                cout << "Deallocating Distributed Matrix" << endl;
+        // if (pG->rank == 0)
+        //         cout << "Deallocating Distributed Matrix" << endl;
 }
-void pMat::setupMat(int m, int n, int t, int b, int c, double init)
+void destroyPMat(pMat *A, bool stdout) {
+	if ((A->pG->rank == 0) && stdout)
+        cout << "Deallocating Distributed Matrix" << endl;
+	delete A;
+}
+void destroyPMat(pMat *A) {
+	destroyPMat(A, true);
+}
+void pMat::setupMat(int m, int n, int t, int b, int c, double init, bool stdout)
 {
         M = m;
         N = n;
@@ -88,8 +111,10 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init)
         cycles = c;
         printRank = pG->printRank;
 
-        cout << "Creating Matrix" << endl
-             << "M=" << M << " N=" << N << endl;
+		if (stdout) {
+        	cout << "Creating Matrix" << endl
+             	<< "M=" << M << " N=" << N << endl;
+		}
         if (block == 0) //square blocks
         {
                 nb = 128;
@@ -100,7 +125,8 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init)
                         nb = std::max(1, N / (pG->getDim(0) * cycles));
                 mb = std::min(mb, nb);
                 nb = mb;
-                cout << "mb/nb = " << nb << endl;
+				if (stdout)
+                	cout << "mb/nb = " << nb << endl;
                 MPI_Barrier(MPI_COMM_WORLD);
         }
         else if (block == 1) //load blocks
@@ -109,16 +135,20 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init)
                 mb = M;
                 if (nb > (N / pG->getDim(0)))
                         nb = std::max(1, N / pG->getDim(0));
-                cout << "mb is " << mb << endl;
-                cout << "nb is " << nb << endl;
+				if (stdout) {
+					cout << "mb is " << mb << endl;
+					cout << "nb is " << nb << endl;
+				}
                 MPI_Barrier(MPI_COMM_WORLD);
         }
         else if (block == 2) //p0 block
         {
                 nb = N;
                 mb = M;
-                cout << "nb is " << nb << endl;
-                cout << "mb is " << mb << endl;
+				if (stdout) {
+					cout << "nb is " << nb << endl;
+					cout << "mb is " << mb << endl;
+				}
                 MPI_Barrier(MPI_COMM_WORLD);
         }
         else if (block == 3) //synched block
@@ -142,13 +172,15 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init)
 
         if (type == 0)
         {
-                cout << "Mat is Double" << endl;
+				if (stdout)
+                	cout << "Mat is Double" << endl;
                 dataD.resize(nelements, init);
                 MBs = nelements * 8.0 / (1.0e6);
         }
         else if (type == 1)
         {
-                cout << "Mat is Complex" << endl;
+				if (stdout)
+                	cout << "Mat is Complex" << endl;
                 dataC.resize(nelements);
                 for (int i = 0; i < nelements; i++)
                 {
@@ -163,8 +195,11 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init)
                 throw(-1);
         }
         MPI_Barrier(MPI_COMM_WORLD);
-        cout << "nelements " << nelements << endl;
-        cout << myRC[0] << " " << myRC[1] << endl;
+
+		if (stdout) {
+			cout << "nelements " << nelements << endl;
+			cout << myRC[0] << " " << myRC[1] << endl;
+		}
 
         descinit_(desc, &M, &N, &mb, &nb, &i_zero, &i_zero, &(pG->icntxt), &myRC[0], &info);
         //for(int i=0;i<9;i++)
@@ -173,7 +208,9 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init)
         {
                 cout << "Error in descriptor setup in argument, info=" << -info << endl;
         }
-        cout << "Matrix Constructed" << endl;
+
+		if (stdout)
+        	cout << "Matrix Constructed" << endl;
 }
 
 void pMat::switchType(int t)
@@ -464,7 +501,11 @@ int pMat::matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int
         return 0;
 }
 
-int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S)
+int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S) {
+	svd_run(M, N, ia, ja, U, VT, S, true);
+}
+
+int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S, bool stdout)
 {
         int info = 0;
         string computeFlag = "V";
@@ -477,7 +518,8 @@ int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         double t2, t1;
         pdgesvd(JOBU, JOBVT, &M, &N, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
 
-        cout << "WORK= " << WORK[0] << ", LWORK= " << LWORK << ", info= " << info << endl;
+		if (stdout)
+        	cout << "WORK= " << WORK[0] << ", LWORK= " << LWORK << ", info= " << info << endl;
 
         if (info < 0)
         {
@@ -486,13 +528,16 @@ int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         }
         LWORK = WORK[0];
         WORK.resize(LWORK);
-        cout << "Work Allocated: " << LWORK / (1e6) * 8 << " MB per processor" << endl;
+		if (stdout)
+        	cout << "Work Allocated: " << LWORK / (1e6) * 8 << " MB per processor" << endl;
+
         //SVD run
         MPI_Barrier(MPI_COMM_WORLD);
         t1 = MPI_Wtime();
         pdgesvd(JOBU, JOBVT, &M, &N, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
         t2 = MPI_Wtime();
-        cout << "SVD complete in " << t2 - t1 << " seconds" << endl;
+		if (stdout)
+        	cout << "SVD complete in " << t2 - t1 << " seconds" << endl;
         WORK.resize(0);
 
         return 1;
@@ -701,7 +746,7 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         if (minMN == N)
         {
                 corMat->matrix_Product('T', 'N', minMN, minMN, M, this, 0, 0, this, 0, 0, 1.0, 0.0, 0, 0);
-                cout << "cor Mat created" << endl;
+                cout << "Correlation matrix calculated" << endl;
 
                 corMatp0->changeContext(corMat);
                 delete corMat;
@@ -711,8 +756,6 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
                 {
                         t1 = MPI_Wtime();
                         Eigen::MatrixXd corMatEig = Eigen::Map<Eigen::MatrixXd>(corMatp0->dataD.data(), minMN, minMN);
-                        // corMatEig = corMatEig.selfadjointView<Eigen::Upper>();
-                        // Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(corMatEig);
                         Eigen::EigenSolver<Eigen::MatrixXd> es(corMatEig);
 
                         Eigen::MatrixXcd VEig(minMN, minMN);
@@ -766,6 +809,7 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
                         }
                 }
 
+				
                 delete corMatp0;
 
                 // map V from rank 0 to distributed matrix
@@ -883,6 +927,7 @@ int pMat::transpose(pMat *A)
         transpose(A, this->M, this->N, 0, 0);
 }
 
+
 int pMat::transpose(pMat *A, int m, int n, int ia, int ja)
 {
         int IA = ia + 1;
@@ -907,20 +952,20 @@ int pMat::changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb, b
         int IB = ib + 1;
         int JB = jb + 1;
         if (stdout)
-                cout << "Copying Matrix" << endl
-                     << "m = " << m << " , "
-                     << "n = " << n << endl;
+			cout << "Copying Matrix" << endl
+				<< "m = " << m << " , "
+				<< "n = " << n << endl;
         int i_one = 1;
         if (type == 0)
         {
                 if (stdout)
-                        cout << "Double changed pGrid" << endl;
+					cout << "Double changed pGrid" << endl;
                 pdgemr2d(&m, &n, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, &(pG->icntxt));
         }
         if (type == 1)
         {
                 if (stdout)
-                        cout << "Complex changed pGrid" << endl;
+					cout << "Complex changed pGrid" << endl;
                 pzgemr2d(&m, &n, A->dataC.data(), &IA, &JA, A->desc, dataC.data(), &IB, &JB, desc, &(pG->icntxt));
         }
 }
@@ -930,7 +975,11 @@ int pMat::changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb)
 }
 int pMat::changeContext(pMat *A)
 {
-        changeContext(A, M, N, 0, 0, 0, 0);
+        changeContext(A, M, N, 0, 0, 0, 0, true);
+}
+int pMat::changeContext(pMat *A, bool stdout)
+{
+        changeContext(A, M, N, 0, 0, 0, 0, stdout);
 }
 
 int pMat::dMax(int dim, int rc, double &val)
