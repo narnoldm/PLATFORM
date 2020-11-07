@@ -131,7 +131,9 @@ public:
 	int mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S, int modeStart, int modeEnd,
 				int mosStep, PGrid *procGrid);
 
+	// QR decomposition
 	int qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv);
+	int qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv, bool stdout);
 
 	//Utilities
 	int transpose(pMat *);
