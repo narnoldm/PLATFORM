@@ -842,9 +842,14 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         }
 }
 
-int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv)
+int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv){
+	qr_run(m, n, ia, ja, ipiv, true);
+}
+
+int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, bool stdout)
 {
-        cout << "QR initializing" << endl;
+		if (stdout)
+        	cout << "QR initializing" << endl;
         int IA = ia + 1;
         int JA = ja + 1;
 
@@ -853,9 +858,11 @@ int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv)
 
         int ipiv_LOCc = std::max(1, numroc_(&JAnpm1, &nb, &(pG->mycol), &(desc[7]), &(pG->pcol)));
         int tau_LOCc = std::max(1, numroc_(&JAminMNm1, &nb, &(pG->mycol), &(desc[7]), &(pG->pcol)));
-        cout << "ipiv_LOCc= " << ipiv_LOCc << endl;
-        cout << "tau_LOCc= " << tau_LOCc << endl;
-        vector<double> tau(1);
+		if (stdout) {
+        	cout << "ipiv_LOCc= " << ipiv_LOCc << endl;
+        	cout << "tau_LOCc= " << tau_LOCc << endl;
+		}
+		vector<double> tau(1);
         vector<double> WORK(1);
 
         ipiv.resize(ipiv_LOCc);
@@ -866,16 +873,19 @@ int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv)
         int LWORK = -1;
 
         pdgeqpf(&m, &n, dataD.data(), &IA, &JA, desc, ipiv.data(), tau.data(), WORK.data(), &LWORK, &info);
-        cout << "WORK=" << WORK[0] << " ,LWORK= " << LWORK << ", info= " << info << endl;
+		if (stdout)
+        	cout << "WORK=" << WORK[0] << " ,LWORK= " << LWORK << ", info= " << info << endl;
         LWORK = WORK[0];
         WORK.resize(LWORK);
-        std::cout << "WORK allocated starting QR" << std::endl;
+		if (stdout)
+        	std::cout << "WORK allocated starting QR" << std::endl;
         MPI_Barrier(MPI_COMM_WORLD);
         t1 = MPI_Wtime();
         pdgeqpf(&m, &n, dataD.data(), &IA, &JA, desc, ipiv.data(), tau.data(), WORK.data(), &LWORK, &info);
         MPI_Barrier(MPI_COMM_WORLD);
         t2 = MPI_Wtime();
-        cout << "QR complete in " << t2 - t1 << " seconds info =" << info << endl;
+		if (stdout)
+        	cout << "QR complete in " << t2 - t1 << " seconds info =" << info << endl;
         MPI_Barrier(MPI_COMM_WORLD);
         tau.resize(0);
         WORK.resize(0);
@@ -889,9 +899,11 @@ int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv)
         {
                 MPI_File_write(fH, &ONE, 1, MPI_INT, MPI_STATUS_IGNORE);
                 MPI_File_write(fH, &N, 1, MPI_INT, MPI_STATUS_IGNORE);
-                cout << "Write Start" << endl;
-                cout << "M=" << ONE << "mb=" << mb << "N=" << N << "nb=" << nb << endl;
-        }
+				if (stdout) {
+                	cout << "Write Start" << endl;
+                	cout << "M=" << ONE << "mb=" << mb << "N=" << N << "nb=" << nb << endl;
+				}
+		}
         MPI_File_close(&fH);
         MPI_Barrier(MPI_COMM_WORLD);
         int disp = 2 * sizeof(int);
@@ -906,18 +918,18 @@ int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv)
         mpiEls = tsize / (sizeof(int));
         if (myRC[1] != mpiEls)
         {
-                cout << "Allocation via MPI " << mpiEls << " and pblacs " << myRC[1] << " is different" << endl;
+            cout << "Allocation via MPI " << mpiEls << " and pblacs " << myRC[1] << " is different" << endl;
         }
         MPI_File_open(MPI_COMM_WORLD, pivot_name.c_str(), MPI_MODE_WRONLY, MPI_INFO_NULL, &fH);
-        if (printRank)
-                cout << "MPI Allocation " << mpiEls << " , pblacs Allocation " << myRC[1] << endl;
+        if (printRank && stdout)
+            cout << "MPI Allocation " << mpiEls << " , pblacs Allocation " << myRC[1] << endl;
         t1 = MPI_Wtime();
         MPI_File_set_view(fH, disp, MPI_INT, darray, "native", MPI_INFO_NULL);
         MPI_File_write_all(fH, ipiv.data(), mpiEls, MPI_INT, MPI_STATUS_IGNORE);
         MPI_File_close(&fH);
         t2 = MPI_Wtime();
-        if (printRank)
-                cout << "Write time is " << t2 - t1 << endl;
+        if (printRank && stdout)
+            cout << "Write time is " << t2 - t1 << endl;
 
         return 1;
 }
@@ -1015,20 +1027,20 @@ int pMat::dSum(int dim, int rc, double &val)
 void pMat::pinv(pMat *A)
 {
         pMat *UU, *VV;
-        UU = new pMat(A->M, std::min(A->M, A->N), A->pG);
-        VV = new pMat(std::min(A->M, A->N), A->N, A->pG);
+        UU = new pMat(A->M, std::min(A->M, A->N), A->pG, false);
+        VV = new pMat(std::min(A->M, A->N), A->N, A->pG, false);
         vector<double> SS(std::min(A->M, A->N), 0.0);
 
-        A->svd_run(A->M, A->N, 0, 0, UU, VV, SS);
+        A->svd_run(A->M, A->N, 0, 0, UU, VV, SS, false);
         // UU->write_bin("UU.bin");
         // VV->write_bin("VV.bin");
-        cout << "summing outer products" << endl;
-        cout << "tol check " << SS[0] << " " << std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0] << "\r";
+        // cout << "Summing outer products" << endl;
+        // cout << "pinv tol check " << SS[0] << " " << std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0] << endl;
         this->matrix_Product('T', 'T', VV->N, UU->M, 1, VV, 0, 0, UU, 0, 0, 1.0 / SS[0], 0.0, 0, 0);
         for (int i = 1; i < SS.size(); i++)
         {
                 //check tolerance
-                cout << "tol check " << SS[i] << " " << std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0] << "\r";
+                // cout << "tol check " << SS[i] << " " << std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0] << "\r";
                 if (SS[i] > std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0])
                         this->matrix_Product('T', 'T', VV->N, UU->M, 1, VV, i, 0, UU, 0, i, 1.0 / SS[i], 1.0, 0, 0);
         }

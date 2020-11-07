@@ -160,14 +160,14 @@ int main(int argc, char *argv[])
 
 		// extract numModesSol modes from U
 		USol = new pMat(U->M, numModesSol, evenG, false);
-		USol->changeContext(U, U->M, numModesSol, 0, 0, 0, 0);
+		USol->changeContext(U, U->M, numModesSol, 0, 0, 0, 0, false);
 		
 		// if basis datasets match, also extract RHS basis here
 		if (inputMatch) {
 			URHS = new pMat(U->M, numModesRHS, evenG, false);
 			// if mode counts are different, extract modes from U
 			if (modesDiff) {
-				URHS->changeContext(U, U->M, numModesRHS, 0, 0, 0, 0);
+				URHS->changeContext(U, U->M, numModesRHS, 0, 0, 0, 0, false);
 
 			// if bases are identical
 			} else {
@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
 			// if bases are identical, or if same basis set and RHS basis has more modes, just load it now
 			URHS = new pMat(datasetRHS->nPoints, datasetRHS->nSets, evenG, false);
 			datasetRHS->batchRead(URHS);
-			USol->changeContext(URHS, URHS->M, numModesSol, 0, 0, 0, 0);
+			USol->changeContext(URHS, URHS->M, numModesSol, 0, 0, 0, 0, false);
 		} else {
 			// if bases totally different, of solution basis set is same but has more modes than RHS basis, load solution basis now
 			datasetSol->batchRead(USol);
@@ -243,7 +243,7 @@ int main(int argc, char *argv[])
 
 			// extract numModesRHS modes from U
 			URHS = new pMat(U->M, numModesRHS, evenG, false);
-			URHS->changeContext(U, U->M, numModesRHS, 0, 0, 0, 0);
+			URHS->changeContext(U, U->M, numModesRHS, 0, 0, 0, 0, false);
 			destroyPMat(U, false); 
 		}
 		
@@ -259,7 +259,7 @@ int main(int argc, char *argv[])
 
 			// if same basis set, but RHS basis has fewer modes than solution basis, extract first numModesRHS modes from USol
 			if (modesDiff && (numModesRHS < numModesMax)) {
-				URHS->changeContext(USol, USol->M, numModesRHS, 0, 0, 0, 0);
+				URHS->changeContext(USol, USol->M, numModesRHS, 0, 0, 0, 0, false);
 
 			// otherwise just load from disk
 			} else {
@@ -283,7 +283,8 @@ int main(int argc, char *argv[])
 	// This writes the pivot indices to disk, since it's easier to do this than collect to rank 0 process
 	int PointsNeeded = nCells * pSampling; // total number of cells that need to be sampled
 	vector<int> P;
-    URHS_T->qr_run(URHS_T->M, URHS_T->N, 0, 0, P);  
+	cout << "Computing QR decomposition..." << endl;
+    URHS_T->qr_run(URHS_T->M, URHS_T->N, 0, 0, P, false);  
 
     vector<int> gP;		// gP will contain zero-indexed cell IDs of sampled cells
     vector<int> itype;
@@ -395,8 +396,8 @@ int main(int argc, char *argv[])
 
 	// eigenvector-based oversampling
 	} else if (sampType == 2) {
-	
-		pMat *URHS_samp_E;
+
+		// declare some variables for this routine
 		pMat *U_E, *VT_E;
 		vector<double> S_E;
 		int M, N, minDim;
@@ -409,16 +410,22 @@ int main(int argc, char *argv[])
 		vector<double> rVec_vector(nDOF);
 
 		// sort and broadcast gP to all processes
-		if (rank == 0) {
-			sort(gP.begin(), gP.end()); 
+		if (rank == 0)
 			numQRPoints = samplingPoints.size();
-		}
+
 		MPI_Bcast(&numQRPoints, 1, MPI_INT, 0, MPI_COMM_WORLD);
-		if (rank != 0) {
+		if (rank != 0)
 			gP.resize(numQRPoints, 0);
-		}
 		MPI_Bcast(gP.data(), gP.size(), MPI_INT, 0, MPI_COMM_WORLD);
-		numCurrentPoints = gP.size();
+		numCurrentPoints = numQRPoints;
+
+		// grab first QR point rows, BUT ordered by cell, then by var
+		pMat *URHS_samp_E = new pMat(PointsNeeded*nVars, datasetRHS->nSets, evenG, false);
+		pMat *URHS_samp_E_copy = new pMat(PointsNeeded*nVars, datasetRHS->nSets, evenG, false);
+		for (int j = 0; j < numCurrentPoints; ++j) {
+			for (int k = 0; k < nVars; ++k)
+				URHS_samp_E_copy->changeContext(URHS, 1, numModesRHS, gP[j] + k * nCells, 0, j * nVars + k, 0, false);
+		}
 
 		// loop over number of requires samples left
 		for (int i = 0; i < (PointsNeeded - numQRPoints); ++i) {
@@ -427,13 +434,10 @@ int main(int argc, char *argv[])
 
 			numCurrentDOFs = numCurrentPoints * nVars;
 
-			// sample rows of URHS, using samples collected so far
-			URHS_samp_E = new pMat(numCurrentDOFs, numModesRHS, evenG, false);
-			for (int j = 0; j < numCurrentPoints; ++j) {
-				// cout << (double)j / numCurrentPoints * 100 << " percent points extracted \r";
-				for (int k = 0; k < nVars; ++k)
-					URHS_samp_E->changeContext(URHS, 1, numModesRHS, gP[j] + k * nCells, 0, j + k * numCurrentPoints, 0, false);
-			}
+			// copy first numCurrentDOFs rows from URHS_samp_E_copy to URHS_samp_E
+			// we do this because URHS_samp_E will be destroyed during the SVD
+			URHS_samp_E->changeContext(URHS_samp_E_copy, numCurrentDOFs, numModesRHS, 0, 0, 0, 0, false);
+
 			// compute SVD of sampled URHS, hold on to singular values and RIGHT singular vectors
 			M = numCurrentDOFs; 
 			N = numModesRHS;
@@ -444,7 +448,6 @@ int main(int argc, char *argv[])
 			S_E.resize(minDim, 0.0);
 
 			URHS_samp_E->svd_run(M, N, 0, 0, U_E, VT_E, S_E, false);
-			destroyPMat(URHS_samp_E, false);
 			destroyPMat(U_E, false);
 
 			// compute vector-matrix product of last right singular vector transposed and URHS_T 
@@ -454,12 +457,11 @@ int main(int argc, char *argv[])
 			// reduce rVec to rank 0 
 			rVec_p0->changeContext(rVec, false);
 
-			// square all elements of rVec
 			if (rank == 0) {
 
-				for (int j = 0; j < rVec_p0->dataD.size(); ++j) {
+				// square all elements of rVec
+				for (int j = 0; j < rVec_p0->dataD.size(); ++j)
 					rVec_p0->dataD[j] = pow(rVec_p0->dataD[j], 2.0);
-				}
 
 				// fill vector, since the argsort doesn't seem to work with pMat.dataD
 				for (int j = 0; j < nDOF; ++j)
@@ -469,7 +471,7 @@ int main(int argc, char *argv[])
 				iota(sortIdxs.begin(), sortIdxs.end(), 0);
 				stable_sort(sortIdxs.begin(), sortIdxs.end(), [&rVec_vector](int i1, int i2) { return rVec_vector[i1] > rVec_vector[i2]; });
 				// This would be preferable, and not have to use rVec_vector, but I cannot get it to compile, I don't know what's going wrong
-				// stable_sort(sortIdxs.begin(), sortIdxs.end(), [&(rVec_p0->dataD.data())](int i1, int i2) { return rVec_p0->dataD[i1] < rVec_p0->dataD[i2]; });
+				// stable_sort(sortIdxs.begin(), sortIdxs.end(), [&(rVec_p0->dataD)](int i1, int i2) { return rVec_p0->dataD[i1] < rVec_p0->dataD[i2]; });
 
 				// iterate through rVec, emplacing corresponding zero-indexed cell ID into samplingPoints until a new point is found
 				for (int j = 0; j < nDOF; ++j) {
@@ -481,13 +483,21 @@ int main(int argc, char *argv[])
 
 			}
 
-			// broadcast new cell ID to all processes, insert into sorted gP vector
-			MPI_Bcast(&cellID, 1, MPI_INT, 0, MPI_COMM_WORLD);
-			gP.insert(upper_bound(gP.begin(), gP.end(), cellID), cellID); // assumes that gP is already sorted (should be, from preprocessing)
-
+			// broadcast new cell ID to all processes, insert into gP vector
+			MPI_Bcast(&cellID, 1, MPI_INT, 0, MPI_COMM_WORLD);			
+			gP.push_back(cellID);
 			numCurrentPoints++;
 
+			// append newly sampled rows of URHS to URHS_samp_E_copy
+			for (int k = 0; k < nVars; ++k)
+				URHS_samp_E_copy->changeContext(URHS, 1, numModesRHS, k * nCells + gP.back(), 0, (numCurrentPoints-1) * nVars + k, 0, false);
+
 		}
+
+		// cleanup
+		cout << endl;
+		destroyPMat(URHS_samp_E, false);
+		destroyPMat(URHS_samp_E_copy, false);
 
 	} else {
 		cout << "Invalid choice of sampling type: " << sampType << endl;
@@ -536,9 +546,10 @@ int main(int argc, char *argv[])
     MPI_Bcast(gP.data(), gP.size(), MPI_INT, 0, MPI_COMM_WORLD);
 
     cout << "Calculating DEIM interpolant..." << endl;
+	
 	// URHS_samp is P^T * URHS
     pMat *URHS_samp;
-	URHS_samp = new pMat(gP.size() * nVars, numModesRHS, evenG);
+	URHS_samp = new pMat(gP.size() * nVars, numModesRHS, evenG, false);
 
 	// extract rows of URHS
 	// would it not be easier to just construct the full selection matrix P? Then multiply P^T * U?
@@ -558,26 +569,23 @@ int main(int argc, char *argv[])
     t2 = MPI_Wtime();
     cout << endl << "Extraction of RHS basis rows took " << t2 - t1 << " seconds" << endl;
 
-    // URHS_samp->write_bin("URHS_samp.bin"); // write P^T * U to disk
 
     t1 = MPI_Wtime();
 
 	// compute [P^T * URHS]^+ component of DEIM interpolant
-	// write to disk
 	cout << "Computing pseudo-inverse..." << endl;
-    pMat *pinvURHS_samp = new pMat(URHS_samp->N, URHS_samp->M, evenG);
+    pMat *pinvURHS_samp = new pMat(URHS_samp->N, URHS_samp->M, evenG, false);
     pinvURHS_samp->pinv(URHS_samp);
-    // pinvURHS_samp->write_bin("pinvURHS_samp.bin");
 	destroyPMat(URHS_samp, false);
 
 	// compute USol^T * URHS
 	cout << "Computing V^T * U ..." << endl;
-    pMat *USol_URHS = new pMat(numModesSol, numModesRHS, evenG);
+    pMat *USol_URHS = new pMat(numModesSol, numModesRHS, evenG, false);
     USol_URHS->matrix_Product('T', 'N', numModesSol, numModesRHS, USol->M, USol, 0, 0, URHS, 0, 0, 1.0, 0.0, 0, 0); 
 
 	// compute full DEIM interpolant, USol^T * URHS * [P^T * URHS]^+
 	cout << "Computing complete DEIM interpolant..." << endl;
-    pMat *deimInterp = new pMat(USol_URHS->M, pinvURHS_samp->N, evenG);
+    pMat *deimInterp = new pMat(USol_URHS->M, pinvURHS_samp->N, evenG, false);
     deimInterp->matrix_Product('N', 'N', deimInterp->M, deimInterp->N, pinvURHS_samp->M, USol_URHS, 0, 0, pinvURHS_samp, 0, 0, 1.0, 0.0, 0, 0);
     t2 = MPI_Wtime();
     cout << "DEIM interpolant calculation took " << t2 - t1 << " seconds" << endl;
@@ -586,7 +594,7 @@ int main(int argc, char *argv[])
     destroyPMat(USol_URHS, false);
     destroyPMat(pinvURHS_samp, false);
 
-    pMat *deimInterp_T = new pMat(deimInterp->N, deimInterp->M, deimInterp->pG);
+    pMat *deimInterp_T = new pMat(deimInterp->N, deimInterp->M, deimInterp->pG, false);
     deimInterp_T->transpose(deimInterp);
     destroyPMat(deimInterp, false);
 
@@ -594,7 +602,7 @@ int main(int argc, char *argv[])
     // insert zeros where it is not sampled, for GEMS input
 	cout << "Emplacing zeros into DEIM interpolant..." << endl;
     t1 = MPI_Wtime();
-	pMat *deimInterpOut = new pMat(datasetRHS->nPoints, numModesSol, evenG);
+	pMat *deimInterpOut = new pMat(datasetRHS->nPoints, numModesSol, evenG, false);
     for (int i = 0; i < gP.size(); i++)
     {
         cout << (double)i / gP.size() * 100 << " percent points emplaced \r";
