@@ -283,8 +283,10 @@ int main(int argc, char *argv[])
 	// This writes the pivot indices to disk, since it's easier to do this than collect to rank 0 process
 	int PointsNeeded = nCells * pSampling; // total number of cells that need to be sampled
 	vector<int> P;
+
 	cout << "Computing QR decomposition..." << endl;
-    URHS_T->qr_run(URHS_T->M, URHS_T->N, 0, 0, P, false);  
+    URHS_T->qr_run(URHS_T->M, URHS_T->N, 0, 0, P, false);  // contents of URHS_T are DESTROYED during QR decomposition
+	destroyPMat(URHS_T, false); 
 
     vector<int> gP;		// gP will contain zero-indexed cell IDs of sampled cells
     vector<int> itype;
@@ -447,11 +449,11 @@ int main(int argc, char *argv[])
         	VT_E = new pMat(minDim, N, evenG, false); // this *might* not need to be reallocated/deleted every iterations, could always be [numModesRHS x numModesRHS]
 			S_E.resize(minDim, 0.0);
 
-			URHS_samp_E->svd_run(M, N, 0, 0, U_E, VT_E, S_E, false);
+			URHS_samp_E->svd_run(M, N, 0, 0, U_E, VT_E, S_E, false); // contents of URHS_samp_E are destroyed during SVD
 			destroyPMat(U_E, false);
 
-			// compute vector-matrix product of last right singular vector transposed and URHS_T 
-			rVec->matrix_Product('N', 'N', 1, nDOF, minDim, VT_E, minDim-1, 0, URHS_T, 0, 0, 1.0, 0.0, 0, 0);
+			// compute vector-matrix product of last right singular vector transposed and URHS transposed
+			rVec->matrix_Product('N', 'T', 1, nDOF, minDim, VT_E, minDim-1, 0, URHS, 0, 0, 1.0, 0.0, 0, 0);
 			destroyPMat(VT_E, false);
 
 			// reduce rVec to rank 0 
@@ -483,6 +485,8 @@ int main(int argc, char *argv[])
 
 			}
 
+			cout << endl << "Cell ID: " << cellID << endl;
+
 			// broadcast new cell ID to all processes, insert into gP vector
 			MPI_Bcast(&cellID, 1, MPI_INT, 0, MPI_COMM_WORLD);			
 			gP.push_back(cellID);
@@ -504,7 +508,6 @@ int main(int argc, char *argv[])
 	} 
 	MPI_Barrier(MPI_COMM_WORLD);
 
-	destroyPMat(URHS_T, false); // see if this deletion can be moved up under certain circumstances
 	
 	if (rank == 0) {
 		gP.resize(samplingPoints.size(), 0);
