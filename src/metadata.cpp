@@ -84,7 +84,7 @@ void meta::checkExists()
 
 bool meta::readSingle(int fileID, double *point)
 {
-    cout << "meta read" << endl;
+    cout << "meta read " << fileID << endl;
     FILE *fid;
     fid = fopen((prefix + to_string(fileID) + suffix).c_str(), "rb");
     int header[2] = {0, 0};
