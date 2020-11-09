@@ -133,7 +133,7 @@ public:
 
 	// QR decomposition
 	int qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv);
-	int qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv, bool stdout);
+	int qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv, std::string outdir, bool stdout);
 
 	//Utilities
 	int transpose(pMat *);
