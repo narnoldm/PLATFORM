@@ -290,7 +290,7 @@ int main(int argc, char *argv[])
 
 	// compute QR factorization of U^T
 	// This writes the pivot indices to disk, since it's easier to do this than collect to rank 0 process
-	int PointsNeeded = nCells * pSampling; // total number of cells that need to be sampled
+	int PointsNeeded = max(numModesRHS, int(nCells * pSampling)); // total number of cells that need to be sampled
 	vector<int> P;
 
 	if (sampType != 3) {
@@ -371,7 +371,9 @@ int main(int argc, char *argv[])
 	bool allPoints = false;
 
 	// random oversampling
-	if (sampType == 1) {
+	if (sampType == 0) {
+		cout << "No oversampling..." << endl;
+	} else if (sampType == 1) {
 		// do everything on rank 0
 		if (rank == 0) {
 
@@ -522,7 +524,9 @@ int main(int argc, char *argv[])
 		// // declare some variables for this routine
 		// pMat *rVec = new pMat(nDOF, 1, evenG, false); 
 		// pMat *rVec_p0 = new pMat(nDOF, 1, evenG, 0, 2, 0.0, false);
-		// int maxVal, argmax;
+		// vector<int> sortIdxs(nDOF);
+		// vector<double> rVec_vector(nDOF);
+		// int oversampThresh, modeIdx; 
 
 		// // extract first column of URHS to rVec
 		// rVec->changeContext(URHS, nDOF,  1, 0, 0, 0, 0, false);
@@ -530,20 +534,24 @@ int main(int argc, char *argv[])
 		// // loop over number of desired sampling points (index i)
 		// for (int i = 0; i < PointsNeeded; ++i) {
 			
-		// 	bool check = false;
-
-
-		// 	iota(sortIdxs.begin(), sortIdxs.end(), 0);
-		// 	stable_sort(sortIdxs.begin(), sortIdxs.end(), [&rVec_vector](int i1, int i2) { return rVec_vector[i1] > rVec_vector[i2]; });
-
-		// 	// while loop until new cell is added
-		// 	while (!check) {
-			
+		// 	if (rank == 0) {
 		// 		// get argmax of absolute value of rVec
+		// 		iota(sortIdxs.begin(), sortIdxs.end(), 0);
+		// 		stable_sort(sortIdxs.begin(), sortIdxs.end(), [&rVec_vector](int i1, int i2) { return rVec_vector[i1] > rVec_vector[i2]; });
 
-		// 		// check if sampled DOF corresponds to a new cell
+		// 		// while loop until new cell is added
+		// 		for (int j = 0; j < nDOF; ++j) {
+		// 			cellID = sortIdxs[j] % nCells;
+		// 			auto check = samplingPoints.emplace(cellID);
+		// 			if (check.second)
+		// 				break;
+		// 		}
+
+		// 		oversampThresh = min(numModesRHS, i); // forces ceiling of numModesRHS
+
 
 		// 	}
+
 
 		// 	// d = min(numModesRHS-1, i)  // index to check whether this is oversampling or normal sampling
 
@@ -613,6 +621,10 @@ int main(int argc, char *argv[])
 
 	// copying individual rows of URHS
     t1 = MPI_Wtime();
+	cout << "gP size: " << gP.size() << endl;
+	for (int i = 0; i < gP.size(); ++i) {
+		cout << gP[i] << endl;
+	}
     for (int i = 0; i < gP.size(); i++)
     {
         cout << (double)i / gP.size() * 100 << " percent points extracted \r";
