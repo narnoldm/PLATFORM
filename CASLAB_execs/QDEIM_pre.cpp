@@ -282,9 +282,10 @@ int main(int argc, char *argv[])
 	// ##### START SAMPLING ##### //
 
 	// type of sampling
-	// 1: QR + random oversampling
-	// 2: QR + eigenvector-based oversampling
-	// 3: DEIM greedy oversampling
+	// 0: QR only, no oversampling (QDEIM)
+	// 1: QR + random oversampling (GappyPOD+R)
+	// 2: QR + eigenvector-based oversampling (GappyPOD+E)
+	// 3: DEIM greedy sampling (GappyPOD+D)
 	int sampType;
 	inputFile.getParamInt("sampType", sampType);
 
@@ -521,6 +522,9 @@ int main(int argc, char *argv[])
 	// DEIM greedy sampling
 	} else if (sampType == 3) {
 	
+		cout << "Not implemented yet" << endl;
+		return(-1);
+
 		// // declare some variables for this routine
 		// pMat *rVec = new pMat(nDOF, 1, evenG, false); 
 		// pMat *rVec_p0 = new pMat(nDOF, 1, evenG, 0, 2, 0.0, false);
@@ -534,12 +538,20 @@ int main(int argc, char *argv[])
 		// // loop over number of desired sampling points (index i)
 		// for (int i = 0; i < PointsNeeded; ++i) {
 			
+		// 	// reduce rVec to rank 0 
+		// 	rVec_p0->changeContext(rVec, false);
+
 		// 	if (rank == 0) {
+
 		// 		// get argmax of absolute value of rVec
+		// 		// fill vector, since the argsort doesn't seem to work with pMat.dataD
+		// 		for (int j = 0; j < nDOF; ++j)
+		// 			rVec_vector[j] = abs(rVec_p0->dataD[j]);
 		// 		iota(sortIdxs.begin(), sortIdxs.end(), 0);
 		// 		stable_sort(sortIdxs.begin(), sortIdxs.end(), [&rVec_vector](int i1, int i2) { return rVec_vector[i1] > rVec_vector[i2]; });
 
-		// 		// while loop until new cell is added
+		// 		// loop until new cell is added
+		// 		// this is effectively argmax, since rVec_vector[sortIdxs] will be sorted in descending order
 		// 		for (int j = 0; j < nDOF; ++j) {
 		// 			cellID = sortIdxs[j] % nCells;
 		// 			auto check = samplingPoints.emplace(cellID);
@@ -547,17 +559,17 @@ int main(int argc, char *argv[])
 		// 				break;
 		// 		}
 
-		// 		oversampThresh = min(numModesRHS, i); // forces ceiling of numModesRHS
-
+		// 		oversampThresh = min(i, numModesRHS); // forces ceiling of numModesRHS
+		// 		modeIdx = i % numModesRHS; // cycles through modes, I guess?
 
 		// 	}
 
 
-		// 	// d = min(numModesRHS-1, i)  // index to check whether this is oversampling or normal sampling
+			// d = min(numModesRHS-1, i)  // index to check whether this is oversampling or normal sampling
 
-		// 	// k = mod(i, numModesRHS) // index to get oversampling index
+			// k = mod(i, numModesRHS) // index to get oversampling index
 
-		// 	// c = URHS
+			// c = URHS
 
 		// }
 
@@ -621,10 +633,6 @@ int main(int argc, char *argv[])
 
 	// copying individual rows of URHS
     t1 = MPI_Wtime();
-	cout << "gP size: " << gP.size() << endl;
-	for (int i = 0; i < gP.size(); ++i) {
-		cout << gP[i] << endl;
-	}
     for (int i = 0; i < gP.size(); i++)
     {
         cout << (double)i / gP.size() * 100 << " percent points extracted \r";
