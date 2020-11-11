@@ -71,7 +71,6 @@ target_link_libraries(QDEIM parser param meta)
 #target_link_libraries(QDEIM debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
 
-
 add_executable(projEr CASLAB_execs/projEr.cpp)
 target_include_directories(projEr PUBLIC include)
 target_link_libraries(projEr parser param meta)
@@ -82,6 +81,9 @@ target_include_directories(projErP PUBLIC include)
 target_link_libraries(projErP parser param meta)
 
 
+add_executable(calcSamplingError CASLAB_execs/calcSamplingError.cpp)
+target_include_directories(calcSamplingError PUBLIC include)
+target_link_libraries(calcSamplingError parser param meta)
 
 enable_testing()
 
