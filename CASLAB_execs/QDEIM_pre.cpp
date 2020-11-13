@@ -25,81 +25,103 @@ int main(int argc, char *argv[])
         cout.rdbuf(sink.rdbuf());
     }
 
+	// DEIM interpolant output format, based on GEMS ROM type 
+	// 0: SP-LSVT ([P^T U]^+)
+	// 1: Galerkin (V^T U * [P^T U]^+) 
+	int interpolantFormat;
+	inputFile.getParamInt("interpolantFormat", interpolantFormat);
+
     // check whether user wants to compute bases or load them
-    bool readSolSnaps = false;
 	bool readRHSSnaps = false;
-    inputFile.getParamBool("readSolSnaps", readSolSnaps); 	// whether to compute solution basis here
 	inputFile.getParamBool("readRHSSnaps", readRHSSnaps); 	// whether to compute RHS basis here
 
-	// solution snapshots or basis paths
-	string inputSol, inputRHS;
-	inputFile.getParamString("solInputString", inputSol); 	// PDP-demarcated input for solution data/basis
-    inputFile.getParamString("rhsInputString", inputRHS); 	// PDP-demarcated input for RHS data/basis
+	// RHS snapshots or basis paths
+	string inputRHS;
+	inputFile.getParamString("rhsInputString", inputRHS); 	// PDP-demarcated input for RHS data/basis
 
-	// parse solution and RHS basis strings
-	vector<string> tokenSol, tokenRHS;
-	cout << "Solution input string is: " << inputSol << endl;
-    tokenparse(inputSol, "|", tokenSol);
+	// parse RHS basis string
+	vector<string> tokenRHS;
 	cout << "RHS input string is: " << inputRHS << endl;
     tokenparse(inputRHS, "|", tokenRHS);
 
-	// if input strings are same, then resulting bases will be identical
-	bool inputMatch = false;
-	bool modesDiff = false;
-
-	// if input are identical, bases will just be copied from solution basis to RHS basis
-	if (inputSol == inputRHS) {
-		cout << "Solution and RHS input strings were identical..." << endl;
-		inputMatch = true;
-	}
-
-	int numModesSol, numModesRHS;
-	string firstFileSnaps, firstFileBasis;
-
-	// setup solution basis input
-	meta *datasetSol;
-    if (readSolSnaps) {
-        datasetSol = new tecIO(tokenSol);
-        firstFileSnaps = datasetSol->prefix + to_string(datasetSol->snap0) + datasetSol->suffix;
-        dynamic_cast<tecIO *>(datasetSol)->activateReorder(firstFileSnaps.c_str());	
-    	inputFile.getParamInt("numModesSol", numModesSol); 			 
-
-    } else {
-		datasetSol = new meta(tokenSol);
-        firstFileBasis = datasetSol->prefix + to_string(datasetSol->snap0) + datasetSol->suffix;
-		numModesSol = datasetSol->nSets;
-	}
-
+	int numModesRHS;
+	string firstFileBasis;
 	// setup RHS/residual basis input, compare parameters against solution basis input
 	meta *datasetRHS;
 	if (readRHSSnaps) {
 		datasetRHS = new tecIO(tokenRHS);
-		firstFileSnaps = datasetRHS->prefix + to_string(datasetRHS->snap0) + datasetRHS->suffix;
-		dynamic_cast<tecIO *>(datasetRHS)->activateReorder(firstFileSnaps.c_str());
+		firstFileBasis = datasetRHS->prefix + to_string(datasetRHS->snap0) + datasetRHS->suffix;
+		dynamic_cast<tecIO *>(datasetRHS)->activateReorder(firstFileBasis.c_str());
 		inputFile.getParamInt("numModesRHS", numModesRHS);
-
-		// if dataset is same and mode counts are not same, note this
-		// I'm pretty sure the readSolSnaps check is redundant, if inputMatch is already true
-		if ( (readSolSnaps) && (inputMatch) && (numModesSol != numModesRHS) ) {
-			modesDiff = true;
-			cout << "Solution and RHS bases have same datasets, but different mode counts..." << endl;
-		}
 
 	// setup basis if reading basis
 	} else {
 		datasetRHS = new meta(tokenRHS);
 		firstFileBasis = datasetRHS->prefix + to_string(datasetRHS->snap0) + datasetRHS->suffix;
 		numModesRHS = datasetRHS->nSets;
+	}
 
-		if (!readSolSnaps) {
-			int metaCheck = compareMeta(datasetSol, datasetRHS);
-			if (metaCheck == 2) {
+	int numModesMax;
+
+	// repeat input reads for solution data if performing preprocessing for Galerkin ROM
+	bool readSolSnaps = false;
+	bool inputMatch = false;
+	bool modesDiff = false;
+	int numModesSol = 0;
+	string firstFileSnaps;
+	meta *datasetSol;
+	if (interpolantFormat == 1) {
+		
+		inputFile.getParamBool("readSolSnaps", readSolSnaps); 	// whether to compute solution basis here
+
+		string inputSol;
+		inputFile.getParamString("solInputString", inputSol); 	// PDP-demarcated input for solution data/basis
+
+		vector<string> tokenSol;
+		cout << "Solution input string is: " << inputSol << endl;
+		tokenparse(inputSol, "|", tokenSol);		
+
+		// if input are identical, bases will just be copied from solution basis to RHS basis
+		if (inputSol == inputRHS) {
+			cout << "Solution and RHS input strings were identical..." << endl;
+			inputMatch = true;
+		}
+
+		// setup solution basis input
+		if (readSolSnaps) {
+			datasetSol = new tecIO(tokenSol);
+			firstFileSnaps = datasetSol->prefix + to_string(datasetSol->snap0) + datasetSol->suffix;
+			dynamic_cast<tecIO *>(datasetSol)->activateReorder(firstFileSnaps.c_str());	
+			inputFile.getParamInt("numModesSol", numModesSol); 	
+
+			// if dataset is same and mode counts are not same, note this
+			// I'm pretty sure the readRHSSnaps check is redundant, if inputMatch is already true
+			if ( (readRHSSnaps) && (inputMatch) && (numModesSol != numModesRHS) ) {
 				modesDiff = true;
 				cout << "Solution and RHS bases have same datasets, but different mode counts..." << endl;
-			} 
+			}		 
+
+		} else {
+			datasetSol = new meta(tokenSol);
+			firstFileSnaps = datasetSol->prefix + to_string(datasetSol->snap0) + datasetSol->suffix;
+			numModesSol = datasetSol->nSets;
+
+			if (!readRHSSnaps) {
+				int metaCheck = compareMeta(datasetSol, datasetRHS);
+				if (metaCheck == 2) {
+					modesDiff = true;
+					cout << "Solution and RHS bases have same datasets, but different mode counts..." << endl;
+				} 
+			}
 		}
+
+		numModesMax = max(numModesSol, numModesRHS); // determines which basis has more modes, only relevant if bases come from same dataset
+
+	} else {
+
+		numModesMax = numModesRHS;
+
 	}
-	int numModesMax = max(numModesSol, numModesRHS); // determines which basis has more modes, only relevant if bases come from same dataset
 
 	// percentage of total cells to be sampled 
     double pSampling;
@@ -119,88 +141,7 @@ int main(int argc, char *argv[])
 	pMat *USol;
 	pMat *URHS, *URHS_T;
 
-	// ##### SETTING UP SOLUTION TRIAL BASIS ##### // 
-	cout << "Loading solution basis..." << endl;
-
 	int nCells = 0, nVars = 0, nDOF = 0;
-
-	// compute SVD of FOM snapshots, if computing POD basis here
-    if (readSolSnaps) {
-
-        A = new pMat(datasetSol->nPoints, datasetSol->nSets, evenG, 0, 0, 0.0, false);
-        t1 = MPI_Wtime();
-        datasetSol->batchRead(A);
-        t2 = MPI_Wtime();
-        cout << "Load took " << t2 - t1 << " seconds" << endl;
-
-        t1 = MPI_Wtime();
-
-		// TODO: this would need to include options to set centering and normalization profiles
-        tecIO *datasetTec = dynamic_cast<tecIO *>(datasetSol);
-        datasetTec->calcAvg(A);
-        datasetTec->subAvg(A);
-        datasetTec->calcNorm(A);
-        datasetTec->normalize(A);
-
-        t2 = MPI_Wtime();
-        cout << "Preprocessing took " << t2 - t1 << " seconds" << endl;
-        int MSol = datasetSol->nPoints; 
-		int NSol = datasetSol->nSets;
-
-        vector<double> SSol;
-
-        U = new pMat(MSol, min(MSol, NSol), evenG, false);
-        VT = new pMat(min(MSol, NSol), NSol, evenG, false);
-        SSol.resize(min(MSol, NSol));
-
-        A->svd_run(MSol, NSol, 0, 0, U, VT, SSol);
-        destroyPMat(A, false);
-        destroyPMat(VT, false);
-
-		nCells = dynamic_cast<tecIO *>(datasetSol)->nCells;
-		nVars  = dynamic_cast<tecIO *>(datasetSol)->numVars;
-
-		// extract numModesSol modes from U
-		USol = new pMat(U->M, numModesSol, evenG, false);
-		USol->changeContext(U, U->M, numModesSol, 0, 0, 0, 0, false);
-		
-		// if basis datasets match, also extract RHS basis here
-		if (inputMatch) {
-			URHS = new pMat(U->M, numModesRHS, evenG, false);
-			// if mode counts are different, extract modes from U
-			if (modesDiff) {
-				URHS->changeContext(U, U->M, numModesRHS, 0, 0, 0, 0, false);
-
-			// if bases are identical
-			} else {
-				URHS = USol; // just use same address, don't need to allocate more memory
-			}
-
-		}
-
-		destroyPMat(U, false); // don't need this anymore
-
-    } else {
-		// have to provide number of cells and variables, since reading from binary here (not SZPLT)
-		inputFile.getParamInt("nCells", nCells); 
-        inputFile.getParamInt("nVars", nVars);
-
-		// read modes from disk
-		USol = new pMat(datasetSol->nPoints, datasetSol->nSets, evenG, false);
-		if (inputMatch || (modesDiff && (numModesSol < numModesMax))) {
-			// if bases are identical, or if same basis set and RHS basis has more modes, just load it now
-			URHS = new pMat(datasetRHS->nPoints, datasetRHS->nSets, evenG, false);
-			datasetRHS->batchRead(URHS);
-			USol->changeContext(URHS, URHS->M, numModesSol, 0, 0, 0, 0, false);
-		} else {
-			// if bases totally different, of solution basis set is same but has more modes than RHS basis, load solution basis now
-			datasetSol->batchRead(USol);
-		}
-
-	}
-    nDOF = nCells * nVars;
-
-	// ##### FINISH SOLUTION TRIAL BASIS ##### //
 
 	// ##### SETTING UP RHS BASIS ##### //
 	cout << "Loading RHS/residual basis..." << endl;
@@ -208,46 +149,58 @@ int main(int argc, char *argv[])
 	// compute SVD of FOM snapshots, if computing POD basis here
 	if (readRHSSnaps)
 	{
-		// if inputMatch, this has already been computed
-		if (!inputMatch) {
-			A = new pMat(datasetRHS->nPoints, datasetRHS->nSets, evenG, 0, 0, 0.0, false);
-			t1 = MPI_Wtime();
-			datasetRHS->batchRead(A);
-			t2 = MPI_Wtime();
-			cout << "Load took " << t2 - t1 << " seconds" << endl;
+		A = new pMat(datasetRHS->nPoints, datasetRHS->nSets, evenG, 0, 0, 0.0, false);
+		t1 = MPI_Wtime();
+		datasetRHS->batchRead(A);
+		t2 = MPI_Wtime();
+		cout << "Load took " << t2 - t1 << " seconds" << endl;
 
-			t1 = MPI_Wtime();
+		nCells = dynamic_cast<tecIO *>(datasetRHS)->nCells;
+		nVars  = dynamic_cast<tecIO *>(datasetRHS)->numVars;
 
-			// TODO: this would need to include options to set centering and normalization profiles
-			tecIO *datasetTec = dynamic_cast<tecIO *>(datasetRHS);
-			datasetTec->calcAvg(A);
-			datasetTec->subAvg(A);
-			datasetTec->calcNorm(A);
-			datasetTec->normalize(A);
+		t1 = MPI_Wtime();
 
-			t2 = MPI_Wtime();
-			cout << "Preprocessing took " << t2 - t1 << " seconds" << endl;
-			int MRHS = datasetRHS->nPoints; 
-			int NRHS = datasetRHS->nSets;
+		// TODO: this would need to include options to set centering and normalization profiles
+		tecIO *datasetTec = dynamic_cast<tecIO *>(datasetRHS);
+		datasetTec->calcAvg(A);
+		datasetTec->subAvg(A);
+		datasetTec->calcNorm(A);
+		datasetTec->normalize(A);
 
-			vector<double> SRHS;
+		t2 = MPI_Wtime();
+		cout << "Preprocessing took " << t2 - t1 << " seconds" << endl;
+		int MRHS = datasetRHS->nPoints; 
+		int NRHS = datasetRHS->nSets;
 
-			U = new pMat(MRHS, min(MRHS, NRHS), evenG, false);
-			VT = new pMat(min(MRHS, NRHS), NRHS, evenG, false);
-			SRHS.resize(min(MRHS, NRHS));
+		vector<double> SRHS;
 
-			A->svd_run(MRHS, NRHS, 0, 0, U, VT, SRHS);
-			destroyPMat(A, false);
-			destroyPMat(VT, false);
+		U = new pMat(MRHS, min(MRHS, NRHS), evenG, false);
+		VT = new pMat(min(MRHS, NRHS), NRHS, evenG, false);
+		SRHS.resize(min(MRHS, NRHS));
 
-			assert(nCells == dynamic_cast<tecIO *>(datasetRHS)->nCells);
-			assert(nVars  == dynamic_cast<tecIO *>(datasetRHS)->numVars);
+		A->svd_run(MRHS, NRHS, 0, 0, U, VT, SRHS);
+		destroyPMat(A, false);
+		destroyPMat(VT, false);
 
-			// extract numModesRHS modes from U
-			URHS = new pMat(U->M, numModesRHS, evenG, false);
-			URHS->changeContext(U, U->M, numModesRHS, 0, 0, 0, 0, false);
-			destroyPMat(U, false); 
+		// extract numModesRHS modes from U
+		URHS = new pMat(U->M, numModesRHS, evenG, false);
+		URHS->changeContext(U, U->M, numModesRHS, 0, 0, 0, 0, false);
+
+		// if basis datasets match, also extract solution basis here
+		if ( (interpolantFormat == 1) && inputMatch) {
+			USol = new pMat(U->M, numModesSol, evenG, false);
+			// if mode counts are different, extract modes from U
+			if (modesDiff) {
+				USol->changeContext(U, U->M, numModesSol, 0, 0, 0, 0, false);
+
+			// if bases are identical
+			} else {
+				USol = URHS; // just use same address, don't need to allocate more memory
+			}
+
 		}
+
+		destroyPMat(U, false); 
 		
 		// URHS_T is just transpose of URHS
 		URHS_T = new pMat(numModesRHS, URHS->M, evenG, false);
@@ -255,29 +208,102 @@ int main(int argc, char *argv[])
 
 	} else {
 
-		// if inputMatch, basis has already been copied
-		if (!inputMatch) {
-			URHS = new pMat(datasetRHS->nPoints, datasetRHS->nSets, evenG, false);
+		// have to provide number of cells and variables, since reading from binary here (not SZPLT)
+		inputFile.getParamInt("nCells", nCells); 
+        inputFile.getParamInt("nVars", nVars);
 
-			// if same basis set, but RHS basis has fewer modes than solution basis, extract first numModesRHS modes from USol
-			if (modesDiff && (numModesRHS < numModesMax)) {
-				URHS->changeContext(USol, USol->M, numModesRHS, 0, 0, 0, 0, false);
+		// read modes from disk
+		URHS = new pMat(datasetRHS->nPoints, datasetRHS->nSets, evenG, false);
 
-			// otherwise just load from disk
-			} else {
-				// read RHS modes from disk
-				datasetRHS->batchRead(URHS);
-			}
+		if ( (interpolantFormat == 1) && (inputMatch || (modesDiff && (numModesRHS < numModesMax)))) {
+			// if bases are identical, or if same basis set and solution basis has more modes, just load it now
+			USol = new pMat(datasetSol->nPoints, datasetSol->nSets, evenG, false);
+			datasetSol->batchRead(USol);
+			URHS->changeContext(USol, USol->M, numModesRHS, 0, 0, 0, 0, false);
+		} else {
+			// if bases totally different, of solution basis set is same but has more modes than RHS basis, load solution basis now
+			datasetRHS->batchRead(URHS);
 		}
 
 		// URHS_T is just transpose of URHS
 		URHS_T = new pMat(numModesRHS, URHS->M, evenG, false); 						
 		URHS_T->transpose(URHS);
-		assert(URHS_T->N == nDOF);
 
 	}
 
+	nDOF = nCells * nVars;
+
 	// ##### FINISH RHS BASIS ##### //
+
+	// ##### SETTING UP SOLUTION TRIAL BASIS ##### // 
+	if (interpolantFormat == 1) {
+		cout << "Loading solution basis..." << endl;
+
+		// compute SVD of FOM snapshots, if computing POD basis here
+		if (readSolSnaps) {
+
+			// if inputMatch, this has already been computed
+			if (!inputMatch) {
+				A = new pMat(datasetSol->nPoints, datasetSol->nSets, evenG, 0, 0, 0.0, false);
+				t1 = MPI_Wtime();
+				datasetSol->batchRead(A);
+				t2 = MPI_Wtime();
+				cout << "Load took " << t2 - t1 << " seconds" << endl;
+
+				assert(nCells == dynamic_cast<tecIO *>(datasetSol)->nCells);
+				assert(nVars  == dynamic_cast<tecIO *>(datasetSol)->numVars);
+
+				t1 = MPI_Wtime();
+
+				// TODO: this would need to include options to set centering and normalization profiles
+				tecIO *datasetTec = dynamic_cast<tecIO *>(datasetSol);
+				datasetTec->calcAvg(A);
+				datasetTec->subAvg(A);
+				datasetTec->calcNorm(A);
+				datasetTec->normalize(A);
+
+				t2 = MPI_Wtime();
+				cout << "Preprocessing took " << t2 - t1 << " seconds" << endl;
+				int MSol = datasetSol->nPoints; 
+				int NSol = datasetSol->nSets;
+
+				vector<double> SSol;
+
+				U = new pMat(MSol, min(MSol, NSol), evenG, false);
+				VT = new pMat(min(MSol, NSol), NSol, evenG, false);
+				SSol.resize(min(MSol, NSol));
+
+				A->svd_run(MSol, NSol, 0, 0, U, VT, SSol);
+				destroyPMat(A, false);
+				destroyPMat(VT, false);
+
+				// extract numModesSol modes from U
+				USol = new pMat(U->M, numModesSol, evenG, false);
+				USol->changeContext(U, U->M, numModesSol, 0, 0, 0, 0, false);
+				destroyPMat(U, false); // don't need this anymore
+
+			}
+
+		} else {
+
+			// if inputMatch, basis has already been copied
+			if (!inputMatch) {
+				USol = new pMat(datasetSol->nPoints, datasetSol->nSets, evenG, false);
+
+				// if same basis set, but solution basis has fewer modes than RHS basis, extract first numModesSol modes from URHS
+				if (modesDiff && (numModesSol < numModesMax)) {
+					USol->changeContext(URHS, URHS->M, numModesSol, 0, 0, 0, 0, false);
+
+				// otherwise just load from disk
+				} else {
+					datasetSol->batchRead(USol);
+				}
+			}
+
+		}
+	}
+
+	// ##### FINISH SOLUTION TRIAL BASIS ##### //
 
 	// ##### START SAMPLING ##### //
 
@@ -651,36 +677,47 @@ int main(int argc, char *argv[])
     pinvURHS_samp->pinv(URHS_samp);
 	destroyPMat(URHS_samp, false);
 
-	// compute USol^T * URHS
-	cout << "Computing V^T * U ..." << endl;
-    pMat *USol_URHS = new pMat(numModesSol, numModesRHS, evenG, false);
-    USol_URHS->matrix_Product('T', 'N', numModesSol, numModesRHS, USol->M, USol, 0, 0, URHS, 0, 0, 1.0, 0.0, 0, 0); 
+	pMat *deimInterp_T;
+	if (interpolantFormat == 1) {
+		// compute USol^T * URHS
+		cout << "Computing V^T * U ..." << endl;
+		pMat *USol_URHS = new pMat(numModesSol, numModesRHS, evenG, false);
+		USol_URHS->matrix_Product('T', 'N', numModesSol, numModesRHS, USol->M, USol, 0, 0, URHS, 0, 0, 1.0, 0.0, 0, 0); 
 
-	// compute full DEIM interpolant, USol^T * URHS * [P^T * URHS]^+
-	cout << "Computing complete DEIM interpolant..." << endl;
-    pMat *deimInterp = new pMat(USol_URHS->M, pinvURHS_samp->N, evenG, false);
-    deimInterp->matrix_Product('N', 'N', deimInterp->M, deimInterp->N, pinvURHS_samp->M, USol_URHS, 0, 0, pinvURHS_samp, 0, 0, 1.0, 0.0, 0, 0);
-    t2 = MPI_Wtime();
-    cout << "DEIM interpolant calculation took " << t2 - t1 << " seconds" << endl;
+		// compute full DEIM interpolant for Galerkin, USol^T * URHS * [P^T * URHS]^+
+		cout << "Computing complete DEIM interpolant..." << endl;
+		pMat *deimInterp = new pMat(USol_URHS->M, pinvURHS_samp->N, evenG, false);
+		deimInterp->matrix_Product('N', 'N', deimInterp->M, deimInterp->N, pinvURHS_samp->M, USol_URHS, 0, 0, pinvURHS_samp, 0, 0, 1.0, 0.0, 0, 0);
+		t2 = MPI_Wtime();
+		cout << "DEIM interpolant calculation took " << t2 - t1 << " seconds" << endl;
 
-    // clean up
-    destroyPMat(USol_URHS, false);
-    destroyPMat(pinvURHS_samp, false);
+    	destroyPMat(USol_URHS, false);
+		destroyPMat(pinvURHS_samp, false);
 
-    pMat *deimInterp_T = new pMat(deimInterp->N, deimInterp->M, deimInterp->pG, false);
-    deimInterp_T->transpose(deimInterp);
-    destroyPMat(deimInterp, false);
+		deimInterp_T = new pMat(deimInterp->N, deimInterp->M, deimInterp->pG, false);
+		deimInterp_T->transpose(deimInterp);
+		destroyPMat(deimInterp, false);
 
+	} else {
+
+		// full DEIM interpolant for SP-LSVT is just [P^T * URHS]^+
+		deimInterp_T = new pMat(pinvURHS_samp->N, pinvURHS_samp->M, pinvURHS_samp->pG, false);
+		deimInterp_T->transpose(pinvURHS_samp);
+		destroyPMat(pinvURHS_samp, false);
+
+	}
+
+    
 	// write DEIM interpolant to disk
     // insert zeros where it is not sampled, for GEMS input
 	cout << "Emplacing zeros into DEIM interpolant..." << endl;
     t1 = MPI_Wtime();
-	pMat *deimInterpOut = new pMat(datasetRHS->nPoints, numModesSol, evenG, false);
+	pMat *deimInterpOut = new pMat(datasetRHS->nPoints, numModesRHS, evenG, false);
     for (int i = 0; i < gP.size(); i++)
     {
         cout << (double)i / gP.size() * 100 << " percent points emplaced \r";
 		for (int j = 0; j < nVars; j++)
-			deimInterpOut->changeContext(deimInterp_T, 1, numModesSol, i + j * gP.size(), 0, gP[i] + j * nCells, 0, false);
+			deimInterpOut->changeContext(deimInterp_T, 1, numModesRHS, i + j * gP.size(), 0, gP[i] + j * nCells, 0, false);
     }
     t2 = MPI_Wtime();
     cout << endl << "DEIM emplacement took " << t2 - t1 << " seconds" << endl;
