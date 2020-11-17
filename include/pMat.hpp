@@ -142,7 +142,7 @@ public:
 	int changeContext(pMat *, int, int, int, int, int, int);
 	int changeContext(pMat *);
 	int changeContext(pMat *, bool);
-	int dMax(int, int, double &);
+	int dMax(int, int, double &, int &);
 	int dSum(int, int, double &);
 
 	//Other
