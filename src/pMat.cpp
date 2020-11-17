@@ -994,9 +994,9 @@ int pMat::changeContext(pMat *A, bool stdout)
         changeContext(A, M, N, 0, 0, 0, 0, stdout);
 }
 
-int pMat::dMax(int dim, int rc, double &val)
+int pMat::dMax(int dim, int rc, double &val, int &index)
 {
-        int index = 0;
+        // int index = 0;
 
         if (dim == 0)
         {
@@ -1008,6 +1008,9 @@ int pMat::dMax(int dim, int rc, double &val)
                 int IA = rc + 1, JA = 1, i_one = 1;
                 pdamax(&N, &val, &index, dataD.data(), &IA, &JA, desc, &M);
         }
+
+		index--; // return to C indexing
+
 }
 int pMat::dSum(int dim, int rc, double &val)
 {

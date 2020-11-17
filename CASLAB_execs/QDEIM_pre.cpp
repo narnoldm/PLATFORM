@@ -446,6 +446,7 @@ int main(int argc, char *argv[])
 		int numQRPoints, numCurrentPoints, numCurrentDOFs;
 		int cellID;
 
+		pMat *rVec = new pMat(1, nDOF, evenG, false); 
 		pMat *rVec_p0 = new pMat(1, nDOF, evenG, 0, 2, 0.0, false);
 		vector<int> sortIdxs(nDOF);
 		vector<double> rVec_vector(nDOF);
@@ -471,146 +472,87 @@ int main(int argc, char *argv[])
 		// loop over number of requires samples left
 		for (int i = 0; i < (PointsNeeded - numQRPoints); ++i) {
 
-			pMat *rVec = new pMat(1, nDOF, evenG, false); 
-
-			cout << (double)i / (PointsNeeded - numQRPoints) * 100 << " percent GappyPOD+E points sampled \r";
+			cout << (double)i / (PointsNeeded - numQRPoints) * 100 << " percent GappyPOD+E points sampled" << endl;
 
 			numCurrentDOFs = numCurrentPoints * nVars;
 
-			t1 = MPI_Wtime();
 			// copy first numCurrentDOFs rows from URHS_samp_E_copy to URHS_samp_E
 			// we do this because URHS_samp_E will be destroyed during the SVD
 			URHS_samp_E->changeContext(URHS_samp_E_copy, numCurrentDOFs, numModesRHS, 0, 0, 0, 0, false);
-			t2 = MPI_Wtime();
-			cout << "Copy took " << t2 - t1 << " seconds" << endl;
 
 			// compute SVD of sampled URHS, hold on to singular values and RIGHT singular vectors
 			M = numCurrentDOFs; 
 			N = numModesRHS;
 			minDim = min(M,N);
 
-			t1 = MPI_Wtime();
         	U_E = new pMat(M, minDim, evenG, false); 	// this will always change, must be reallocated/deleted
         	VT_E = new pMat(minDim, N, evenG, false); // this *might* not need to be reallocated/deleted every iterations, could always be [numModesRHS x numModesRHS]
 			S_E.resize(minDim, 0.0);
-			t2 = MPI_Wtime();
-			cout << "Reallocation took " << t2 - t1 << " seconds" << endl;
 
-			t1 = MPI_Wtime();
 			URHS_samp_E->svd_run(M, N, 0, 0, U_E, VT_E, S_E, false); // contents of URHS_samp_E are destroyed during SVD
 			destroyPMat(U_E, false);
-			t2 = MPI_Wtime();
-			cout << "SVD took " << t2 - t1 << " seconds" << endl;
 
-			t1 = MPI_Wtime();
 			// compute vector-matrix product of last right singular vector transposed and URHS transposed
 			rVec->matrix_Product('N', 'T', 1, nDOF, minDim, VT_E, minDim-1, 0, URHS, 0, 0, 1.0, 0.0, 0, 0);
 			destroyPMat(VT_E, false);
-			t2 = MPI_Wtime();
-			cout << "Mat prod took " << t2 - t1 << " seconds" << endl;
+
+			// square elements
+			for (int j = 0; j < rVec->dataD.size(); ++j)
+				rVec->dataD[j] = rVec->dataD[j] * rVec->dataD[j];
 
 			int breakSignal = 0;
 			for (int j = 0; j < nDOF; ++j) {
-				// find argmax of local portion
-				int argMaxLocal = distance(rVec.dataD.begin(), max_element(rVec.dataD.begin(), rVec.dataD.end()));
-				int maxLocal = rVec.dataD[argMaxLocal];
-				int maxGlobal = 0;
+
+				double maxGlobal = 0;
+				double maxLocal = 0;
+				int argMaxLocal = -1;
 				int argMaxGlobal = -1;
+				rVec->dMax(1, 0, maxLocal, argMaxLocal);
 
 				// Allreduce(MPI_MAX) the maximum value
-				MPI_Allreduce(maxLocal, maxGlobal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+				MPI_Allreduce(&maxLocal, &maxGlobal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
-				// if rank doesn't own the max, will receive it in Allreduce
+				// if rank doesn't own the max, set argMaxLocal = -1 so that MPI_MAX can determine the correct argMaxGlobal
 				if (maxLocal != maxGlobal) {
-					argMaxLocal = -1
+					argMaxLocal = -1;
 				}
-				MPI_Reduce(argMaxLocal, argMaxGlobal, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+				MPI_Reduce(&argMaxLocal, &argMaxGlobal, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
 
+				// emplace cell ID in samplingPoints, if unique entry found signal to all processes to break
 				if (rank == 0) {
+					
 					cellID = argMaxGlobal % nCells;
 					auto check = samplingPoints.emplace(cellID);
 					if (check.second)
 						breakSignal = 1;
 				}
 
-				MPI_Allreduce(MPI_IN_PLACE, breakSignal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+				MPI_Allreduce(MPI_IN_PLACE, &breakSignal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 				if (breakSignal == 1) {
 					break;
 				} else if (maxLocal == maxGlobal) {
-					rVec.dataD.erase(rVec.dataD.begin() + argMax
+					// multiple processes may have maxLocal == maxGlobal, so just iterate and check
+					// zero out value in rVec so that it doesn't get picked up by argmax anymore
+					for (int k = 0; k < rVec->dataD.size(); ++k) {
+						if (rVec->dataD[k] == maxGlobal) {
+							rVec->dataD[k] = 0.0;
+							break;
+						}
+					}
 				}
 				
-
-			// check with emplace
-
-			// reduce rVec to rank 0
-			/*
-			t1 = MPI_Wtime();
-			rVec_p0->changeContext(rVec, false);
-			t2 = MPI_Wtime();
-			cout << "Reduce took " << t2 - t1 << " seconds" << endl;
-
-			if (rank == 0) {
-				t1 = MPI_Wtime();
-				// square all elements of rVec
-				for (int j = 0; j < rVec_p0->dataD.size(); ++j)
-					rVec_p0->dataD[j] = pow(rVec_p0->dataD[j], 2.0);
-
-				// fill vector, since the argsort doesn't seem to work with pMat.dataD
-				for (int j = 0; j < nDOF; ++j)
-					rVec_vector[j] = rVec_p0->dataD[j];
-				t2 = MPI_Wtime();
-				cout << "Pow and vec took " << t2 - t1 << " seconds" << endl;
-
-				t1 = MPI_Wtime();
-				for (int j = 0; j < nDOF; ++j) {
-					
-					int argMax = distance(rVec_vector.begin(), max_element(rVec_vector.begin(), rVec_vector.end()));
-					cellID = argMax % nCells;
-					auto check = samplingPoints.emplace(cellID);
-					if (check.second) {
-						break;
-					} else {
-						rVec_vector.erase(rVec_vector.begin() + argMax);
-					}
-	
-				}
-				t2 = MPI_Wtime();
-				cout << "Max took " << t2 - t1 << " seconds" << endl;
-
-				//t1 = MPI_Wtime();
-				// argsort rVec, in DESCENDING order
-				//iota(sortIdxs.begin(), sortIdxs.end(), 0);
-				//stable_sort(sortIdxs.begin(), sortIdxs.end(), [&rVec_vector](int i1, int i2) { return rVec_vector[i1] > rVec_vector[i2]; });
-				// This would be preferable, and not have to use rVec_vector, but I cannot get it to compile, I don't know what's going wrong
-				// stable_sort(sortIdxs.begin(), sortIdxs.end(), [&(rVec_p0->dataD)](int i1, int i2) { return rVec_p0->dataD[i1] < rVec_p0->dataD[i2]; });
-				//t2 = MPI_Wtime();
-				//cout << "Sort took " << t2 - t1 << " seconds" << endl;
-
-				// iterate through rVec, emplacing corresponding zero-indexed cell ID into samplingPoints until a new point is found
-				//for (int j = 0; j < nDOF; ++j) {
-				//	cellID = sortIdxs[j] % nCells;
-				//	auto check = samplingPoints.emplace(cellID);
-				//	if (check.second)
-				//		break;
-				//}
-
 			}
-			*/
 
-			cout << endl << "Cell ID: " << cellID << endl;
+			cout << "Cell ID: " << cellID << endl;
 
 			// broadcast new cell ID to all processes, insert into gP vector
 			MPI_Bcast(&cellID, 1, MPI_INT, 0, MPI_COMM_WORLD);			
 			gP.push_back(cellID);
 			numCurrentPoints++;
 
-			t1 = MPI_Wtime();
 			// append newly sampled rows of URHS to URHS_samp_E_copy
 			for (int k = 0; k < nVars; ++k)
 				URHS_samp_E_copy->changeContext(URHS, 1, numModesRHS, k * nCells + gP.back(), 0, (numCurrentPoints-1) * nVars + k, 0, false);
-			t2 = MPI_Wtime();
-			cout << "Append took " << t2 - t1 << " seconds" << endl;
 
 		}
 
