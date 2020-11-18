@@ -446,10 +446,8 @@ int main(int argc, char *argv[])
 		int numQRPoints, numCurrentPoints, numCurrentDOFs;
 		int cellID;
 
-		pMat *rVec = new pMat(1, nDOF, evenG, false); 
-		pMat *rVec_p0 = new pMat(1, nDOF, evenG, 0, 2, 0.0, false);
-		vector<int> sortIdxs(nDOF);
-		vector<double> rVec_vector(nDOF);
+		pMat *rVec = new pMat(1, nDOF, evenG, false);
+		pMat *nonUniqueVec = new pMat(1, nDOF, evenG, false); // marker to determine if a degree of freedom has already been selected
 
 		// sort and broadcast gP to all processes
 		if (rank == 0)
@@ -470,9 +468,11 @@ int main(int argc, char *argv[])
 		}
 
 		// loop over number of requires samples left
+		int outFreq = (PointsNeeded - numQRPoints)/1000 + 1; 	// this is potentially a lot of output, scale to roughly 1000 lines of output
 		for (int i = 0; i < (PointsNeeded - numQRPoints); ++i) {
 
-			cout << (double)i / (PointsNeeded - numQRPoints) * 100 << " percent GappyPOD+E points sampled" << endl;
+			if ( (i % outFreq) == 0)
+				cout << (double)i / (PointsNeeded - numQRPoints) * 100 << " percent GappyPOD+E points sampled \r";
 
 			numCurrentDOFs = numCurrentPoints * nVars;
 
@@ -496,10 +496,17 @@ int main(int argc, char *argv[])
 			rVec->matrix_Product('N', 'T', 1, nDOF, minDim, VT_E, minDim-1, 0, URHS, 0, 0, 1.0, 0.0, 0, 0);
 			destroyPMat(VT_E, false);
 
+			// zero out DOFs that have already been selected
+			for (int j = 0; j < rVec->dataD.size(); ++j) {
+				if (nonUniqueVec->dataD[j] == 1.0)
+					rVec->dataD[j] = 0.0;
+			}
+
 			// square elements
 			for (int j = 0; j < rVec->dataD.size(); ++j)
 				rVec->dataD[j] = rVec->dataD[j] * rVec->dataD[j];
 
+			// get unique cell ID
 			int breakSignal = 0;
 			for (int j = 0; j < nDOF; ++j) {
 
@@ -536,14 +543,13 @@ int main(int argc, char *argv[])
 					for (int k = 0; k < rVec->dataD.size(); ++k) {
 						if (rVec->dataD[k] == maxGlobal) {
 							rVec->dataD[k] = 0.0;
+							nonUniqueVec->dataD[k] = 1.0; // mark this DOF to not be selected in the next point selection iteration
 							break;
 						}
 					}
 				}
 				
 			}
-
-			cout << "Cell ID: " << cellID << endl;
 
 			// broadcast new cell ID to all processes, insert into gP vector
 			MPI_Bcast(&cellID, 1, MPI_INT, 0, MPI_COMM_WORLD);			
@@ -561,62 +567,139 @@ int main(int argc, char *argv[])
 		destroyPMat(URHS_samp_E, false);
 		destroyPMat(URHS_samp_E_copy, false);
 		destroyPMat(rVec, false);
-		destroyPMat(rVec_p0, false);
 
 	// DEIM greedy sampling
 	} else if (sampType == 3) {
-	
+
 		cout << "Not implemented yet" << endl;
-		return(-1);
+		throw(-1);
 
 		// // declare some variables for this routine
-		// pMat *rVec = new pMat(nDOF, 1, evenG, false); 
-		// pMat *rVec_p0 = new pMat(nDOF, 1, evenG, 0, 2, 0.0, false);
-		// vector<int> sortIdxs(nDOF);
-		// vector<double> rVec_vector(nDOF);
+		// int numCurrentDOFs;
 		// int oversampThresh, modeIdx; 
+		// int cellID;
+
+		// pMat *rVec = new pMat(nDOF, 1, evenG, false);
+		// pMat *nonUniqueVec = new pMat(1, nDOF, evenG, false); // marker to determine if a degree of freedom has already been selected
+		// pMat *URHS_samp_E = new pMat(PointsNeeded*nVars, datasetRHS->nSets, evenG, false);
+		// pMat *URHS_samp_E_copy = new pMat(PointsNeeded*nVars, datasetRHS->nSets, evenG, false);
+		// pMat *lsSol = new pMat(PointsNeeded*nVars, 1, evenG, false);
 
 		// // extract first column of URHS to rVec
-		// rVec->changeContext(URHS, nDOF,  1, 0, 0, 0, 0, false);
+		// rVec->changeContext(URHS, nDOF, 1, 0, 0, 0, 0, false);
 
 		// // loop over number of desired sampling points (index i)
+		// int outFreq = PointsNeeded/1000 + 1;
 		// for (int i = 0; i < PointsNeeded; ++i) {
-			
-		// 	// reduce rVec to rank 0 
-		// 	rVec_p0->changeContext(rVec, false);
 
-		// 	if (rank == 0) {
+		// 	if ( (i % outFreq) == 0)
+		// 		cout << (double)i / (PointsNeeded) * 100 << " percent GappyPOD+D points sampled" << endl;
 
-		// 		// get argmax of absolute value of rVec
-		// 		// fill vector, since the argsort doesn't seem to work with pMat.dataD
-		// 		for (int j = 0; j < nDOF; ++j)
-		// 			rVec_vector[j] = abs(rVec_p0->dataD[j]);
-		// 		iota(sortIdxs.begin(), sortIdxs.end(), 0);
-		// 		stable_sort(sortIdxs.begin(), sortIdxs.end(), [&rVec_vector](int i1, int i2) { return rVec_vector[i1] > rVec_vector[i2]; });
-
-		// 		// loop until new cell is added
-		// 		// this is effectively argmax, since rVec_vector[sortIdxs] will be sorted in descending order
-		// 		for (int j = 0; j < nDOF; ++j) {
-		// 			cellID = sortIdxs[j] % nCells;
-		// 			auto check = samplingPoints.emplace(cellID);
-		// 			if (check.second)
-		// 				break;
-		// 		}
-
-		// 		oversampThresh = min(i, numModesRHS); // forces ceiling of numModesRHS
-		// 		modeIdx = i % numModesRHS; // cycles through modes, I guess?
-
+		// 	// zero out DOFs that have already been selected
+		// 	for (int j = 0; j < rVec->dataD.size(); ++j) {
+		// 		if (nonUniqueVec->dataD[j] == 1.0)
+		// 			rVec->dataD[j] = 0.0;
 		// 	}
 
+		// 	// compute absolute value of rVec
+		// 	for (int j = 0; j < rVec->dataD.size(); ++j) {
+		// 		rVec->dataD[j] = abs(rVec->dataD[j]);
+		// 	}
 
-			// d = min(numModesRHS-1, i)  // index to check whether this is oversampling or normal sampling
+		// 	// find the argmax of rVec
+		// 	// loop until a unique point is added
+		// 	int breakSignal = 0;
+		// 	for (int j = 0; j < nDOF; ++j) {
 
-			// k = mod(i, numModesRHS) // index to get oversampling index
+		// 		double maxGlobal = 0;
+		// 		double maxLocal = 0;
+		// 		int argMaxLocal = -1;
+		// 		int argMaxGlobal = -1;
+		// 		rVec->dMax(0, 0, maxLocal, argMaxLocal);
 
-			// c = URHS
+		// 		// Allreduce(MPI_MAX) the maximum value
+		// 		MPI_Allreduce(&maxLocal, &maxGlobal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
+		// 		// if rank doesn't own the max, set argMaxLocal = -1 so that MPI_MAX can determine the correct argMaxGlobal
+		// 		if (maxLocal != maxGlobal) {
+		// 			argMaxLocal = -1;
+		// 		}
+		// 		MPI_Reduce(&argMaxLocal, &argMaxGlobal, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+
+		// 		// emplace cell ID in samplingPoints, if unique entry found signal to all processes to break
+		// 		if (rank == 0) {
+					
+		// 			cellID = argMaxGlobal % nCells;
+		// 			auto check = samplingPoints.emplace(cellID);
+		// 			if (check.second)
+		// 				breakSignal = 1;
+		// 		}
+
+		// 		MPI_Allreduce(MPI_IN_PLACE, &breakSignal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+		// 		if (breakSignal == 1) {
+		// 			break;
+		// 		} else if (maxLocal == maxGlobal) {
+		// 			// multiple processes may have maxLocal == maxGlobal, so just iterate and check
+		// 			// zero out value in rVec so that it doesn't get picked up by argmax anymore
+		// 			for (int k = 0; k < rVec->dataD.size(); ++k) {
+		// 				if (rVec->dataD[k] == maxGlobal) {
+		// 					rVec->dataD[k] = 0.0;
+		// 					nonUniqueVec->dataD[k] = 1.0; // mark this DOF to not be selected in the next point selection iteration
+		// 					break;
+		// 				}
+		// 			}
+		// 		}
+				
+		// 	}
+
+		// 	cout << "Cell ID: " << cellID << endl;
+
+		// 	// broadcast new cell ID to all processes, insert into gP vector
+		// 	MPI_Bcast(&cellID, 1, MPI_INT, 0, MPI_COMM_WORLD);			
+		// 	gP.push_back(cellID);
+		// 	numCurrentDOFs = (i+1) * nVars;
+
+		// 	// append newly sampled rows of URHS to URHS_samp_E_copy, and transfer to URHS_samp_E (will be destroyed in least-squares solve)
+		// 	for (int k = 0; k < nVars; ++k)
+		// 		URHS_samp_E_copy->changeContext(URHS, 1, numModesRHS, k * nCells + gP.back(), 0, i * nVars + k, 0, false);
+		// 	URHS_samp_E->changeContext(URHS_samp_E_copy, numCurrentDOFs, numModesRHS, 0, 0, 0, 0, false);
+
+		// 	oversampThresh = min(i+1, numModesRHS); 	// forces ceiling of numModesRHS
+		// 	modeIdx = (i % numModesRHS) + 1; 				// cycles through modes, I guess?
+
+		// 	cout << "oversampThresh: " << oversampThresh << endl;
+		// 	cout << "modeIdx: " << modeIdx << endl;
+
+		// 	// set up inputs to least-squares solve
+		// 	lsSol->changeContext(URHS_samp_E, numCurrentDOFs, 1, 0, modeIdx, 0, 0, true);
+			
+		// 	URHS_samp_E_copy->write_bin("./urhs_samp_copy.bin");
+		// 	lsSol->write_bin("./lsSol.bin");
+			
+		// 	cout << *lsSol << endl;
+		// 	cout << *URHS_samp_E << endl;
+
+		// 	// if (overSampThresh != 1) {
+		// 		lsSol->leastSquares('N', numCurrentDOFs, oversampThresh, 1, URHS_samp_E, 0, 0, 0, 0);
+
+		// 	// since oversampThresh = 1, this is just scalar multiplication
+		// 	// } else {
+		// 	// 	pMat *lsSol_p0 = new pMat(numCurrentDOFs, 1, evenG, 0, 2, 0.0, false);
+		// 	// 	lsSol_p0->changeContext(lsSol, numCurrentDOFs, 1, 0, 0, 0, 0, false);
+		// 	// 	pMat *URHS_samp_p0 = new pMat(numCurrentDOFs, 1, evenG, 0, 2, 0.0, false);
+		// 	// 	URHS_samp_p0->changeContext(URHS, numCurrentDOFs, 1, 0, modeIdx, 0, 0, false);
+		// 	// 	if (rank == 0) {
+		// 	// 		for (int k = 0; k < numCurrentDOFs; ++k) {
+		// 	// 			lsSol_p0->dataD[k] = lsSol_p0->dataD[k] / URHS_samp_p0->dataD[k]
+		// 	// 		}
+		// 	// 	}
+		// 	// }
+			
+
+		// 	throw(-1);
 
 		// }
-
+			
 	} else {
 		cout << "Invalid choice of sampling type: " << sampType << endl;
 	} 
