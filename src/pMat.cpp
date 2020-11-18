@@ -1050,6 +1050,71 @@ void pMat::pinv(pMat *A)
         delete UU;
         delete VV;
 }
+
+// solve over-/under-determined linear system AX = B
+// on exit, solutions are written to columns of B
+// on exit, A is overwritten with QR decomposition info (pretty much destroyed)
+int pMat::leastSquares(char trans, int m, int n, int nrhs, 
+						pMat *&A, int ia, int ja,
+						int ib, int jb)
+{
+
+	int info = 0;
+	vector<double> WORK(1);
+	int LWORK = -1;
+	int IA = ia + 1;
+	int JA = ja + 1;
+	int IB = ib + 1;
+	int JB = jb + 1;
+
+	cout << "##### CHECK #####" << endl;
+	
+	cout << endl << "Inputs" << endl;
+	cout << trans << endl;
+	cout << m << " " << n << endl; 
+	cout << IA << " " << JA << endl;
+	cout << IB << " " << JB << endl;
+	cout << nrhs << endl;
+
+	cout << endl << "desc" << endl;
+	for (int q = 0; q < 9; ++q) {
+		cout << desc[q] << " " << A->desc[q] << endl;
+	}
+
+	cout << endl << "array sizes" << endl;
+	cout << M << " " << N << endl;
+	cout << A->M << " " << A->N << endl;
+
+	// get LWORK and WORK
+	pdgels(&trans, &m, &n, &nrhs, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, WORK.data(), &LWORK, &info);
+
+	cout << "WORK = " << WORK[0] << ", LWORK = " << LWORK << ", info = " << info << endl;
+
+	if (info < 0) {
+		cout << "Error in least-squares solve setup in argument: " << -info << endl;
+		throw(-1);
+	}
+
+	// set up real run
+	LWORK = WORK[0];
+	WORK.resize(LWORK);
+	cout << "WORK Allocated: " << LWORK / (1e6) * 8 << " MB per processor" << endl;
+
+	// least squares solve
+	double t1, t2;
+	t1 = MPI_Wtime();
+	pdgels(&trans, &m, &n, &nrhs, 
+		   A->dataD.data(), &IA, &JA, A->desc, 
+		   dataD.data(), &IB, &JB, desc, 
+		   WORK.data(), &LWORK, &info);
+	t2 = MPI_Wtime();
+	cout << "Least-squares solve complete in " << t2 - t1 << " seconds" << endl;
+	WORK.resize(0);
+
+	return 1;
+
+}
+
 int pMat::outerProductSum(pMat *U, char UT, pMat *VT, char VTT, std::vector<double> &S, int inv)
 {
         if (inv == 1)
