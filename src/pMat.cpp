@@ -1054,9 +1054,7 @@ void pMat::pinv(pMat *A)
 // solve over-/under-determined linear system AX = B
 // on exit, solutions are written to columns of B
 // on exit, A is overwritten with QR decomposition info (pretty much destroyed)
-int pMat::leastSquares(char trans, int m, int n, int nrhs, 
-						pMat *&A, int ia, int ja,
-						int ib, int jb)
+int pMat::leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int ja, int ib, int jb)
 {
 
 	int info = 0;
@@ -1085,6 +1083,7 @@ int pMat::leastSquares(char trans, int m, int n, int nrhs,
 	cout << M << " " << N << endl;
 	cout << A->M << " " << A->N << endl;
 
+	cout << endl;
 	// get LWORK and WORK
 	pdgels(&trans, &m, &n, &nrhs, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, WORK.data(), &LWORK, &info);
 
