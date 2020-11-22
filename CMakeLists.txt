@@ -85,6 +85,10 @@ add_executable(calcSamplingError CASLAB_execs/calcSamplingError.cpp)
 target_include_directories(calcSamplingError PUBLIC include)
 target_link_libraries(calcSamplingError parser param meta)
 
+add_executable(testLS CASLAB_execs/testLeastSquares.cpp)
+target_include_directories(testLS PUBLIC include)
+target_link_libraries(testLS parser param meta)
+
 enable_testing()
 
 add_executable(test_param tests/test_execs/test_param.cpp)
