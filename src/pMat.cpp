@@ -430,6 +430,8 @@ int pMat::matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia,
         return 0;
 }
 
+
+
 // symmetric matrix product A^T*A or A*A^T
 int pMat::matrix_Product_sym(char uplo, char trans, int n, int k, double alpha, pMat *A, int ia, int ja, double beta, int ic, int jc)
 {
@@ -466,8 +468,8 @@ int pMat::matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int
 
         if ((A->type == 0) && (type == 0))
         {
-                if (printRank)
-                        cout << "Double Sum" << endl;
+                // if (printRank)
+                //         cout << "Double Sum" << endl;
                 int IA = ia + 1;
                 int JA = ja + 1;
                 int IB = ib + 1;
@@ -1065,29 +1067,10 @@ int pMat::leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int
 	int IB = ib + 1;
 	int JB = jb + 1;
 
-	cout << "##### CHECK #####" << endl;
-	
-	cout << endl << "Inputs" << endl;
-	cout << trans << endl;
-	cout << m << " " << n << endl; 
-	cout << IA << " " << JA << endl;
-	cout << IB << " " << JB << endl;
-	cout << nrhs << endl;
-
-	cout << endl << "desc" << endl;
-	for (int q = 0; q < 9; ++q) {
-		cout << desc[q] << " " << A->desc[q] << endl;
-	}
-
-	cout << endl << "array sizes" << endl;
-	cout << M << " " << N << endl;
-	cout << A->M << " " << A->N << endl;
-
-	cout << endl;
 	// get LWORK and WORK
 	pdgels(&trans, &m, &n, &nrhs, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, WORK.data(), &LWORK, &info);
 
-	cout << "WORK = " << WORK[0] << ", LWORK = " << LWORK << ", info = " << info << endl;
+	// cout << "WORK = " << WORK[0] << ", LWORK = " << LWORK << ", info = " << info << endl;
 
 	if (info < 0) {
 		cout << "Error in least-squares solve setup in argument: " << -info << endl;
@@ -1097,17 +1080,14 @@ int pMat::leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int
 	// set up real run
 	LWORK = WORK[0];
 	WORK.resize(LWORK);
-	cout << "WORK Allocated: " << LWORK / (1e6) * 8 << " MB per processor" << endl;
+	// cout << "WORK Allocated: " << LWORK / (1e6) * 8 << " MB per processor" << endl;
 
 	// least squares solve
 	double t1, t2;
 	t1 = MPI_Wtime();
-	pdgels(&trans, &m, &n, &nrhs, 
-		   A->dataD.data(), &IA, &JA, A->desc, 
-		   dataD.data(), &IB, &JB, desc, 
-		   WORK.data(), &LWORK, &info);
+	pdgels(&trans, &m, &n, &nrhs, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, WORK.data(), &LWORK, &info);
 	t2 = MPI_Wtime();
-	cout << "Least-squares solve complete in " << t2 - t1 << " seconds" << endl;
+	// cout << "Least-squares solve complete in " << t2 - t1 << " seconds" << endl;
 	WORK.resize(0);
 
 	return 1;
