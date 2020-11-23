@@ -567,20 +567,24 @@ int main(int argc, char *argv[])
 		destroyPMat(URHS_samp_E, false);
 		destroyPMat(URHS_samp_E_copy, false);
 		destroyPMat(rVec, false);
+		destroyPMat(nonUniqueVec, false);
 
 	// DEIM greedy sampling
 	} else if (sampType == 3) {
 
 		// declare some variables for this routine
 		int numCurrentDOFs;
-		int oversampThresh, modeIdx; 
+		int modeThresh, modeIdx; 
 		int cellID;
 
 		pMat *rVec = new pMat(nDOF, 1, evenG, false);
 		pMat *nonUniqueVec = new pMat(nDOF, 1, evenG, false); // marker to determine if a degree of freedom has already been selected
 		pMat *URHS_samp_E = new pMat(PointsNeeded*nVars, datasetRHS->nSets, evenG, false);
 		pMat *URHS_samp_E_copy = new pMat(PointsNeeded*nVars, datasetRHS->nSets, evenG, false);
-		pMat *lsSol = new pMat(PointsNeeded*nVars, 1, evenG, false);
+
+		// this is the same dimension as URHS_samp_E because PDGELS requires that URHS_samp_E and lsSol have same row block size
+		// no way to force blocking sizes in pMat currently
+		pMat *lsSol = new pMat(PointsNeeded*nVars, datasetRHS->nSets, evenG, false);
 
 		// extract first column of URHS to rVec
 		rVec->changeContext(URHS, nDOF, 1, 0, 0, 0, 0, false);
@@ -590,7 +594,7 @@ int main(int argc, char *argv[])
 		for (int i = 0; i < PointsNeeded; ++i) {
 
 			if ( (i % outFreq) == 0)
-				cout << (double)i / (PointsNeeded) * 100 << " percent GappyPOD+D points sampled" << endl;
+				cout << (double)i / (PointsNeeded) * 100 << " percent GappyPOD+D points sampled \r";
 
 			// zero out DOFs that have already been selected
 			for (int j = 0; j < rVec->dataD.size(); ++j) {
@@ -649,8 +653,6 @@ int main(int argc, char *argv[])
 				
 			}
 
-			cout << "Cell ID: " << cellID << endl;
-
 			// broadcast new cell ID to all processes, insert into gP vector
 			MPI_Bcast(&cellID, 1, MPI_INT, 0, MPI_COMM_WORLD);			
 			gP.push_back(cellID);
@@ -661,41 +663,31 @@ int main(int argc, char *argv[])
 				URHS_samp_E_copy->changeContext(URHS, 1, numModesRHS, k * nCells + gP.back(), 0, i * nVars + k, 0, false);
 			URHS_samp_E->changeContext(URHS_samp_E_copy, numCurrentDOFs, numModesRHS, 0, 0, 0, 0, false);
 
-			oversampThresh = min(i+1, numModesRHS); 	// forces ceiling of numModesRHS
-			modeIdx = (i % numModesRHS) + 1; 				// cycles through modes, I guess?
-
-			cout << "oversampThresh: " << oversampThresh << endl;
-			cout << "modeIdx: " << modeIdx << endl;
+			modeThresh = min(i+1, numModesRHS); 	// d in paper, forces ceiling of numModesRHS
+			modeIdx = (i+1) % (numModesRHS-1); 		// k in paper, cycles through modes
 
 			// set up inputs to least-squares solve
-			lsSol->changeContext(URHS_samp_E, numCurrentDOFs, 1, 0, modeIdx, 0, 0, true);
-			
-			URHS_samp_E_copy->write_bin("./urhs_samp_copy.bin");
-			lsSol->write_bin("./lsSol.bin");
-			
-			cout << *lsSol << endl;
-			cout << *URHS_samp_E << endl;
+			lsSol->changeContext(URHS_samp_E, numCurrentDOFs, 1, 0, modeIdx, 0, 0, false);
 
-			// if (overSampThresh != 1) {
-				lsSol->leastSquares('N', numCurrentDOFs, oversampThresh, 1, URHS_samp_E, 0, 0, 0, 0);
+			// solve least squares, should ALWAYS be an overdetermined system for systems with more than one variable
+			// on exit, solution is in first modeThresh rows of lsSol
+			// this is the c vector in paper
+			lsSol->leastSquares('N', numCurrentDOFs, modeThresh, 1, URHS_samp_E, 0, 0, 0, 0);
 
-			// since oversampThresh = 1, this is just scalar multiplication
-			// } else {
-			// 	pMat *lsSol_p0 = new pMat(numCurrentDOFs, 1, evenG, 0, 2, 0.0, false);
-			// 	lsSol_p0->changeContext(lsSol, numCurrentDOFs, 1, 0, 0, 0, 0, false);
-			// 	pMat *URHS_samp_p0 = new pMat(numCurrentDOFs, 1, evenG, 0, 2, 0.0, false);
-			// 	URHS_samp_p0->changeContext(URHS, numCurrentDOFs, 1, 0, modeIdx, 0, 0, false);
-			// 	if (rank == 0) {
-			// 		for (int k = 0; k < numCurrentDOFs; ++k) {
-			// 			lsSol_p0->dataD[k] = lsSol_p0->dataD[k] / URHS_samp_p0->dataD[k]
-			// 		}
-			// 	}
-			// }
-			
-
-			throw(-1);
+			// compute new rvec
+			// first, U[:, 1:d]*c
+			rVec->matrix_Product('N', 'N', nDOF, 1, modeThresh, URHS, 0, 0, lsSol, 0, 0, 1.0, 0.0, 0, 0);
+			// second, U[:, k] - U[:, 1:d]*c
+			rVec->matrix_Sum('N', nDOF, 1, URHS, 0, modeIdx, 0, 0, 1.0, -1.0);
 
 		}
+
+		// cleanup 
+		cout << endl;
+		destroyPMat(URHS_samp_E_copy, false);
+		destroyPMat(URHS_samp_E, false);
+		destroyPMat(rVec, false);
+		destroyPMat(nonUniqueVec, false);
 			
 	} else {
 		cout << "Invalid choice of sampling type: " << sampType << endl;
