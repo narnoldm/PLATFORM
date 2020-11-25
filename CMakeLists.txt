@@ -85,6 +85,14 @@ add_executable(calcSamplingError CASLAB_execs/calcSamplingError.cpp)
 target_include_directories(calcSamplingError PUBLIC include)
 target_link_libraries(calcSamplingError parser param meta)
 
+# Timing executables
+
+add_executable(PDP_time tests/timing/PDP_time.cpp)
+target_include_directories(PDP_time PUBLIC include)
+target_link_libraries(PDP_time parser param meta)
+
+
+
 enable_testing()
 
 add_executable(test_param tests/test_execs/test_param.cpp)
