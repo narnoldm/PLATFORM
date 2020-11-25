@@ -110,7 +110,7 @@ public:
 
 	//I/O
 	int write_bin(std::string);
-	int read_bin(std::string &);
+	int read_bin(std::string);
 	bool check_bin_size(std::string, int &, int &);
 
 	//PBLAS

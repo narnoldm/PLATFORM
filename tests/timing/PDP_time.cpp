@@ -15,38 +15,60 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     std::ofstream sink("/dev/null");
     streambuf *strm_buffer = cout.rdbuf();
-    if (rank != 0)
+
+    if(argc<3)
+    {
+        MPI_Abort(MPI_COMM_WORLD,-1);
+    }
+    int debug_proc=atoi(argv[1]);
+    int M=atoi(argv[2]);
+    int N=atoi(argv[3]);
+
+
+    if (rank != debug_proc)
     {
         std::cout.rdbuf(sink.rdbuf());
     }
 
-    PGrid *p1 = new PGrid(rank,size,0);
-    pMat *m1,*m2;
-    int M,N;
-    string filename="test.bin";
-    m1->check_bin_size(filename,M,N);
-    m1=new pMat(M,N,p1,0,0,0.0);
-    m1->read_bin(filename);
+    cout<<" M "<<M<<endl<<" N "<<N<<endl;
 
-    m2=new pMat(m1);
-    m2->read_bin(filename);
-
-    for(int i=0;i<5;i++)
-        cout<<"element["<<i<<"] = "<<m2->getElement(i,0)<<endl; 
-
-    for(int i=0;i<5;i++)
-        cout<<"element["<<i<<"] = "<<m1->getElement(i,0)<<endl;
-
-    if(!(*m1==*m2))
+    if((M*N)>1e6)
     {
-        throw(-1);
+        cout<< (M*N)/(1e6)*8<< " MB"<<endl;
+        cout<<"Asking for very large matrix are you sure you are on a compute node"<<endl;
+        if(rank==debug_proc)
+        {
+            cout<<"hit enter to continue"<<endl;
+            cin.get();
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
     }
 
-    cout<<*m1<<endl;
-    cout<<*m2<<endl;
+
+    PGrid *p1 = new PGrid(rank,size,0);
+
+    pMat *A=new pMat(M,N,p1);
+
+    for(int i=0;i<A->nelements;i++)
+    {
+        A->dataD[i]=rand();
+    }
+    A->write_bin("A.bin");
+    A->read_bin("A.bin");
+
+    pMat *U,*VT;
+    U=new pMat(A->M,min(A->M,A->N),p1); 
+    VT=new pMat(min(A->M,A->N),A->N,p1); 
+    vector<double> S(min(A->M,A->N));
 
 
-    delete p1,m1,m2;
+    A->svd_run(A->M,A->N,0,0,U,VT,S);
+
+
+
+
+    delete A;
+    delete p1;
 
     cout.rdbuf(strm_buffer);
     MPI_Finalize();
