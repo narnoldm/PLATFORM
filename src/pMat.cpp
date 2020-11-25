@@ -1181,7 +1181,6 @@ int pMat::commCreate(MPI_Comm &col_comm, int dim)
 {
         if (dim == 0)
         {
-                cout << pG->mycol << " " << pG->rank << endl;
                 MPI_Comm_split(MPI_COMM_WORLD, pG->mycol, pG->rank, &col_comm);
         }
         else if (dim == 1)
@@ -1191,5 +1190,4 @@ int pMat::commCreate(MPI_Comm &col_comm, int dim)
         else
                 throw(-1);
 
-        cout << col_comm << endl;
 }
