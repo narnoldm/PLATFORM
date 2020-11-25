@@ -321,7 +321,7 @@ int pMat::write_bin(std::string filename)
                 cout << "Write time is " << t2 - t1 << endl;
 }
 
-int pMat::read_bin(string &filename)
+int pMat::read_bin(string filename)
 {
 
         int rM, rN;
