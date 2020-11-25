@@ -1,6 +1,7 @@
 
 
 #include "pMat.hpp"
+#include "metadata.hpp"
 #include <assert.h>
 
 
@@ -61,6 +62,25 @@ int main(int argc, char *argv[])
     VT=new pMat(min(A->M,A->N),A->N,p1); 
     vector<double> S(min(A->M,A->N));
 
+    meta *m1,*m2;
+    string prefix="a";
+    string suffix=".bin";
+    m1= new meta();
+    m1->snap0 = 0;
+    m1->snapF = A->N;
+    m1->snapSkip = 1;
+    m1->prefix = prefix;
+    m1->suffix = suffix;
+    m1->nPoints = A->M;
+    m1->nSets=A->N;
+    m1->batchWrite(A);
+
+    string prefix2="out/a";
+    string suffix2=".bin";
+    m2=new meta(0,A->N-1,1,prefix2,suffix2);
+    m2->batchRead(A);
+
+
 
     A->svd_run(A->M,A->N,0,0,U,VT,S);
 
@@ -68,6 +88,8 @@ int main(int argc, char *argv[])
 
 
     delete A;
+    delete m1;
+    delete m2;
     delete p1;
 
     cout.rdbuf(strm_buffer);

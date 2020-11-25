@@ -85,6 +85,7 @@ void meta::checkExists()
 bool meta::readSingle(int fileID, double *point)
 {
     cout << "meta read " << fileID << endl;
+    cout<< (prefix + to_string(fileID) + suffix)<<endl;
     FILE *fid;
     fid = fopen((prefix + to_string(fileID) + suffix).c_str(), "rb");
     int header[2] = {0, 0};
@@ -99,6 +100,8 @@ bool meta::readSingle(int fileID, double *point)
 
 bool meta::batchRead(pMat *loadMat)
 {
+    double t1,t2; 
+    t1=MPI_Wtime();
     if (loadMat->mb == nPoints)
     {
         int iP = 0;
@@ -150,6 +153,8 @@ bool meta::batchRead(pMat *loadMat)
         }
         tempR.clear();
     }
+    t2=MPI_Wtime();
+    cout<<"batch Read took "<<t2-t1<<" secs"<<endl;
 }
 
 bool meta::batchRead(pMat *loadMat, int ii)
@@ -249,7 +254,8 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
         nPoints = loadMat->M;
         nSets = loadMat->N;
     }
-
+    double t1,t2; 
+    t1=MPI_Wtime();
     if (loadMat->block == 1)
     {
         assert(loadMat->mb == nPoints);
@@ -305,6 +311,8 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
         cout << endl;
         MPI_Comm_free(&col_comms);
     }
+    t2=MPI_Wtime();
+    cout<<"batch Write took "<<t2-t1<<" secs"<<endl;
 }
 
 void meta::miscProcessing(pMat *Mat)
