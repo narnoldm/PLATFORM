@@ -192,7 +192,7 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init, bool stdout)
         else
         {
                 cout << "invalid type" << endl;
-                throw(-1);
+                MPI_Abort(MPI_COMM_WORLD,-1);
         }
         MPI_Barrier(MPI_COMM_WORLD);
 
@@ -306,7 +306,7 @@ int pMat::write_bin(std::string filename)
         if (nelements != mpiEls)
         {
                 cout << "Allocation via MPI " << mpiEls << " and pblacs " << nelements << " is different" << endl;
-                throw(-1);
+                MPI_Abort(MPI_COMM_WORLD,-1);
         }
         double t2, t1;
         MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_WRONLY, MPI_INFO_NULL, &fH);
@@ -338,7 +338,7 @@ int pMat::read_bin(string filename)
                 cout << "bin file and matrix do not have same dimension" << endl
                      << "File M=" << rM << ", N=" << rN << endl
                      << "Matrix M=" << M << ", N=" << N << endl;
-                throw(-1);
+                MPI_Abort(MPI_COMM_WORLD,-1);
         }
         int dims[2] = {M, N};
         cout << "M = " << M << " N = " << N << endl;
@@ -355,7 +355,7 @@ int pMat::read_bin(string filename)
         if (nelements != mpiEls)
         {
                 cout << "Allocation via MPI " << mpiEls << " and pblacs " << nelements << " is different" << endl;
-                throw(-1);
+                MPI_Abort(MPI_COMM_WORLD,-1);
         }
         cout << "MPI Allocation " << mpiEls << " , pblacs Allocation " << nelements << endl;
         cout << "Read Starting" << endl;
@@ -524,7 +524,7 @@ int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         if (info < 0)
         {
                 cout << "Error in SVD setup in argument, info=" << -info << endl;
-                throw(-1);
+                MPI_Abort(MPI_COMM_WORLD,-1);
         }
         LWORK = WORK[0];
         WORK.resize(LWORK);
@@ -711,13 +711,13 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
                 }
 
                 cout << "Invalid value of mosStep: " << mosStep << endl;
-                throw(-1);
+                MPI_Abort(MPI_COMM_WORLD,-1);
         }
 
         else
         {
                 cout << "min M not supported yet" << endl;
-                throw(-1);
+                MPI_Abort(MPI_COMM_WORLD,-1);
         }
 }
 
@@ -838,7 +838,7 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         else
         {
                 cout << "min M not supported yet" << endl;
-                throw(-1);
+                MPI_Abort(MPI_COMM_WORLD,-1);
         }
 }
 
@@ -1188,6 +1188,6 @@ int pMat::commCreate(MPI_Comm &col_comm, int dim)
                 MPI_Comm_split(MPI_COMM_WORLD, pG->myrow, pG->rank, &col_comm);
         }
         else
-                throw(-1);
+                MPI_Abort(MPI_COMM_WORLD,-1);
 
 }
