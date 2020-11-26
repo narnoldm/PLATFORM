@@ -458,7 +458,7 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref)
     if ((zoneType != 5) && (zoneType != 3))
     {
         printf("Zone is weird/Not supported\n");
-        throw(-1);
+        MPI_Abort(MPI_COMM_WORLD,-1);
     }
 
     std::string varstr = "";
@@ -597,7 +597,7 @@ bool tecIO::writeSingleFile(std::string filename, std::vector<std::string> &fvar
     if ((zoneType != 5) && (zoneType != 3))
     {
         printf("Zone is weird/Not supported\n");
-        throw(-1);
+        MPI_Abort(MPI_COMM_WORLD,-1);
     }
 
     std::string varstr = "";
@@ -739,7 +739,7 @@ int tecIO::getVariableIndex(string var, string file)
         if (tecIndex == 0)
         {
             cout << "Var not found :" << var << endl;
-            throw(-1);
+            MPI_Abort(MPI_COMM_WORLD,-1);
         }
     }
     MPI_Bcast(&tecIndex, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -818,7 +818,7 @@ void tecIO::genHash(string filename)
             }
             else
             {
-                throw(-1);
+                MPI_Abort(MPI_COMM_WORLD,-1);
             }
             tecFileReaderClose(&fH);
             for (int i = 0; i < nCells; i++)
@@ -1071,7 +1071,7 @@ void tecIO::subAvg(pMat *dataMat)
     if (average.size() == 0)
     {
         cout << "Average isn't setup call calcAvg first" << endl;
-        throw(-1);
+        MPI_Abort(MPI_COMM_WORLD,-1);
     }
 
     cout << "Subtracting Average" << endl;
@@ -1112,7 +1112,7 @@ void tecIO::addAvg(pMat *dataMat)
     if (average.size() == 0)
     {
         cout << "Average isn't setup call calcAvg first" << endl;
-        throw(-1);
+        MPI_Abort(MPI_COMM_WORLD,-1);
     }
 
     cout << "Adding Average" << endl;
