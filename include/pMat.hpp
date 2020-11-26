@@ -39,21 +39,21 @@ class PGrid
 {
 public:
 	/// Context Identifier
-	int icntxt;
+	int icntxt=0;
 	/// local process row index
-	int myrow;
+	int myrow=0;
 	/// local process col identifier
-	int mycol;
+	int mycol=0;
 	/// global number of rows
-	int prow;
+	int prow=0;
 	/// global number of columns
-	int pcol;
+	int pcol=0;
 	/// dimesnions of process grid
-	int pdims[2];
+	int pdims[2]={0,0};
 	/// rank to be allowed to std out
-	bool printRank;
+	bool printRank=false;
 	/// mpi rank and size
-	int rank, size;
+	int rank=0, size=0;
 
 	PGrid(int r, int s, int type); //Constructor
 	~PGrid();
@@ -67,22 +67,22 @@ public:
 class pMat
 {
 public:
-	int myRC[2], desc[9];
-	int M, N, mb, nb;
-	long MBs;
+	int myRC[2]={0,0}, desc[9]={0,0,0,0,0,0,0,0,0};
+	int M=0, N=0, mb=0, nb=0;
+	long MBs=0;
 	std::vector<double> dataD;
 #ifdef USE_MKL
 	std::vector<MKL_Complex16> dataC;
 #else
 	std::vector<complex16> dataC;
 #endif
-	bool printRank;
-	bool isComp;
+	bool printRank=false;
+	bool isComp=false;
 	const int i_zero = 0;
 	const int i_one = 1;
 
-	int info, type, block, cycles;
-	long long nelements;
+	int info=0, type=0, block=0, cycles=0;
+	long long nelements=0;
 	PGrid *pG;
 
 	pMat();

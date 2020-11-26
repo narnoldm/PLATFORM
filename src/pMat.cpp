@@ -282,7 +282,7 @@ void pMat::printMat()
 int pMat::write_bin(std::string filename)
 {
         MPI_Barrier(MPI_COMM_WORLD);
-        MPI_File fH;
+        MPI_File fH=NULL;
         MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fH);
         if (printRank)
         {
