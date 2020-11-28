@@ -113,6 +113,8 @@ int main(int argc, char *argv[])
     cout<<"Batch-read: "<<tBr<<endl;
     cout<<"SVD: "<<tSVD<<endl;
     cout<<"MOS: "<<tMOS<<endl;
+    double mem= 8.0 *((long long) M * (long long) N) / (1e6) *2; 
+    cout<<"total Memory footprint is "<< mem <<" MB"<<endl;
 
 
 
