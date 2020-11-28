@@ -1,0 +1,17 @@
+
+
+
+testInt=5
+testIntSpace = 5 
+
+testDouble=3.59696
+testDoubleSpace    =     3.59696
+
+
+testString=HelloWorld!
+testStringSpace =  Hello    World   !
+
+
+
+testBool=true
+testBoolSpace =     true
