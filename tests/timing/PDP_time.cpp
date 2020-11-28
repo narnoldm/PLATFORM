@@ -45,6 +45,9 @@ int main(int argc, char *argv[])
         MPI_Barrier(MPI_COMM_WORLD);
     }
 
+    double tMPIr,tMPIw,tBr,tBw,tSVD,tMOS;
+    double t2,t1;
+
 
     PGrid *p1 = new PGrid(rank,size,0);
 
@@ -54,9 +57,14 @@ int main(int argc, char *argv[])
     {
         A->dataD[i]=rand();
     }
+    t1=MPI_Wtime();
     A->write_bin("A.bin");
+    t2=MPI_Wtime();
+    tMPIr=t2-t1;
+    t1=MPI_Wtime();
     A->read_bin("A.bin");
-
+    t2=MPI_Wtime();
+    tMPIw=t2-t1;
     pMat *U,*VT;
     U=new pMat(A->M,min(A->M,A->N),p1); 
     VT=new pMat(min(A->M,A->N),A->N,p1); 
@@ -73,18 +81,39 @@ int main(int argc, char *argv[])
     m1->suffix = suffix;
     m1->nPoints = A->M;
     m1->nSets=A->N;
+    t1=MPI_Wtime();
     m1->batchWrite(A);
-
+    t2=MPI_Wtime();
+    tBw=t2-t1;
     string prefix2="out/a";
     string suffix2=".bin";
     m2=new meta(0,A->N-1,1,prefix2,suffix2);
+    
+    t1=MPI_Wtime();
     m2->batchRead(A);
+    t2=MPI_Wtime();
+    tBr=t2-t1;
 
 
-
+    t1=MPI_Wtime();
     A->svd_run(A->M,A->N,0,0,U,VT,S);
+    t2=MPI_Wtime();
+    tSVD=t2-t1;
     A->read_bin("A.bin");
+    t1=MPI_Wtime();
     A->mos_run(A->M,A->N,0,0,U,VT,S);
+    t2=MPI_Wtime();
+    tMOS=t2-t1;
+
+
+
+    cout<<"MPI-write: "<<tMPIw<<endl;
+    cout<<"MPI-read: "<<tMPIr<<endl;
+    cout<<"Batch-write: "<<tBw<<endl;
+    cout<<"Batch-read: "<<tBr<<endl;
+    cout<<"SVD: "<<tMPIr<<endl;
+    cout<<"MOS: "<<tMPIr<<endl;
+
 
 
 
