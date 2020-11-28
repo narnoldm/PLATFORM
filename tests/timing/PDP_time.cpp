@@ -111,8 +111,8 @@ int main(int argc, char *argv[])
     cout<<"MPI-read: "<<tMPIr<<endl;
     cout<<"Batch-write: "<<tBw<<endl;
     cout<<"Batch-read: "<<tBr<<endl;
-    cout<<"SVD: "<<tMPIr<<endl;
-    cout<<"MOS: "<<tMPIr<<endl;
+    cout<<"SVD: "<<tSVD<<endl;
+    cout<<"MOS: "<<tMOS<<endl;
 
 
 
