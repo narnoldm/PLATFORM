@@ -83,7 +83,8 @@ int main(int argc, char *argv[])
 
 
     A->svd_run(A->M,A->N,0,0,U,VT,S);
-
+    A->read_bin("A.bin");
+    A->mos_run(A->M,A->N,0,0,U,VT,S);
 
 
 
