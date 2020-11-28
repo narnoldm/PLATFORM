@@ -17,14 +17,14 @@ int main(int argc, char *argv[])
     std::ofstream sink("/dev/null");
     streambuf *strm_buffer = cout.rdbuf();
 
-    if(argc<3)
+    if(argc<4)
     {
         MPI_Abort(MPI_COMM_WORLD,-1);
     }
     int debug_proc=atoi(argv[1]);
     int M=atoi(argv[2]);
     int N=atoi(argv[3]);
-
+    int write_mpi=atoi(argv[4]);
 
     if (rank != debug_proc)
     {
@@ -54,9 +54,11 @@ int main(int argc, char *argv[])
     {
         A->dataD[i]=rand();
     }
+    if(write_mpi)
+    {
     A->write_bin("A.bin");
     A->read_bin("A.bin");
-
+    }
     pMat *U,*VT;
     U=new pMat(A->M,min(A->M,A->N),p1); 
     VT=new pMat(min(A->M,A->N),A->N,p1); 
