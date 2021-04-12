@@ -39,30 +39,30 @@ target_link_libraries(meta pMat ${TECDIR}/libtecio.a)
 
 
 
-add_library(parser STATIC src/dataID.cpp src/executioner.cpp src/inputInfo.cpp src/inputReader.cpp src/misc_func.cpp src/operation.cpp src/sysInfo.cpp)
-target_include_directories(parser PRIVATE include)
-target_link_libraries(parser meta)
+#add_library(parser STATIC src/dataID.cpp src/executioner.cpp src/inputInfo.cpp src/inputReader.cpp src/misc_func.cpp src/operation.cpp src/sysInfo.cpp)
+#target_include_directories(parser PRIVATE include)
+#target_link_libraries(parser meta)
 #target_link_libraries(parser debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
 add_library(param STATIC src/param.cpp)
 target_include_directories(param PRIVATE include)
 
 
-add_executable(parser_drive src/parser_drive.cpp)
-target_include_directories(parser_drive PUBLIC include)
-target_link_libraries(parser_drive parser meta)
+#add_executable(parser_drive src/parser_drive.cpp)
+#target_include_directories(parser_drive PUBLIC include)
+#target_link_libraries(parser_drive parser meta)
 #target_link_libraries(parser_drive debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
 
-add_executable(serial_norm src/serial_norm_calc.cpp)
-target_include_directories(serial_norm PUBLIC include)
-target_link_libraries(serial_norm parser meta)
+#add_executable(serial_norm src/serial_norm_calc.cpp)
+#target_include_directories(serial_norm PUBLIC include)
+#target_link_libraries(serial_norm parser meta)
 #target_link_libraries(serial_norm debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
 
 add_executable(POD CASLAB_execs/POD_tec.cpp)
 target_include_directories(POD PUBLIC include)
-target_link_libraries(POD parser meta)
+target_link_libraries(POD meta)
 #target_link_libraries(POD debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
 
@@ -77,61 +77,61 @@ target_link_libraries(projErP parser param meta)
 
 
 
-enable_testing()
+#enable_testing()
 
 
-add_executable(test_pMat tests/test_execs/pMat_test.cpp)
-target_include_directories(test_pMat PRIVATE include)
-target_link_libraries(test_pMat pMat)
+#add_executable(test_pMat tests/test_execs/pMat_test.cpp)
+#target_include_directories(test_pMat PRIVATE include)
+#target_link_libraries(test_pMat pMat)
 
-add_executable(test_meta tests/test_meta/test_bin.cpp)
-target_include_directories(test_meta PRIVATE include 3rd_Party/tecio/teciosrc)
-target_link_libraries(test_meta meta)
+#add_executable(test_meta tests/test_meta/test_bin.cpp)
+#target_include_directories(test_meta PRIVATE include 3rd_Party/tecio/teciosrc)
+#target_link_libraries(test_meta meta)
 
-add_executable(test_tec tests/test_meta/test_tecplot.cpp)
-target_include_directories(test_tec PRIVATE include 3rd_Party/tecio/teciosrc)
-target_link_libraries(test_tec meta)
+#add_executable(test_tec tests/test_meta/test_tecplot.cpp)
+#target_include_directories(test_tec PRIVATE include 3rd_Party/tecio/teciosrc)
+#target_link_libraries(test_tec meta)
 
-add_executable(test_tecSVD tests/test_meta/test_tecplotSVD.cpp)
-target_include_directories(test_tecSVD PRIVATE include 3rd_Party/tecio/teciosrc)
-target_link_libraries(test_tecSVD meta)
+#add_executable(test_tecSVD tests/test_meta/test_tecplotSVD.cpp)
+#target_include_directories(test_tecSVD PRIVATE include 3rd_Party/tecio/teciosrc)
+#target_link_libraries(test_tecSVD meta)
 
-add_executable(test_EvenRead tests/test_meta/test_EvenRead.cpp)
-target_include_directories(test_EvenRead PRIVATE include 3rd_Party/tecio/teciosrc)
-target_link_libraries(test_EvenRead meta)
+#add_executable(test_EvenRead tests/test_meta/test_EvenRead.cpp)
+#target_include_directories(test_EvenRead PRIVATE include 3rd_Party/tecio/teciosrc)
+#target_link_libraries(test_EvenRead meta)
 
-add_executable(test_EvenTec tests/test_meta/test_EvenTec.cpp)
-target_include_directories(test_EvenTec PRIVATE include 3rd_Party/tecio/teciosrc)
-target_link_libraries(test_EvenTec meta)
-
-
-add_executable(test_binSVD tests/test_meta/test_binSVD.cpp)
-target_include_directories(test_binSVD PRIVATE include 3rd_Party/tecio/teciosrc)
-target_link_libraries(test_binSVD meta)
-
-add_test(NAME test_pMat_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_pMat)
-add_test(NAME test_pMat_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_pMat)
-add_test(NAME test_metadata_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_meta)
-add_test(NAME test_metadata_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_meta)
-add_test(NAME test_EvenRead_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_EvenRead)
-add_test(NAME test_EvenRead_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_EvenRead)
-add_test(NAME test_EvenTec_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_EvenTec)
-add_test(NAME test_EvenTec_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_EvenTec)
-add_test(NAME test_EvenTec_parallel9 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 9 ${CMAKE_BINARY_DIR}/test_EvenTec)
-add_test(NAME test_tecplot_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_tec)
-add_test(NAME test_tecplot_paralllel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_tec)
-add_test(NAME test_tecplotSVD_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_tecSVD)
-add_test(NAME test_tecplotSVD_paralllel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_tecSVD)
-add_test(NAME test_binSVD_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_binSVD)
-add_test(NAME test_binSVD_paralllel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_binSVD)
+#add_executable(test_EvenTec tests/test_meta/test_EvenTec.cpp)
+#target_include_directories(test_EvenTec PRIVATE include 3rd_Party/tecio/teciosrc)
+#target_link_libraries(test_EvenTec meta)
 
 
-add_test(NAME test_SVD_bin_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test1_SVD_bin COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/parser_drive)
-add_test(NAME test_SVD_bin_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test1_SVD_bin COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/parser_drive)
+#add_executable(test_binSVD tests/test_meta/test_binSVD.cpp)
+#target_include_directories(test_binSVD PRIVATE include 3rd_Party/tecio/teciosrc)
+#target_link_libraries(test_binSVD meta)
+
+#add_test(NAME test_pMat_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_pMat)
+#add_test(NAME test_pMat_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_pMat)
+#add_test(NAME test_metadata_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_meta)
+#add_test(NAME test_metadata_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_meta)
+#add_test(NAME test_EvenRead_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_EvenRead)
+#add_test(NAME test_EvenRead_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_EvenRead)
+#add_test(NAME test_EvenTec_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_EvenTec)
+#add_test(NAME test_EvenTec_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_EvenTec)
+#add_test(NAME test_EvenTec_parallel9 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 9 ${CMAKE_BINARY_DIR}/test_EvenTec)
+#add_test(NAME test_tecplot_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_tec)
+#add_test(NAME test_tecplot_paralllel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_tec)
+#add_test(NAME test_tecplotSVD_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_tecSVD)
+#add_test(NAME test_tecplotSVD_paralllel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_tecSVD)
+#add_test(NAME test_binSVD_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/test_binSVD)
+#add_test(NAME test_binSVD_paralllel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/test_binSVD)
+
+
+#add_test(NAME test_SVD_bin_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test1_SVD_bin COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/parser_drive)
+#add_test(NAME test_SVD_bin_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test1_SVD_bin COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/parser_drive)
 
 
 
-add_test(NAME test_cleanup WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND rm -r out even out1 load)
+#add_test(NAME test_cleanup WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND rm -r out even out1 load)
 
 
 
