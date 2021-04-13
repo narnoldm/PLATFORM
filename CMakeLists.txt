@@ -44,47 +44,25 @@ add_subdirectory(tst)
 
 
 
-add_executable(QDEIM CASLAB_execs/QDEIM_pre.cpp)
-target_include_directories(QDEIM PUBLIC include)
-target_link_libraries(QDEIM parser param meta)
-#target_link_libraries(QDEIM debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
 
-
-
-add_executable(projErP CASLAB_execs/projErP.cpp)
-target_include_directories(projErP PUBLIC include)
-target_link_libraries(projErP parser param meta)
-
-
-add_executable(calcSamplingError CASLAB_execs/calcSamplingError.cpp)
-target_include_directories(calcSamplingError PUBLIC include)
-target_link_libraries(calcSamplingError parser param meta)
-
-# Timing executables
-
-add_executable(PDP_time tests/timing/PDP_time.cpp)
-target_include_directories(PDP_time PUBLIC include)
-target_link_libraries(PDP_time parser param meta)
-
-
-
-enable_testing()
-
-add_executable(test_param tests/test_execs/test_param.cpp)
-target_include_directories(test_param PRIVATE include)
-target_link_libraries(test_param param ${MPI_C_LIBRARIES})
 
 #enable_testing()
 
-add_executable(test_pinv tests/test_execs/test_pinv.cpp)
-target_include_directories(test_pinv PRIVATE include)
-target_link_libraries(test_pinv pMat)
+#add_executable(test_param tests/test_execs/test_param.cpp)
+#target_include_directories(test_param PRIVATE include)
+#target_link_libraries(test_param param ${MPI_C_LIBRARIES})
+
+#enable_testing()
+
+#add_executable(test_pinv tests/test_execs/test_pinv.cpp)
+#target_include_directories(test_pinv PRIVATE include)
+#target_link_libraries(test_pinv pMat)
 
 
-add_executable(test_meta tests/test_meta/test_bin.cpp)
-target_include_directories(test_meta PRIVATE include 3rd_Party/tecio/teciosrc)
-target_link_libraries(test_meta meta)
+#add_executable(test_meta tests/test_meta/test_bin.cpp)
+#target_include_directories(test_meta PRIVATE include 3rd_Party/tecio/teciosrc)
+#target_link_libraries(test_meta meta)
 
 #add_executable(test_pMat tests/test_execs/pMat_test.cpp)
 #target_include_directories(test_pMat PRIVATE include)
