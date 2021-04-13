@@ -25,6 +25,9 @@ endif()
 add_subdirectory(src)
 add_subdirectory(CASLAB_execs)
 add_subdirectory(googletest)
+enable_testing()
+
+add_subdirectory(tst)
 
 
 

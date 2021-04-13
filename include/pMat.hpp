@@ -15,6 +15,7 @@
 #include <numeric>
 
 #include "extern_func.hpp"
+#include "processGrid.hpp"
 
 #ifdef USE_MKL
 #ifndef EIGEN_USE_MKL_ALL
@@ -28,37 +29,7 @@
 *These define how the code distributes data into the ScaLAPACK format
 * */
 
-/***
- * PGrid classes are the containers that have the PBLACS contexts
- * and communicators. All PBLAS distributed matrixes need this information
- * All pMats are built on an underlying Process Grid (PGrid). Multiple 
- *	PMats can be assigned to identical PGrids. 
- * */
 
-class PGrid
-{
-public:
-	/// Context Identifier
-	int icntxt;
-	/// local process row index
-	int myrow;
-	/// local process col identifier
-	int mycol;
-	/// global number of rows
-	int prow;
-	/// global number of columns
-	int pcol;
-	/// dimesnions of process grid
-	int pdims[2];
-	/// rank to be allowed to std out
-	bool printRank;
-	/// mpi rank and size
-	int rank, size;
-
-	PGrid(int r, int s, int type); //Constructor
-	~PGrid();
-	int getDim(int dim);
-};
 /***
  * pMat class is the underlying structure for all of PDP
  * contains the abstraction needed to call PBLACS and ScaLAPACK functions
