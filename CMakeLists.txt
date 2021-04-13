@@ -21,31 +21,11 @@ endif()
 
 
 
-add_library(pMat STATIC src/pMat.cpp)
-target_link_libraries(pMat ${MPI_C_LIBRARIES})
-if(${isINTEL})
-target_link_libraries(pMat ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -lpthread -lm -ldl) 
-target_include_directories(pMat PUBLIC include ${MKLROOT}/include)
-else()
-target_link_libraries(pMat -L/home/narnoldm/Dropbox/Michigan/Lab/0_2020/1Jan/ScaLAPACK/build/lib/libscalapack.a)
-endif()
-target_include_directories(pMat PUBLIC include ${EIGENDIR})
-#target_link_libraries(pMat debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
-add_library(meta STATIC src/metadata.cpp src/misc_func.cpp)
-target_include_directories(meta PUBLIC include ${TECDIR})
-target_link_libraries(meta pMat ${TECDIR}/libtecio.a)
-#target_link_libraries(meta debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
+add_subdirectory(src)
+add_subdirectory(CASLAB_execs)
+add_subdirectory(googletest)
 
-
-
-#add_library(parser STATIC src/dataID.cpp src/executioner.cpp src/inputInfo.cpp src/inputReader.cpp src/misc_func.cpp src/operation.cpp src/sysInfo.cpp)
-#target_include_directories(parser PRIVATE include)
-#target_link_libraries(parser meta)
-#target_link_libraries(parser debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
-
-add_library(param STATIC src/param.cpp)
-target_include_directories(param PRIVATE include)
 
 
 #add_executable(parser_drive src/parser_drive.cpp)
@@ -60,20 +40,9 @@ target_include_directories(param PRIVATE include)
 #target_link_libraries(serial_norm debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
 
-add_executable(POD CASLAB_execs/POD_tec.cpp)
-target_include_directories(POD PUBLIC include)
-target_link_libraries(POD meta)
-#target_link_libraries(POD debug -Wl,--allow-multiple-definition,--undefined=malloc,--undefined=_ZdaPv /home/narnoldm/arm/forge/lib/64/libdmallocxx.a)
 
 
-add_executable(projEr CASLAB_execs/projEr.cpp)
-target_include_directories(projEr PUBLIC include)
-target_link_libraries(projEr parser param meta)
 
-
-add_executable(projErP CASLAB_execs/projErP.cpp)
-target_include_directories(projErP PUBLIC include)
-target_link_libraries(projErP parser param meta)
 
 
 
@@ -128,8 +97,6 @@ target_link_libraries(projErP parser param meta)
 
 #add_test(NAME test_SVD_bin_serial WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test1_SVD_bin COMMAND mpirun -np 1 ${CMAKE_BINARY_DIR}/parser_drive)
 #add_test(NAME test_SVD_bin_parallel WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test1_SVD_bin COMMAND mpirun -np 4 ${CMAKE_BINARY_DIR}/parser_drive)
-
-
 
 #add_test(NAME test_cleanup WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wd COMMAND rm -r out even out1 load)
 
