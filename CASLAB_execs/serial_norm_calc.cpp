@@ -1,6 +1,10 @@
-#include "inputReader.hpp"
+#include "metadata.hpp"
+#include "param.hpp"
 
 #include <limits>
+
+using namespace ::std;
+
 typedef numeric_limits<double> dbl;
 
 void prepConsVarProc(tecIO *, int &, int &, int &, int &, vector<int> &, vector<int> &, vector<vector<int>> &, vector<int> &);
@@ -17,28 +21,27 @@ int main(int argc, char *argv[])
     //silence output for non root MPI processes
     std::ofstream sink("/dev/null");
     streambuf *strm_buffer = cout.rdbuf();
-    int debug_proc = 0;
-    int calcConsv = 0;
-    string avgFile;
-    if (argc > 2)
-    {
-        debug_proc = atoi(argv[2]);
-        if (argc > 3)
-        {
-            avgFile = argv[3];
+    paramMap inputFile("POD_tec.inp", rank);
 
-            // calculate conservative normalization values
-            if (argc > 4)
-            {
-                calcConsv = atoi(argv[4]);
-            }
-        }
-    }
+    int debug_proc = 0;
+    inputFile.getParamInt("stdout_proc", debug_proc);
+
+    bool calcConsv = 0;
+    string avgFile = "";
+    bool readAvg = false;
+    inputFile.getParamBool("readAvg", readAvg);
+    if (readAvg)
+        inputFile.getParamString("avgFile", avgFile);
+
+    inputFile.getParamBool("calcConsv", calcConsv);
+
     if (rank != debug_proc)
     {
         std::cout.rdbuf(sink.rdbuf());
     }
-    string input = argv[1];
+    string input;
+    inputFile.getParamString("inputString", input);
+
     cout << "input string is: " << input << endl;
     vector<string> tokens;
     tokenparse(input, "|", tokens);
@@ -54,7 +57,7 @@ int main(int argc, char *argv[])
 
     cout.precision(dbl::max_digits10);
 
-    if (argc < 4)
+    if (!readAvg)
     {
         double val = 0.0;
         sum.resize(N);
