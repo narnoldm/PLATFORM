@@ -1,9 +1,0 @@
-FOM=input|tecplot|/home/narnoldm/Dropbox/Michigan/Lab/0_2020/6June/projErCalc/workspace/Snaps/gemsma_cmb_|.szplt|255001|255001|1|Static_Pressure|99.193105588039856|U|1.7910450717737951|V|1.7910450717737951|W|1.7910450717737951|Temperature|57.454835145341498|Flamelet_Scalar_Mean|0.010994356002311915|Flamelet_Scalar_Variance|0.0003295141748960706|Flamelet_Parameter|0.026378847349269915 
-
-ROM=input|tecplot|/home/narnoldm/Dropbox/Michigan/Lab/0_2020/6June/projErCalc/workspace/Snaps/gemsma_cmb_|.szplt|255001|255001|1|Static_Pressure|99.193105588039856|U|1.7910450717737951|V|1.7910450717737951|W|1.7910450717737951|Temperature|57.454835145341498|Flamelet_Scalar_Mean|0.010994356002311915|Flamelet_Scalar_Variance|0.0003295141748960706|Flamelet_Parameter|0.026378847349269915
-
-V=input|binaryset|/home/narnoldm/Dropbox/Michigan/Lab/0_2020/6June/projErCalc/workspace/SVD/Spatial_Modes/Spatial_Mode_|.bin|1|3|1
-
-CenterFile=/home/narnoldm/Dropbox/Michigan/Lab/0_2020/6June/projErCalc/workspace/Snaps/gemsma_cmb_255001.szplt
-
-HashFile=/home/narnoldm/Dropbox/Michigan/Lab/0_2020/6June/projErCalc/workspace/Snaps/gemsma_cmb_255001.szplt
