@@ -74,6 +74,7 @@ void meta::checkExists()
     {
         for (int i = snap0; i <= snapF; i = i + snapSkip)
         {
+            cout << (prefix + to_string(i) + suffix) << endl;
             fid = fopen((prefix + to_string(i) + suffix).c_str(), "rb");
             assert(fid != NULL);
             fclose(fid);
@@ -83,7 +84,8 @@ void meta::checkExists()
 
 bool meta::readSingle(int fileID, double *point)
 {
-    cout << "meta read" << endl;
+    cout << "meta read " << fileID << endl;
+    cout<< (prefix + to_string(fileID) + suffix)<<endl;
     FILE *fid;
     fid = fopen((prefix + to_string(fileID) + suffix).c_str(), "rb");
     int header[2] = {0, 0};
@@ -98,6 +100,8 @@ bool meta::readSingle(int fileID, double *point)
 
 bool meta::batchRead(pMat *loadMat)
 {
+    double t1,t2; 
+    t1=MPI_Wtime();
     if (loadMat->mb == nPoints)
     {
         int iP = 0;
@@ -149,6 +153,8 @@ bool meta::batchRead(pMat *loadMat)
         }
         tempR.clear();
     }
+    t2=MPI_Wtime();
+    cout<<"batch Read took "<<t2-t1<<" secs"<<endl;
 }
 
 bool meta::batchRead(pMat *loadMat, int ii)
@@ -168,7 +174,7 @@ bool meta::batchRead(pMat *loadMat, int ii)
         {
             fileIndex = snap0 + i * snapSkip;
 
-            cout << "proc " << iP << " is reading file " << fileIndex << endl;
+            cout << "proc " << iP << " is reading file " << fileIndex << "\r";
 
             readSingle(fileIndex, loadMat->dataD.data() + nPoints * localC);
             localC++;
@@ -237,6 +243,7 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
     if (!rank)
         system(("mkdir " + dir).c_str());
 
+    MPI_Barrier(MPI_COMM_WORLD);
     int iP = 0, fileIndex, localC = 0;
 
     if (isInit)
@@ -244,9 +251,11 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
     else
     {
         fileIndex = 1;
+        nPoints = loadMat->M;
         nSets = loadMat->N;
     }
-
+    double t1,t2; 
+    t1=MPI_Wtime();
     if (loadMat->block == 1)
     {
         assert(loadMat->mb == nPoints);
@@ -261,7 +270,7 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
             {
                 fileIndex = snap0 + i * snapSkip;
 
-                cout << "proc " << iP << " is writing file " << fileIndex << endl;
+                cout << "proc " << iP << " is writing file " << fileIndex << "\r";
                 writeSingle(fileIndex, loadMat->dataD.data() + nPoints * localC, dir + "/" + fpref);
                 localC++;
             }
@@ -302,6 +311,8 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
         cout << endl;
         MPI_Comm_free(&col_comms);
     }
+    t2=MPI_Wtime();
+    cout<<"batch Write took "<<t2-t1<<" secs"<<endl;
 }
 
 void meta::miscProcessing(pMat *Mat)
@@ -385,7 +396,7 @@ void tecIO::checkExists()
 }
 bool tecIO::readSingle(int fileID, double *point)
 {
-    cout << (prefix + std::to_string(fileID) + suffix) << endl;
+    cout << (prefix + std::to_string(fileID) + suffix) << "\r";
     void *fH = NULL;
     tecFileReaderOpen((prefix + std::to_string(fileID) + suffix).c_str(), &fH);
     int type;
@@ -447,7 +458,7 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref)
     if ((zoneType != 5) && (zoneType != 3))
     {
         printf("Zone is weird/Not supported\n");
-        throw(-1);
+        MPI_Abort(MPI_COMM_WORLD,-1);
     }
 
     std::string varstr = "";
@@ -555,8 +566,16 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref)
         fwrite(&ONE, sizeof(int), 1, fid);
         for (int i = 0; i < numVars; i++)
         {
-            for (int j = 0; j < nCells; j++)
-                fwrite(&point[i * nCells + idx[j]], sizeof(double), 1, fid);
+            if (reorder)
+            {
+                for (int j = 0; j < nCells; j++)
+                    fwrite(&point[i * nCells + j], sizeof(double), 1, fid);
+            }
+            else
+            {
+                for (int j = 0; j < nCells; j++)
+                    fwrite(&point[i * nCells + idx[j]], sizeof(double), 1, fid);
+            }
         }
         fclose(fid);
     }
@@ -564,7 +583,117 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref)
 void tecIO::miscProcessing(pMat *Mat)
 {
 }
+bool tecIO::writeSingleFile(std::string filename, std::vector<std::string> &fvars, double *point, std::string meshPfile)
+{
+    void *infH = NULL;
+    void *outfH = NULL;
+    tecFileReaderOpen((meshPfile).c_str(), &infH);
 
+    assert(infH != NULL);
+    int zoneType;
+    long iMax, jMax, kMax;
+    tecZoneGetType(infH, 1, &zoneType);
+    tecZoneGetIJK(infH, 1, &iMax, &jMax, &kMax);
+    if ((zoneType != 5) && (zoneType != 3))
+    {
+        printf("Zone is weird/Not supported\n");
+        MPI_Abort(MPI_COMM_WORLD,-1);
+    }
+
+    std::string varstr = "";
+    if (dim == 1)
+    {
+        varstr = "x";
+    }
+    if (dim == 2)
+    {
+        varstr = "x,y";
+    }
+    if (dim == 3)
+    {
+        varstr = "x,y,z";
+    }
+    for (int i = 0; i < fvars.size(); i++)
+    {
+        varstr = varstr + "," + fvars[i];
+    }
+    tecFileWriterOpen(filename.c_str(), "Code out", varstr.c_str(), 1, 0, 1, NULL, &outfH);
+    assert(outfH != NULL);
+    std::vector<int> varTypes(dim + fvars.size());
+    std::vector<int> valueLoc(dim + fvars.size());
+    std::vector<int> passive(dim + fvars.size());
+    std::vector<int> shareVar(dim + fvars.size());
+    for (int i = 0; i < (dim + fvars.size()); i++)
+    {
+        if (i < dim)
+        {
+            tecZoneVarGetType(infH, 1, i + 1, varTypes.data() + i);
+            tecZoneVarGetValueLocation(infH, 1, i + 1, valueLoc.data() + i);
+            tecZoneVarIsPassive(infH, 1, i + 1, passive.data() + i);
+            tecZoneVarGetSharedZone(infH, 1, i + 1, shareVar.data() + i);
+        }
+        else
+        {
+            varTypes[i] = 2;
+            valueLoc[i] = 0;
+            passive[i] = 0;
+            shareVar[i] = 0;
+        }
+    }
+    int shareCon, fNeigh, outZone;
+    tecZoneConnectivityGetSharedZone(infH, 1, &shareCon);
+    tecZoneFaceNbrGetMode(infH, 1, &fNeigh);
+    tecZoneCreateFE(outfH, std::to_string(snap0).c_str(), zoneType, iMax, jMax, &varTypes[0], &shareVar[0], &valueLoc[0], &passive[0], shareCon, 0, 0, &outZone);
+    tecZoneSetUnsteadyOptions(outfH, outZone, snap0, (int)snap0);
+
+    vector<float> nfDat;
+    vector<double> ndDat;
+    for (int i = 0; i < dim; i++)
+    {
+        if (varTypes[i] == 1) //float
+        {
+            nfDat.resize(iMax);
+            tecZoneVarGetFloatValues(infH, 1, i + 1, 1, iMax, nfDat.data());
+            tecZoneVarWriteFloatValues(outfH, 1, i + 1, 0, iMax, nfDat.data());
+        }
+        else if (varTypes[i] == 2)
+        {
+            ndDat.resize(iMax);
+            tecZoneVarGetDoubleValues(infH, 1, i + 1, 1, iMax, &ndDat[0]);
+            tecZoneVarWriteDoubleValues(outfH, 1, i + 1, 0, iMax, &ndDat[0]);
+        }
+    }
+    nfDat.clear();
+    ndDat.clear();
+    for (int i = dim; i < (dim + fvars.size()); i++)
+    {
+        if (reorder)
+        {
+            vector<double> temp(jMax, 0.0);
+            for (int n = 0; n < jMax; n++)
+            {
+                temp[idx[n]] = point[(i - dim) * jMax + n];
+            }
+            tecZoneVarWriteDoubleValues(outfH, 1, i + 1, 0, jMax, temp.data());
+        }
+        else
+        {
+            tecZoneVarWriteDoubleValues(outfH, 1, i + 1, 0, jMax, &point[(i - dim) * jMax]);
+        }
+    }
+    long numValues;
+    tecZoneNodeMapGetNumValues(infH, 1, jMax, &numValues);
+    vector<int> nodeMap(numValues);
+    tecZoneNodeMapGet(infH, 1, 1, jMax, nodeMap.data());
+    tecZoneNodeMapWrite32(outfH, 1, 0, 1, numValues, nodeMap.data());
+    nodeMap.clear();
+    tecFileReaderClose(&infH);
+    tecFileWriterClose(&outfH);
+    varTypes.clear();
+    valueLoc.clear();
+    passive.clear();
+    shareVar.clear();
+}
 void tecIO::addVar(string var, string &norm)
 {
     varName.push_back(var);
@@ -610,7 +739,7 @@ int tecIO::getVariableIndex(string var, string file)
         if (tecIndex == 0)
         {
             cout << "Var not found :" << var << endl;
-            throw(-1);
+            MPI_Abort(MPI_COMM_WORLD,-1);
         }
     }
     MPI_Bcast(&tecIndex, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -689,7 +818,7 @@ void tecIO::genHash(string filename)
             }
             else
             {
-                throw(-1);
+                MPI_Abort(MPI_COMM_WORLD,-1);
             }
             tecFileReaderClose(&fH);
             for (int i = 0; i < nCells; i++)
@@ -703,10 +832,6 @@ void tecIO::genHash(string filename)
         MPI_Bcast(idx.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Bcast(cellID.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
         stable_sort(idx.begin(), idx.end(), [&](int i, int j) { return cellID[i] < cellID[j]; });
-        for (int i = 0; i < 5; i++)
-        {
-            cout << idx[i] << endl;
-        }
     }
     else
     {
@@ -946,7 +1071,7 @@ void tecIO::subAvg(pMat *dataMat)
     if (average.size() == 0)
     {
         cout << "Average isn't setup call calcAvg first" << endl;
-        throw(-1);
+        MPI_Abort(MPI_COMM_WORLD,-1);
     }
 
     cout << "Subtracting Average" << endl;
@@ -987,7 +1112,7 @@ void tecIO::addAvg(pMat *dataMat)
     if (average.size() == 0)
     {
         cout << "Average isn't setup call calcAvg first" << endl;
-        throw(-1);
+        MPI_Abort(MPI_COMM_WORLD,-1);
     }
 
     cout << "Adding Average" << endl;
@@ -1131,10 +1256,36 @@ void tecIO::readAvg(std::string filename)
     std::cout << "average loaded from :" << filename << std::endl;
     //}
     //printf("%d\n",nPoints);
-
+    genHash(filename);
     MPI_Barrier(MPI_COMM_WORLD);
-    //MPI_Bcast(average.data(), nPoints, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    //if(rank==0)
+    std::cout << "outputing ascii centering" << std::endl;
+    if (!rank)
+    {
+        FILE *fid;
+        string asciiName = "centerProf.dat";
+        if ((fid = fopen(asciiName.c_str(), "w")) == NULL)
+        {
+            printf("error with file open\n");
+        }
+        fprintf(fid, "file= %s\n", asciiName.c_str());
+        if (reorder)
+        {
+            for (int i = 0; i < average.size(); i++)
+            {
+                fprintf(fid, "%16.16E\n", average[i]);
+            }
+        }
+        else
+        {
+            for (int i = 0; i < numVars; i++)
+            {
+                for (int j = 0; j < nCells; j++)
+                {
+                    fprintf(fid, "%16.16E\n", average[i * nCells + idx[j]]);
+                }
+            }
+        }
+    }
     std::cout << "average Broad-casted" << std::endl;
 }
 
@@ -1148,4 +1299,31 @@ void tecIO::activateReorder(string file)
 {
     genHash(file);
     reorder = true;
+}
+
+// check if metadata for two meta objects are the same, EXCEPT for file numbers
+int compareMeta(meta* meta1, meta* meta2) {
+
+	// check path members
+	if ( (meta1->prefix == meta2->prefix) && (meta1->suffix == meta2->suffix) ) {
+
+		if ( (meta1->snap0 == meta2->snap0) && 
+			 (meta1->snapF == meta2->snapF) &&
+			 (meta1->snapSkip == meta2->snapSkip) ) {
+			
+			// objects are identical
+			return(1);
+
+		} else {
+			// objects differ only in the file counts
+			return(2);
+
+		}
+		return(true);
+
+	} else {
+		// objects are totally different
+		return(0);
+	}
+
 }

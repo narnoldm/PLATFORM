@@ -72,7 +72,7 @@ public:
     virtual bool writeSingle(int fileID, double *point, std::string fpref);
     virtual void miscProcessing(pMat *Mat);
 
-    bool writeSingleFull(int fileID, double *point, std::string fpref, std::string meshfile);
+    bool writeSingleFile(std::string filename, std::vector<std::string> &fvars, double *point, std::string meshfile);
     void addVar(std::string var, std::string &norm);
     int getVariableIndex(std::string var, std::string file);
     void getDimNodes();
@@ -90,5 +90,7 @@ public:
     void activateGEMSbin(std::string);
     void activateReorder(std::string);
 };
+
+int compareMeta(meta* meta1, meta* meta2);
 
 #endif
