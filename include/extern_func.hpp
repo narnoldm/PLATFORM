@@ -50,6 +50,7 @@ extern "C" void pdgemv(const char *trans, const int *m, const int *n, const doub
 extern "C" void pdgesvd(const char *, const char *, const int *, const int *, const double *, const int *, const int *, const int *, const double *, const double *, const int *, const int *, const int *, const double *, const int *, const int *, const int *, const double *, const int *, const int *);
 extern "C" void pdgesvd(const char *, const char *, const int *, const int *, const double *, const int *, const int *, const int *, const double *, const double *, const int *, const int *, const int *, const double *, const int *, const int *, const int *, const double *, const int *, const int *);
 extern "C" void pdgeqpf(const int *, const int *, double *, const int *, const int *, const int *, const int *, double *, double *work, const int *, const int *);
+extern "C" void pdgels(const char *trans, const int *m, const int *n, const int *nrhs, const double *a, const int *ia, const int *ja, const int *desca, const double *b, const int *ib, const int *jb, const int *descb, const double *work, const int *lwork, const int *info);
 
 extern "C" void pdgemr2d(const int *, const int *, const double *, const int *, const int *, const int *, const double *, const int *, const int *, const int *, const int *);
 extern "C" void pzgemr2d(const int *, const int *, const complex16 *, const int *, const int *, const int *, const complex16 *, const int *, const int *, const int *, const int *);

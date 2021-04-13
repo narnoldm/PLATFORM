@@ -44,6 +44,10 @@ int main(int argc, char *argv[])
 	inputFile.getParamInt("nCells", nCells); 
 	inputFile.getParamInt("nVars", nVars);
 
+	// directory where samplingPoints.txt is stored, and output file will be written
+	string pinvDir;
+	inputFile.getParamString("pinvDir", pinvDir);
+
 	// read modes from disk
 	cout << "Loading basis..." << endl;
 	pMat *UIn = new pMat(datasetBasis->nPoints, datasetBasis->nSets, evenG, false);
@@ -51,8 +55,6 @@ int main(int argc, char *argv[])
 	
 	// load sampling file
 	cout << "Getting sample indices..." << endl;
-	string pinvDir;
-	inputFile.getParamString("pinvDir", pinvDir);
 	string sampleFileName = pinvDir + "/samplingPoints.txt";
 	fstream sampFile(sampleFileName, ios_base::in);
 	int nSamps;
@@ -100,7 +102,7 @@ int main(int argc, char *argv[])
 		cout << "Maximum singular value of [P^T U]^+: " << setprecision(16) << S[0] << endl;
 		string outputFileName = pinvDir + "/samplingError.dat";
 		ofstream outputFile(outputFileName);
-		outputFile << setprecision(16) << S[0];
+		outputFile << setprecision(16) << S[0] << endl;
 		outputFile.close();
 	}
 
