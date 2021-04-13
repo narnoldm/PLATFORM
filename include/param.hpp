@@ -6,14 +6,14 @@
 
 class paramMap
 {
-  public:
+public:
 	std::string filename;
 	std::vector<std::string> keys;
 	std::vector<int> intParam;
 	std::vector<double> doubleParam;
 	std::vector<std::string> stringParam;
 
-  public:
+public:
 	paramMap(std::string file);
 	int getParamInt(std::string key);
 	double getParamDouble(std::string key);
