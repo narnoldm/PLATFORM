@@ -431,6 +431,8 @@ int pMat::matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia,
         return 0;
 }
 
+
+
 // symmetric matrix product A^T*A or A*A^T
 int pMat::matrix_Product_sym(char uplo, char trans, int n, int k, double alpha, pMat *A, int ia, int ja, double beta, int ic, int jc)
 {
@@ -467,8 +469,8 @@ int pMat::matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int
 
         if ((A->type == 0) && (type == 0))
         {
-                if (printRank)
-                        cout << "Double Sum" << endl;
+                // if (printRank)
+                //         cout << "Double Sum" << endl;
                 int IA = ia + 1;
                 int JA = ja + 1;
                 int IB = ib + 1;
@@ -997,9 +999,9 @@ int pMat::changeContext(pMat *A, bool stdout)
         changeContext(A, M, N, 0, 0, 0, 0, stdout);
 }
 
-int pMat::dMax(int dim, int rc, double &val)
+int pMat::dMax(int dim, int rc, double &val, int &index)
 {
-        int index = 0;
+        // int index = 0;
 
         if (dim == 0)
         {
@@ -1011,6 +1013,9 @@ int pMat::dMax(int dim, int rc, double &val)
                 int IA = rc + 1, JA = 1, i_one = 1;
                 pdamax(&N, &val, &index, dataD.data(), &IA, &JA, desc, &M);
         }
+
+		index--; // return to C indexing
+
 }
 int pMat::dSum(int dim, int rc, double &val)
 {
@@ -1050,6 +1055,48 @@ void pMat::pinv(pMat *A)
         delete UU;
         delete VV;
 }
+
+// solve over-/under-determined linear system AX = B
+// on exit, solutions are written to columns of B
+// on exit, A is overwritten with QR decomposition info (pretty much destroyed)
+int pMat::leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int ja, int ib, int jb)
+{
+
+	int info = 0;
+	vector<double> WORK(1);
+	int LWORK = -1;
+	int IA = ia + 1;
+	int JA = ja + 1;
+	int IB = ib + 1;
+	int JB = jb + 1;
+
+	// get LWORK and WORK
+	pdgels(&trans, &m, &n, &nrhs, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, WORK.data(), &LWORK, &info);
+
+	// cout << "WORK = " << WORK[0] << ", LWORK = " << LWORK << ", info = " << info << endl;
+
+	if (info < 0) {
+		cout << "Error in least-squares solve setup in argument: " << -info << endl;
+		throw(-1);
+	}
+
+	// set up real run
+	LWORK = WORK[0];
+	WORK.resize(LWORK);
+	// cout << "WORK Allocated: " << LWORK / (1e6) * 8 << " MB per processor" << endl;
+
+	// least squares solve
+	double t1, t2;
+	t1 = MPI_Wtime();
+	pdgels(&trans, &m, &n, &nrhs, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, WORK.data(), &LWORK, &info);
+	t2 = MPI_Wtime();
+	// cout << "Least-squares solve complete in " << t2 - t1 << " seconds" << endl;
+	WORK.resize(0);
+
+	return 1;
+
+}
+
 int pMat::outerProductSum(pMat *U, char UT, pMat *VT, char VTT, std::vector<double> &S, int inv)
 {
         if (inv == 1)
