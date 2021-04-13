@@ -3,11 +3,15 @@
 
 
 
-
+set(SOURCES ${SOURCES})
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
-add_library(pMat STATIC pMat.cpp)
+
+
+
+
+add_library(pMat STATIC pMat.cpp processGrid.cpp)
 target_link_libraries(pMat ${MPI_C_LIBRARIES})
 if(${isINTEL})
 target_link_libraries(pMat ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -lpthread -lm -ldl) 
