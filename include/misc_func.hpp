@@ -13,16 +13,10 @@
 #include <algorithm>
 #include <cctype>
 
-
-
-
 void printASCIIVecP0(std::string fname, double *Mat, int N);
 
 bool to_bool(std::string str);
 
 void tokenparse(const std::string &input, std::string sep, std::vector<std::string> &tokens);
-
-
-
 
 #endif

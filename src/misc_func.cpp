@@ -1,8 +1,7 @@
 
 #include "misc_func.hpp"
 
-
-using namespace::std;
+using namespace ::std;
 
 void printASCIIVecP0(std::string fname, double *Mat, int N)
 {
@@ -12,7 +11,6 @@ void printASCIIVecP0(std::string fname, double *Mat, int N)
                 fprintf(fid, "%d %.9E\n", i, Mat[i]);
         fclose(fid);
 }
-
 
 bool to_bool(std::string str)
 {

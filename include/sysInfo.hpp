@@ -1,12 +1,9 @@
 
 
-
 #ifndef SYSINFO_H
 #define SYSINFO_H
 
-
 #include "paramID.hpp"
-
 
 class sysInfo
 {
@@ -24,8 +21,6 @@ public:
     bool ScanInfo(string token);
 };
 
-
 std::ostream &operator<<(std::ostream &os, const sysInfo &sID);
-
 
 #endif
