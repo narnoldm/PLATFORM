@@ -22,23 +22,34 @@ int main(int argc, char *argv[])
     string inpFile = argv[2];
     paramMap input(inpFile);
 
-    string FOM = input.getParamString("FOM");
-    string ROM = input.getParamString("ROM");
+    string FOM;
+    input.getParamString("FOM", FOM);
+    string ROM;
+    input.getParamString("ROM", ROM);
 
-    string basis = input.getParamString("V");
+    string basis;
+    input.getParamString("V", basis);
 
-    string centering = input.getParamString("CenterFile");
-    string hashfile = input.getParamString("HashFile");
+    string centering;
+    input.getParamString("CenterFile", centering);
+    string hashfile;
+    input.getParamString("HashFile", hashfile);
 
-    int FOMproj = input.getParamInt("FOM/ROM"); //1 for pojected FOM 2 for ROM
-    int comp = input.getParamInt("Comp");       //1 for normalized 2 for unnormalized 3 for uncentered
+    int FOMproj;
+    input.getParamInt("FOM/ROM", FOMproj); //1 for pojected FOM 2 for ROM
+    int comp;
+    input.getParamInt("Comp", comp); //1 for normalized 2 for unnormalized 3 for uncentered
 
-    int outPert = input.getParamInt("outPert");
+    int outPert;
+    input.getParamInt("outPert", outPert);
 
-    int outProj = input.getParamInt("outProj");
-    int outErr = input.getParamInt("outErr");
+    int outProj;
+    input.getParamInt("outProj", outProj);
+    int outErr;
+    input.getParamInt("outErr", outErr);
 
-    int subVar = input.getParamInt("SubVar"); //0 for no 1 for yes
+    int subVar;
+    input.getParamInt("SubVar", subVar); //0 for no 1 for yes
     //int outRecon=input.getParamInt("outRecon");
 
     PGrid *evenG;
