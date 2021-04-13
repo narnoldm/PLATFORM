@@ -331,7 +331,7 @@ int main(int argc, char *argv[])
     set<int> samplingPoints;
 
 	// get QR and boundary points
-    t1 = MPI_Wtime();
+    //t1 = MPI_Wtime();
 
 	// all sampling here is done by rank 0 process
     if (rank == 0)
@@ -446,10 +446,8 @@ int main(int argc, char *argv[])
 		int numQRPoints, numCurrentPoints, numCurrentDOFs;
 		int cellID;
 
-		pMat *rVec = new pMat(1, nDOF, evenG, false); 
-		pMat *rVec_p0 = new pMat(1, nDOF, evenG, 0, 2, 0.0, false);
-		vector<int> sortIdxs(nDOF);
-		vector<double> rVec_vector(nDOF);
+		pMat *rVec = new pMat(1, nDOF, evenG, false);
+		pMat *nonUniqueVec = new pMat(1, nDOF, evenG, false); // marker to determine if a degree of freedom has already been selected
 
 		// sort and broadcast gP to all processes
 		if (rank == 0)
@@ -470,9 +468,11 @@ int main(int argc, char *argv[])
 		}
 
 		// loop over number of requires samples left
+		int outFreq = (PointsNeeded - numQRPoints)/1000 + 1; 	// this is potentially a lot of output, scale to roughly 1000 lines of output
 		for (int i = 0; i < (PointsNeeded - numQRPoints); ++i) {
 
-			cout << (double)i / (PointsNeeded - numQRPoints) * 100 << " percent GappyPOD+E points sampled \r";
+			if ( (i % outFreq) == 0)
+				cout << (double)i / (PointsNeeded - numQRPoints) * 100 << " percent GappyPOD+E points sampled \r";
 
 			numCurrentDOFs = numCurrentPoints * nVars;
 
@@ -496,36 +496,60 @@ int main(int argc, char *argv[])
 			rVec->matrix_Product('N', 'T', 1, nDOF, minDim, VT_E, minDim-1, 0, URHS, 0, 0, 1.0, 0.0, 0, 0);
 			destroyPMat(VT_E, false);
 
-			// reduce rVec to rank 0 
-			rVec_p0->changeContext(rVec, false);
-
-			if (rank == 0) {
-
-				// square all elements of rVec
-				for (int j = 0; j < rVec_p0->dataD.size(); ++j)
-					rVec_p0->dataD[j] = pow(rVec_p0->dataD[j], 2.0);
-
-				// fill vector, since the argsort doesn't seem to work with pMat.dataD
-				for (int j = 0; j < nDOF; ++j)
-					rVec_vector[j] = rVec_p0->dataD[j];
-
-				// argsort rVec, in DESCENDING order
-				iota(sortIdxs.begin(), sortIdxs.end(), 0);
-				stable_sort(sortIdxs.begin(), sortIdxs.end(), [&rVec_vector](int i1, int i2) { return rVec_vector[i1] > rVec_vector[i2]; });
-				// This would be preferable, and not have to use rVec_vector, but I cannot get it to compile, I don't know what's going wrong
-				// stable_sort(sortIdxs.begin(), sortIdxs.end(), [&(rVec_p0->dataD)](int i1, int i2) { return rVec_p0->dataD[i1] < rVec_p0->dataD[i2]; });
-
-				// iterate through rVec, emplacing corresponding zero-indexed cell ID into samplingPoints until a new point is found
-				for (int j = 0; j < nDOF; ++j) {
-					cellID = sortIdxs[j] % nCells;
-					auto check = samplingPoints.emplace(cellID);
-					if (check.second)
-						break;
-				}
-
+			// zero out DOFs that have already been selected
+			for (int j = 0; j < rVec->dataD.size(); ++j) {
+				if (nonUniqueVec->dataD[j] == 1.0)
+					rVec->dataD[j] = 0.0;
 			}
 
-			cout << endl << "Cell ID: " << cellID << endl;
+			// square elements
+			for (int j = 0; j < rVec->dataD.size(); ++j)
+				rVec->dataD[j] = rVec->dataD[j] * rVec->dataD[j];
+
+			// get unique cell ID
+			int breakSignal = 0;
+			for (int j = 0; j < nDOF; ++j) {
+
+				double maxGlobal = 0;
+				double maxLocal = 0;
+				int argMaxLocal = -1;
+				int argMaxGlobal = -1;
+				rVec->dMax(1, 0, maxLocal, argMaxLocal);
+
+				// Allreduce(MPI_MAX) the maximum value
+				MPI_Allreduce(&maxLocal, &maxGlobal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
+				// if rank doesn't own the max, set argMaxLocal = -1 so that MPI_MAX can determine the correct argMaxGlobal
+				if (maxLocal != maxGlobal) {
+					argMaxLocal = -1;
+				}
+				MPI_Reduce(&argMaxLocal, &argMaxGlobal, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+
+				// emplace cell ID in samplingPoints, if unique entry found signal to all processes to break
+				if (rank == 0) {
+					
+					cellID = argMaxGlobal % nCells;
+					auto check = samplingPoints.emplace(cellID);
+					if (check.second)
+						breakSignal = 1;
+				}
+
+				MPI_Allreduce(MPI_IN_PLACE, &breakSignal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+				if (breakSignal == 1) {
+					break;
+				} else if (maxLocal == maxGlobal) {
+					// multiple processes may have maxLocal == maxGlobal, so just iterate and check
+					// zero out value in rVec so that it doesn't get picked up by argmax anymore
+					for (int k = 0; k < rVec->dataD.size(); ++k) {
+						if (rVec->dataD[k] == maxGlobal) {
+							rVec->dataD[k] = 0.0;
+							nonUniqueVec->dataD[k] = 1.0; // mark this DOF to not be selected in the next point selection iteration
+							break;
+						}
+					}
+				}
+				
+			}
 
 			// broadcast new cell ID to all processes, insert into gP vector
 			MPI_Bcast(&cellID, 1, MPI_INT, 0, MPI_COMM_WORLD);			
@@ -543,62 +567,128 @@ int main(int argc, char *argv[])
 		destroyPMat(URHS_samp_E, false);
 		destroyPMat(URHS_samp_E_copy, false);
 		destroyPMat(rVec, false);
-		destroyPMat(rVec_p0, false);
+		destroyPMat(nonUniqueVec, false);
 
 	// DEIM greedy sampling
 	} else if (sampType == 3) {
-	
-		cout << "Not implemented yet" << endl;
-		return(-1);
 
-		// // declare some variables for this routine
-		// pMat *rVec = new pMat(nDOF, 1, evenG, false); 
-		// pMat *rVec_p0 = new pMat(nDOF, 1, evenG, 0, 2, 0.0, false);
-		// vector<int> sortIdxs(nDOF);
-		// vector<double> rVec_vector(nDOF);
-		// int oversampThresh, modeIdx; 
+		// declare some variables for this routine
+		int numCurrentDOFs;
+		int modeThresh, modeIdx; 
+		int cellID;
 
-		// // extract first column of URHS to rVec
-		// rVec->changeContext(URHS, nDOF,  1, 0, 0, 0, 0, false);
+		pMat *rVec = new pMat(nDOF, 1, evenG, false);
+		pMat *nonUniqueVec = new pMat(nDOF, 1, evenG, false); // marker to determine if a degree of freedom has already been selected
+		pMat *URHS_samp_E = new pMat(PointsNeeded*nVars, datasetRHS->nSets, evenG, false);
+		pMat *URHS_samp_E_copy = new pMat(PointsNeeded*nVars, datasetRHS->nSets, evenG, false);
 
-		// // loop over number of desired sampling points (index i)
-		// for (int i = 0; i < PointsNeeded; ++i) {
+		// this is the same dimension as URHS_samp_E because PDGELS requires that URHS_samp_E and lsSol have same row block size
+		// no way to force blocking sizes in pMat currently
+		pMat *lsSol = new pMat(PointsNeeded*nVars, datasetRHS->nSets, evenG, false);
+
+		// extract first column of URHS to rVec
+		rVec->changeContext(URHS, nDOF, 1, 0, 0, 0, 0, false);
+
+		// loop over number of desired sampling points (index i)
+		int outFreq = PointsNeeded/1000 + 1;
+		for (int i = 0; i < PointsNeeded; ++i) {
+
+			if ( (i % outFreq) == 0)
+				cout << (double)i / (PointsNeeded) * 100 << " percent GappyPOD+D points sampled \r";
+
+			// zero out DOFs that have already been selected
+			for (int j = 0; j < rVec->dataD.size(); ++j) {
+				if (nonUniqueVec->dataD[j] == 1.0)
+					rVec->dataD[j] = 0.0;
+			}
+
+			// compute absolute value of rVec
+			for (int j = 0; j < rVec->dataD.size(); ++j) {
+				rVec->dataD[j] = abs(rVec->dataD[j]);
+			}
+
+			// find the argmax of rVec
+			// loop until a unique point is added
+			int breakSignal = 0;
+			for (int j = 0; j < nDOF; ++j) {
+
+				double maxGlobal = 0;
+				double maxLocal = 0;
+				int argMaxLocal = -1;
+				int argMaxGlobal = -1;
+				rVec->dMax(0, 0, maxLocal, argMaxLocal);
+
+				// Allreduce(MPI_MAX) the maximum value
+				MPI_Allreduce(&maxLocal, &maxGlobal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
+				// if rank doesn't own the max, set argMaxLocal = -1 so that MPI_MAX can determine the correct argMaxGlobal
+				if (maxLocal != maxGlobal) {
+					argMaxLocal = -1;
+				}
+				MPI_Reduce(&argMaxLocal, &argMaxGlobal, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+
+				// emplace cell ID in samplingPoints, if unique entry found signal to all processes to break
+				if (rank == 0) {
+					
+					cellID = argMaxGlobal % nCells;
+					auto check = samplingPoints.emplace(cellID);
+					if (check.second)
+						breakSignal = 1;
+				}
+
+				MPI_Allreduce(MPI_IN_PLACE, &breakSignal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+				if (breakSignal == 1) {
+					break;
+				} else if (maxLocal == maxGlobal) {
+					// multiple processes may have maxLocal == maxGlobal, so just iterate and check
+					// zero out value in rVec so that it doesn't get picked up by argmax anymore
+					for (int k = 0; k < rVec->dataD.size(); ++k) {
+						if (rVec->dataD[k] == maxGlobal) {
+							rVec->dataD[k] = 0.0;
+							nonUniqueVec->dataD[k] = 1.0; // mark this DOF to not be selected in the next point selection iteration
+							break;
+						}
+					}
+				}
+				
+			}
+
+			// broadcast new cell ID to all processes, insert into gP vector
+			MPI_Bcast(&cellID, 1, MPI_INT, 0, MPI_COMM_WORLD);			
+			gP.push_back(cellID);
+			numCurrentDOFs = (i+1) * nVars;
+
+			// append newly sampled rows of URHS to URHS_samp_E_copy, and transfer to URHS_samp_E (will be destroyed in least-squares solve)
+			for (int k = 0; k < nVars; ++k)
+				URHS_samp_E_copy->changeContext(URHS, 1, numModesRHS, k * nCells + gP.back(), 0, i * nVars + k, 0, false);
+			URHS_samp_E->changeContext(URHS_samp_E_copy, numCurrentDOFs, numModesRHS, 0, 0, 0, 0, false);
+
+			modeThresh = min(i+1, numModesRHS); 	// d in paper, forces ceiling of numModesRHS
+			modeIdx = (i+1) % (numModesRHS-1); 		// k in paper, cycles through modes
+
+			// set up inputs to least-squares solve
+			lsSol->changeContext(URHS_samp_E, numCurrentDOFs, 1, 0, modeIdx, 0, 0, false);
+
+			// solve least squares, should ALWAYS be an overdetermined system for systems with more than one variable
+			// on exit, solution is in first modeThresh rows of lsSol
+			// this is the c vector in paper
+			lsSol->leastSquares('N', numCurrentDOFs, modeThresh, 1, URHS_samp_E, 0, 0, 0, 0);
+
+			// compute new rvec
+			// first, U[:, 1:d]*c
+			rVec->matrix_Product('N', 'N', nDOF, 1, modeThresh, URHS, 0, 0, lsSol, 0, 0, 1.0, 0.0, 0, 0);
+			// second, U[:, k] - U[:, 1:d]*c
+			rVec->matrix_Sum('N', nDOF, 1, URHS, 0, modeIdx, 0, 0, 1.0, -1.0);
+
+		}
+
+		// cleanup 
+		cout << endl;
+		destroyPMat(URHS_samp_E_copy, false);
+		destroyPMat(URHS_samp_E, false);
+		destroyPMat(rVec, false);
+		destroyPMat(nonUniqueVec, false);
 			
-		// 	// reduce rVec to rank 0 
-		// 	rVec_p0->changeContext(rVec, false);
-
-		// 	if (rank == 0) {
-
-		// 		// get argmax of absolute value of rVec
-		// 		// fill vector, since the argsort doesn't seem to work with pMat.dataD
-		// 		for (int j = 0; j < nDOF; ++j)
-		// 			rVec_vector[j] = abs(rVec_p0->dataD[j]);
-		// 		iota(sortIdxs.begin(), sortIdxs.end(), 0);
-		// 		stable_sort(sortIdxs.begin(), sortIdxs.end(), [&rVec_vector](int i1, int i2) { return rVec_vector[i1] > rVec_vector[i2]; });
-
-		// 		// loop until new cell is added
-		// 		// this is effectively argmax, since rVec_vector[sortIdxs] will be sorted in descending order
-		// 		for (int j = 0; j < nDOF; ++j) {
-		// 			cellID = sortIdxs[j] % nCells;
-		// 			auto check = samplingPoints.emplace(cellID);
-		// 			if (check.second)
-		// 				break;
-		// 		}
-
-		// 		oversampThresh = min(i, numModesRHS); // forces ceiling of numModesRHS
-		// 		modeIdx = i % numModesRHS; // cycles through modes, I guess?
-
-		// 	}
-
-
-			// d = min(numModesRHS-1, i)  // index to check whether this is oversampling or normal sampling
-
-			// k = mod(i, numModesRHS) // index to get oversampling index
-
-			// c = URHS
-
-		// }
-
 	} else {
 		cout << "Invalid choice of sampling type: " << sampType << endl;
 	} 
@@ -634,8 +724,8 @@ int main(int argc, char *argv[])
 
     }
 
-    t2 = MPI_Wtime();
-    cout << "Finding all samples took " << t2 - t1 << " seconds" << endl;
+    //t2 = MPI_Wtime();
+    //cout << "Finding all samples took " << t2 - t1 << " seconds" << endl;
 
     if (rank != 0)
     {
