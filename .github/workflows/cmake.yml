@@ -17,6 +17,8 @@ jobs:
     steps:
     - name: download-openmpi
       run: sudo apt-get install openmpi-bin
+    - name: unpack tecio
+      run: tar -xzvf ${GITHUB_REPOSITORY}/3rd_Party/tecio.tgz
     
     - uses: actions/checkout@v2
 
