@@ -72,7 +72,7 @@ add_library(scalapack SHARED IMPORTED)
 find_package(LAPACK)
 
 set_target_properties(scalapack PROPERTIES IMPORTED_LOCATION ${SCALAPACK_LIB_DIR}/libscalapack.a)
-target_link_libraries(scalapack INTERFACE ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES} gfortran)
+target_link_libraries(scalapack INTERFACE ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES} ${MPI_C_LIBRARIES} gfortran)
 endif()
 
 
