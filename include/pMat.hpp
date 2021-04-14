@@ -14,7 +14,7 @@
 #include <algorithm>
 #include <numeric>
 
-#include "extern_func.hpp"
+//#include "extern_func.hpp"
 #include "processGrid.hpp"
 
 #ifdef USE_MKL

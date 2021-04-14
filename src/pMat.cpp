@@ -354,7 +354,7 @@ int pMat::matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia,
                 int JB = jb + 1;
                 int IC = ic + 1;
                 int JC = jc + 1;
-                pdgemm(&tA, &tB, &m, &n, &k, &alpha, A->dataD.data(), &IA, &JA, A->desc, B->dataD.data(), &IB, &JB, B->desc, &beta, dataD.data(), &IC, &JC, desc);
+                pdgemm_(&tA, &tB, &m, &n, &k, &alpha, A->dataD.data(), &IA, &JA, A->desc, B->dataD.data(), &IB, &JB, B->desc, &beta, dataD.data(), &IC, &JC, desc);
         }
         else if ((A->type == 1) && (B->type == 1) && (type == 1))
         {
@@ -373,7 +373,7 @@ int pMat::matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia,
                 Ac.imag = 0;
                 Bc.real = beta;
                 Bc.imag = 0;
-                pzgemm(&tA, &tB, &m, &n, &k, &Ac, A->dataC.data(), &IA, &JA, A->desc, B->dataC.data(), &IB, &JB, B->desc, &Bc, dataC.data(), &IC, &JC, desc);
+                pzgemm_(&tA, &tB, &m, &n, &k, &Ac, A->dataC.data(), &IA, &JA, A->desc, B->dataC.data(), &IB, &JB, B->desc, &Bc, dataC.data(), &IC, &JC, desc);
         }
         else
         {
@@ -393,7 +393,7 @@ int pMat::matrix_Product_sym(char uplo, char trans, int n, int k, double alpha, 
         int JA = ja + 1;
         int IC = ic + 1;
         int JC = jc + 1;
-        pdsyrk(&uplo, &trans, &n, &k, &alpha, A->dataD.data(), &IA, &JA, A->desc, &beta, dataD.data(), &IC, &JC, desc);
+        pdsyrk_(&uplo, &trans, &n, &k, &alpha, A->dataD.data(), &IA, &JA, A->desc, &beta, dataD.data(), &IC, &JC, desc);
 
         return 0;
 }
@@ -411,7 +411,7 @@ int pMat::matrix_vec_product(char trans, int m, int n, double alpha, pMat *A, in
         int JC = jc + 1;
         int INCB = 1;
         int INCC = 1;
-        pdgemv(&trans, &m, &n, &alpha, A->dataD.data(), &IA, &JA, A->desc, B->dataD.data(), &IB, &JB, B->desc, &INCB, &beta, dataD.data(), &IC, &JC, desc, &INCC);
+        pdgemv_(&trans, &m, &n, &alpha, A->dataD.data(), &IA, &JA, A->desc, B->dataD.data(), &IB, &JB, B->desc, &INCB, &beta, dataD.data(), &IC, &JC, desc, &INCC);
 
         return 0;
 }
@@ -427,7 +427,7 @@ int pMat::matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int
                 int JA = ja + 1;
                 int IB = ib + 1;
                 int JB = jb + 1;
-                pdgeadd(&tA, &m, &n, &alpha, A->dataD.data(), &IA, &JA, A->desc, &beta, dataD.data(), &IB, &JB, desc);
+                pdgeadd_(&tA, &m, &n, &alpha, A->dataD.data(), &IA, &JA, A->desc, &beta, dataD.data(), &IB, &JB, desc);
         }
         else if ((A->type == 1) && (type == 1))
         {
@@ -446,7 +446,7 @@ int pMat::matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int
                 Ac.imag = 0;
                 Bc.real = beta;
                 Bc.imag = 0;
-                pzgeadd(&tA, &m, &n, &Ac, A->dataC.data(), &IA, &JA, A->desc, &Bc, dataC.data(), &IB, &JB, desc);
+                pzgeadd_(&tA, &m, &n, &Ac, A->dataC.data(), &IA, &JA, A->desc, &Bc, dataC.data(), &IB, &JB, desc);
         }
         else
         {
@@ -472,8 +472,7 @@ int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         int JA = ja + 1;
         int i_one = 1;
         double t2, t1;
-        pdgesvd(JOBU, JOBVT, &M, &N, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
-
+        pdgesvd_(JOBU, JOBVT, &M, &N, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
         if (stdout)
                 cout << "WORK= " << WORK[0] << ", LWORK= " << LWORK << ", info= " << info << endl;
 
@@ -490,7 +489,7 @@ int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         //SVD run
         MPI_Barrier(MPI_COMM_WORLD);
         t1 = MPI_Wtime();
-        pdgesvd(JOBU, JOBVT, &M, &N, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
+        pdgesvd_(JOBU, JOBVT, &M, &N, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
         t2 = MPI_Wtime();
         if (stdout)
                 cout << "SVD complete in " << t2 - t1 << " seconds" << endl;
@@ -829,7 +828,7 @@ int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string ou
         int info = 0;
         int LWORK = -1;
 
-        pdgeqpf(&m, &n, dataD.data(), &IA, &JA, desc, ipiv.data(), tau.data(), WORK.data(), &LWORK, &info);
+        pdgeqpf_(&m, &n, dataD.data(), &IA, &JA, desc, ipiv.data(), tau.data(), WORK.data(), &LWORK, &info);
         if (stdout)
                 cout << "WORK=" << WORK[0] << " ,LWORK= " << LWORK << ", info= " << info << endl;
         LWORK = WORK[0];
@@ -838,7 +837,7 @@ int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string ou
                 std::cout << "WORK allocated starting QR" << std::endl;
         MPI_Barrier(MPI_COMM_WORLD);
         t1 = MPI_Wtime();
-        pdgeqpf(&m, &n, dataD.data(), &IA, &JA, desc, ipiv.data(), tau.data(), WORK.data(), &LWORK, &info);
+        pdgeqpf_(&m, &n, dataD.data(), &IA, &JA, desc, ipiv.data(), tau.data(), WORK.data(), &LWORK, &info);
         MPI_Barrier(MPI_COMM_WORLD);
         t2 = MPI_Wtime();
         if (stdout)
@@ -912,7 +911,7 @@ int pMat::transpose(pMat *A, int m, int n, int ia, int ja)
         int i_one = 1;
         double ONE = 1.0;
         double ZERO = 0.0;
-        pdtran(&m, &n, &ONE, A->dataD.data(), &IA, &JA, A->desc, &ZERO, dataD.data(), &i_one, &i_one, desc);
+        pdtran_(&m, &n, &ONE, A->dataD.data(), &IA, &JA, A->desc, &ZERO, dataD.data(), &i_one, &i_one, desc);
 }
 int pMat::changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb, bool stdout)
 {
@@ -929,13 +928,13 @@ int pMat::changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb, b
         {
                 if (stdout)
                         cout << "Double changed pGrid" << endl;
-                pdgemr2d(&m, &n, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, &(pG->icntxt));
+                pdgemr2d_(&m, &n, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, &(pG->icntxt));
         }
         if (type == 1)
         {
                 if (stdout)
                         cout << "Complex changed pGrid" << endl;
-                pzgemr2d(&m, &n, A->dataC.data(), &IA, &JA, A->desc, dataC.data(), &IB, &JB, desc, &(pG->icntxt));
+                pzgemr2d_(&m, &n, A->dataC.data(), &IA, &JA, A->desc, dataC.data(), &IB, &JB, desc, &(pG->icntxt));
         }
 }
 int pMat::changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb)
@@ -958,12 +957,12 @@ int pMat::dMax(int dim, int rc, double &val, int &index)
         if (dim == 0)
         {
                 int IA = 1, JA = rc + 1, i_one = 1;
-                pdamax(&M, &val, &index, dataD.data(), &IA, &JA, desc, &i_one);
+                pdamax_(&M, &val, &index, dataD.data(), &IA, &JA, desc, &i_one);
         }
         if (dim == 1)
         {
                 int IA = rc + 1, JA = 1, i_one = 1;
-                pdamax(&N, &val, &index, dataD.data(), &IA, &JA, desc, &M);
+                pdamax_(&N, &val, &index, dataD.data(), &IA, &JA, desc, &M);
         }
 
 		index--; // return to C indexing
@@ -975,12 +974,12 @@ int pMat::dSum(int dim, int rc, double &val)
         if (dim == 0)
         {
                 int IA = 1, JA = rc + 1, i_one = 1;
-                pdasum(&M, &val, dataD.data(), &IA, &JA, desc, &i_one);
+                pdasum_(&M, &val, dataD.data(), &IA, &JA, desc, &i_one);
         }
         if (dim == 1)
         {
                 int IA = rc + 1, JA = 1, i_one = 1;
-                pdasum(&N, &val, dataD.data(), &IA, &JA, desc, &M);
+                pdasum_(&N, &val, dataD.data(), &IA, &JA, desc, &M);
         }
 }
 
@@ -1023,7 +1022,7 @@ int pMat::leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int
 	int JB = jb + 1;
 
 	// get LWORK and WORK
-	pdgels(&trans, &m, &n, &nrhs, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, WORK.data(), &LWORK, &info);
+	pdgels_(&trans, &m, &n, &nrhs, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, WORK.data(), &LWORK, &info);
 
 	// cout << "WORK = " << WORK[0] << ", LWORK = " << LWORK << ", info = " << info << endl;
 
@@ -1040,7 +1039,7 @@ int pMat::leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int
 	// least squares solve
 	double t1, t2;
 	t1 = MPI_Wtime();
-	pdgels(&trans, &m, &n, &nrhs, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, WORK.data(), &LWORK, &info);
+	pdgels_(&trans, &m, &n, &nrhs, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, WORK.data(), &LWORK, &info);
 	t2 = MPI_Wtime();
 	// cout << "Least-squares solve complete in " << t2 - t1 << " seconds" << endl;
 	WORK.resize(0);

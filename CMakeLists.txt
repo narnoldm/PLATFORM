@@ -9,7 +9,7 @@ find_package(MPI REQUIRED)
 include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 
 set(CMAKE_CXX_STANDARD 17)
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread -lstdc++ -lgfortran")
 set(TECDIR ${CMAKE_CURRENT_SOURCE_DIR}/3rd_Party/tecio/teciosrc)
 
 
@@ -68,7 +68,11 @@ ExternalProject_Add(Scalapack
     UPDATE_COMMAND ""
 )
 set(SCALAPACK_LIB_DIR ${SCALAPACK_INSTALL_DIR}/lib/)
-set(SCALAPACK_INC_DIR ${SCALAPACK_INSTALL_DIR}/include/)
+add_library(scalapack SHARED IMPORTED)
+find_package(LAPACK)
+
+set_target_properties(scalapack PROPERTIES IMPORTED_LOCATION ${SCALAPACK_LIB_DIR}/libscalapack.a)
+target_link_libraries(scalapack INTERFACE ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES} gfortran)
 endif()
 
 
