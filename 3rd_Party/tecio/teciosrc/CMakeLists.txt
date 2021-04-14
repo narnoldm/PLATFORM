@@ -1,18 +1,19 @@
-cmake_minimum_required(VERSION 2.8.12) # requiring 2.8.12 sets the CMP0022 policy to new (non-transitive linking, i.e. just the interfaces) by default
+
+
+
 
 if (NOT CMAKE_BUILD_TYPE)
     set (CMAKE_BUILD_TYPE Release CACHE STRING "CMake build type (Debug|Release)" FORCE)
 endif ()
 
-project (tecio C CXX)
 
-FIND_PACKAGE(Boost)
-IF (Boost_FOUND)
-    INCLUDE_DIRECTORIES(SYSTEM ${Boost_INCLUDE_DIR})
-ELSE()
-  Set (Boost_INCLUDE_DIR /3rdpartylibs/boost/1.59.0/build/linux64-centos6.5/include)
-  message ("Warning:  Cannot find boost include directories.  Hardcoding to ${Boost_INCLUDE_DIR}")
-ENDIF()
+#FIND_PACKAGE(Boost)
+#IF (Boost_FOUND)
+#    INCLUDE_DIRECTORIES(SYSTEM ${Boost_INCLUDE_DIR})
+#ELSE()
+#  Set (Boost_INCLUDE_DIR /3rdpartylibs/boost/1.59.0/build/linux64-centos6.5/include)
+#  message ("Warning:  Cannot find boost include directories.  Hardcoding to ${Boost_INCLUDE_DIR}")
+#ENDIF()
 include_directories(.)
 
 IF (WIN32)
@@ -26,6 +27,7 @@ FILE(GLOB mainFiles "*.cpp" "*.h")
 
 
 add_library(tecio STATIC ${mainFiles})
-
+add_dependencies(tecio Boost)
+target_include_directories(tecio PUBLIC ${Boost_INCLUDE_DIR})
 # Had to add this so building tecio care package within loci-chem works...
 set_target_properties(tecio PROPERTIES LINKER_LANGUAGE CXX)
