@@ -14,17 +14,21 @@ add_library(pMat STATIC pMat.cpp processGrid.cpp)
 
 add_dependencies(pMat Eigen3)
 
-target_link_libraries(pMat PUBLIC ${MPI_C_LIBRARIES})
+
 if(${isINTEL})
 target_link_libraries(pMat PRIVATE ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -lpthread -lm -ldl) 
 target_include_directories(pMat PUBLIC ${MKLROOT}/include ${EIGEN_INSTALL_LOCATION}/include)
 else()
-target_link_libraries(pMat PRIVATE ${SCALAPACK_LIB})
+add_dependencies(pMat Scalapack)
+message("${SCALAPACK_LIB_DIR}")
+target_link_libraries(pMat PUBLIC ${SCALAPACK_LIB_DIR}/libscalapack.a)
+target_include_directories(pMat PUBLIC ${SCALAPACK_INC_DIR})
 endif()
-
+target_link_libraries(pMat PUBLIC ${MPI_C_LIBRARIES})
+target_include_directories(pMat PUBLIC ${Eigen_INCLUDE_DIR})
 
 add_library(meta STATIC metadata.cpp misc_func.cpp)
 target_include_directories(meta PUBLIC ${TECDIR})
-target_link_libraries(meta pMat ${TECDIR}/libtecio.a)
+target_link_libraries(meta pMat tecio)
 add_library(param STATIC param.cpp)
 target_include_directories(param PRIVATE)
