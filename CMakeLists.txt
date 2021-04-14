@@ -68,15 +68,11 @@ ExternalProject_Add(Scalapack
     UPDATE_COMMAND ""
 )
 set(SCALAPACK_LIB_DIR ${SCALAPACK_INSTALL_DIR}/lib/)
-<<<<<<< HEAD
 add_library(scalapack SHARED IMPORTED)
 find_package(LAPACK)
 
 set_target_properties(scalapack PROPERTIES IMPORTED_LOCATION ${SCALAPACK_LIB_DIR}/libscalapack.a)
 target_link_libraries(scalapack INTERFACE ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES} gfortran)
-=======
-set(SCALAPACK_INC_DIR ${SCALAPACK_INSTALL_DIR}/include/)
->>>>>>> b52a365b49af576b3244561d44ccf66f582a2520
 endif()
 
 
