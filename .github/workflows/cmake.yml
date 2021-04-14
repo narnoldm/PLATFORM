@@ -16,7 +16,7 @@ jobs:
 
     steps:
     - name: download-openmpi
-      run: sudo apt-get install openmpi-common
+      run: sudo apt-get install openmpi-bin
     
     - uses: actions/checkout@v2
 
