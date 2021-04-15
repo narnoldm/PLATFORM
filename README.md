@@ -1,5 +1,5 @@
 
-https://github.com/narnoldm/PDP/actions/workflows/cmake.yml/badge.svg
+[![Build Status](https://github.com/narnoldm/PDP/actions/workflows/cmake.yml/badge.svg)
 
 
 <h1> Parallel Data Processor (PDP) <h1>
