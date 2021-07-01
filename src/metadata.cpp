@@ -982,7 +982,7 @@ void tecIO::calcNorm(pMat *dataMat)
             MPI_Allreduce(MPI_IN_PLACE, normFactor.data() + i, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
             cout << "Synched norm factor for " << varName[i] << " is : " << normFactor[i] << endl;
         }
-        /*if(dataMat->pG->rank == 0)
+        if(dataMat->pG->rank == 0)
         {
                 std::vector<double> normVec(numVars * nCells);
                 for (int i = 0; i < numVars; i++)
@@ -993,10 +993,10 @@ void tecIO::calcNorm(pMat *dataMat)
                         }
                 }
                 writeSingle(snap0, normVec.data(), "norm");
-                printASCIIVecP0("norm.data",normVec.data(),normVec.size());
+                printASCIIVecP0("norm.data",normVec,normVec.size());
                 normVec.clear();
                 //delete [] normVec;
-        }*/
+        }
     }
     else
     {
