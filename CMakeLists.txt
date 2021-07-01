@@ -15,7 +15,7 @@ set(TECDIR ${CMAKE_CURRENT_SOURCE_DIR}/3rd_Party/tecio/teciosrc)
 
 
 ExternalProject_add(Boost 
-    URL https://dl.bintray.com/boostorg/release/1.75.0/source/boost_1_75_0.tar.gz
+    URL https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.gz
     CMAKE_ARGS -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
     UPDATE_COMMAND ""
     CONFIGURE_COMMAND ""
