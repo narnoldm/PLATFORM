@@ -117,8 +117,9 @@ void aggregateTiming(double t, string filename, string label) {
 		double standard_dev = sqrt(global_squareDiff / double(num_procs - 1));
 		ofstream out;
 		out.open(filename, ios::app);
+		out << "=================================" << endl;
 		out << label << " timings" << endl;
-		out << "==================" << endl;
+		out << "=================================" << endl;
 		out << "Average: " << to_string(average) << endl;
 		out << "Maximum: " << to_string(maximum) << endl;
 		out << "Minimum: " << to_string(minimum) << endl;

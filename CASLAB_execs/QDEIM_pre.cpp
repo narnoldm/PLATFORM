@@ -16,7 +16,10 @@ int main(int argc, char *argv[])
 
 	paramMap inputFile("QR_pre.inp", rank); 	// input file
 
-	double t2, t1;
+	// timing variables and output file
+	double t0_start, t0_end, t1_start, t1_end, t2_start, t2_end;
+	string timingOutput = "timings.dat";
+	t0_start = MPI_Wtime();
 
 	int debug_proc = 0;
 	inputFile.getParamInt("stdout_proc", debug_proc);
@@ -147,15 +150,15 @@ int main(int argc, char *argv[])
 	if (readRHSSnaps)
 	{
 		A = new pMat(datasetRHS->nPoints, datasetRHS->nSets, evenG, 0, 0, 0.0, false);
-		t1 = MPI_Wtime();
+		t1_start = MPI_Wtime();
 		datasetRHS->batchRead(A);
-		t2 = MPI_Wtime();
-		cout << "Load took " << t2 - t1 << " seconds" << endl;
+		t1_end = MPI_Wtime();
+		aggregateTiming(t1_end - t1_start, timingOutput, "Residual snapshot load");
 
 		nCells = dynamic_cast<tecIO *>(datasetRHS)->nCells;
 		nVars  = dynamic_cast<tecIO *>(datasetRHS)->numVars;
 
-		t1 = MPI_Wtime();
+		t1_start = MPI_Wtime();
 
 		// TODO: this would need to include options to set centering and normalization profiles
 		tecIO *datasetTec = dynamic_cast<tecIO *>(datasetRHS);
@@ -164,8 +167,9 @@ int main(int argc, char *argv[])
 		datasetTec->calcNorm(A);
 		datasetTec->normalize(A);
 
-		t2 = MPI_Wtime();
-		cout << "Preprocessing took " << t2 - t1 << " seconds" << endl;
+		t1_end = MPI_Wtime();
+		aggregateTiming(t1_end - t1_start, timingOutput, "Residual snapshot preprocessing");
+
 		int MRHS = datasetRHS->nPoints; 
 		int NRHS = datasetRHS->nSets;
 
@@ -212,6 +216,7 @@ int main(int argc, char *argv[])
 		// read modes from disk
 		URHS = new pMat(datasetRHS->nPoints, datasetRHS->nSets, evenG, false);
 
+		t1_start = MPI_Wtime();
 		if ( (interpolantFormat == 1) && (inputMatch || (modesDiff && (numModesRHS < numModesMax)))) {
 			// if bases are identical, or if same basis set and solution basis has more modes, just load it now
 			USol = new pMat(datasetSol->nPoints, datasetSol->nSets, evenG, false);
@@ -221,6 +226,8 @@ int main(int argc, char *argv[])
 			// if bases totally different, of solution basis set is same but has more modes than RHS basis, load solution basis now
 			datasetRHS->batchRead(URHS);
 		}
+		t1_end = MPI_Wtime();
+		aggregateTiming(t1_end - t1_start, timingOutput, "Residual mode load");
 
 		// URHS_T is just transpose of URHS
 		URHS_T = new pMat(numModesRHS, URHS->M, evenG, false); 						
@@ -242,15 +249,15 @@ int main(int argc, char *argv[])
 			// if inputMatch, this has already been computed
 			if (!inputMatch) {
 				A = new pMat(datasetSol->nPoints, datasetSol->nSets, evenG, 0, 0, 0.0, false);
-				t1 = MPI_Wtime();
+				t1_start = MPI_Wtime();
 				datasetSol->batchRead(A);
-				t2 = MPI_Wtime();
-				cout << "Load took " << t2 - t1 << " seconds" << endl;
+				t1_end = MPI_Wtime();
+				aggregateTiming(t1_end - t1_start, timingOutput, "Solution snapshot load");
 
 				assert(nCells == dynamic_cast<tecIO *>(datasetSol)->nCells);
 				assert(nVars  == dynamic_cast<tecIO *>(datasetSol)->numVars);
 
-				t1 = MPI_Wtime();
+				t1_start = MPI_Wtime();
 
 				// TODO: this would need to include options to set centering and normalization profiles
 				tecIO *datasetTec = dynamic_cast<tecIO *>(datasetSol);
@@ -259,8 +266,8 @@ int main(int argc, char *argv[])
 				datasetTec->calcNorm(A);
 				datasetTec->normalize(A);
 
-				t2 = MPI_Wtime();
-				cout << "Preprocessing took " << t2 - t1 << " seconds" << endl;
+				t1_end = MPI_Wtime();
+				aggregateTiming(t1_end - t1_start, timingOutput, "Solution snapshot preprocessing");
 				int MSol = datasetSol->nPoints; 
 				int NSol = datasetSol->nSets;
 
@@ -293,7 +300,10 @@ int main(int argc, char *argv[])
 
 				// otherwise just load from disk
 				} else {
+					t1_start = MPI_Wtime();
 					datasetSol->batchRead(USol);
+					t1_end = MPI_Wtime();
+					aggregateTiming(t1_end - t1_start, timingOutput, "Solution basis load");
 				}
 			}
 
@@ -318,8 +328,11 @@ int main(int argc, char *argv[])
 	vector<int> P;
 
 	if (sampType != 3) {
+		t1_start = MPI_Wtime();
 		cout << "Computing QR decomposition..." << endl;
 		URHS_T->qr_run(URHS_T->M, URHS_T->N, 0, 0, P, "./", false);  // contents of URHS_T are DESTROYED during QR decomposition
+		t1_end = MPI_Wtime();
+		aggregateTiming(t1_end - t1_start, timingOutput, "QR decomposition");
 	}
 	destroyPMat(URHS_T, false); 
 
@@ -328,7 +341,8 @@ int main(int argc, char *argv[])
 	set<int> samplingPoints;
 
 	// get QR and boundary points
-	//t1 = MPI_Wtime();
+	t1_start = MPI_Wtime();
+	t2_start = MPI_Wtime();
 
 	// all sampling here is done by rank 0 process
 	if (rank == 0)
@@ -400,7 +414,7 @@ int main(int argc, char *argv[])
 			for (int bc = 0; bc < numSampledBounds; ++bc) {
 				
 				int numBoundsSamples = bcCount[bc] * bcPercs[bc];
-				cout << "Sampling " << to_string(numBoundsSamples) << " cells from boundary " << to_string(bcLabels[bc]) << endl;
+				cout << "Sampling " << to_string(numBoundsSamples) << "/" << to_string(bcCount[bc]) << " cells from boundary " << to_string(bcLabels[bc]) << endl;
 				bPoints.resize(bcCount[bc], 0);
 				for (int i = 0; i < bPoints.size(); i++)
 					bPoints[i] = i;
@@ -423,9 +437,12 @@ int main(int argc, char *argv[])
 
 	}
 	MPI_Barrier(MPI_COMM_WORLD);
+	t2_end = MPI_Wtime(); // this is a serial timing, so has to be right after barrier
+	aggregateTiming(t2_end - t2_start, timingOutput, "Boundary sampling");
 
 	// oversampling
 	bool allPoints = false;
+	t2_start = MPI_Wtime();
 
 	// random oversampling
 	if (sampType == 0) {
@@ -723,8 +740,11 @@ int main(int argc, char *argv[])
 		cout << "Invalid choice of sampling type: " << sampType << endl;
 	} 
 	MPI_Barrier(MPI_COMM_WORLD);
+	t2_end = MPI_Wtime();
+	aggregateTiming(t2_end - t2_start, timingOutput, "Oversampling");
+	t1_end = MPI_Wtime();
+	aggregateTiming(t1_end - t1_start, "timings.dat", "Full sampling");
 
-	
 	if (rank == 0) {
 		gP.resize(samplingPoints.size(), 0);
 		vector<double> gPD; // gP, but doubles
@@ -754,9 +774,6 @@ int main(int argc, char *argv[])
 
 	}
 
-	//t2 = MPI_Wtime();
-	//cout << "Finding all samples took " << t2 - t1 << " seconds" << endl;
-
 	if (rank != 0)
 	{
 		gP.resize(PointsNeeded, 0);
@@ -778,19 +795,18 @@ int main(int argc, char *argv[])
 	// multiply URHS by actual selection matrix
 
 	// copying individual rows of URHS
-	t1 = MPI_Wtime();
+	t1_start = MPI_Wtime();
 	for (int i = 0; i < gP.size(); i++)
 	{
 		cout << (double)i / gP.size() * 100 << " percent points extracted \r";
 		for (int j = 0; j < nVars; j++)
 			URHS_samp->changeContext(URHS, 1, numModesRHS, gP[i] + j * nCells, 0, i + j * gP.size(), 0, false);
 	}
-	t2 = MPI_Wtime();
-	cout << endl << "Extraction of RHS basis rows took " << t2 - t1 << " seconds" << endl;
+	t1_end = MPI_Wtime();
+	aggregateTiming(t1_end - t1_start, "timings.dat", "Residual basis row extraction");
 
 
-	t1 = MPI_Wtime();
-
+	t1_start = MPI_Wtime();
 	// compute [P^T * URHS]^+ component of DEIM interpolant
 	cout << "Computing pseudo-inverse..." << endl;
 	pMat *pinvURHS_samp = new pMat(URHS_samp->N, URHS_samp->M, evenG, false);
@@ -808,8 +824,7 @@ int main(int argc, char *argv[])
 		cout << "Computing complete DEIM interpolant..." << endl;
 		pMat *deimInterp = new pMat(USol_URHS->M, pinvURHS_samp->N, evenG, false);
 		deimInterp->matrix_Product('N', 'N', deimInterp->M, deimInterp->N, pinvURHS_samp->M, USol_URHS, 0, 0, pinvURHS_samp, 0, 0, 1.0, 0.0, 0, 0);
-		t2 = MPI_Wtime();
-		cout << "DEIM interpolant calculation took " << t2 - t1 << " seconds" << endl;
+		
 
 		destroyPMat(USol_URHS, false);
 		destroyPMat(pinvURHS_samp, false);
@@ -826,12 +841,13 @@ int main(int argc, char *argv[])
 		destroyPMat(pinvURHS_samp, false);
 
 	}
-
+	t1_end = MPI_Wtime();
+	aggregateTiming(t1_end - t1_start, "timings.dat", "Interpolant calculation");
 	
 	// write DEIM interpolant to disk
 	// insert zeros where it is not sampled, for GEMS input
 	cout << "Emplacing zeros into DEIM interpolant..." << endl;
-	t1 = MPI_Wtime();
+	t1_start = MPI_Wtime();
 	pMat *deimInterpOut = new pMat(datasetRHS->nPoints, numModesRHS, evenG, false);
 	for (int i = 0; i < gP.size(); i++)
 	{
@@ -839,10 +855,11 @@ int main(int argc, char *argv[])
 		for (int j = 0; j < nVars; j++)
 			deimInterpOut->changeContext(deimInterp_T, 1, numModesRHS, i + j * gP.size(), 0, gP[i] + j * nCells, 0, false);
 	}
-	t2 = MPI_Wtime();
-	cout << endl << "DEIM emplacement took " << t2 - t1 << " seconds" << endl;
+	t1_end = MPI_Wtime();
+	aggregateTiming(t1_end - t1_start, "timings.dat", "Interpolant zero emplacement");
 
 	// what is the purpose of this? We can't use this stuff with GEMS, and it will get activated no matter what if computing the SVD
+	t1_start = MPI_Wtime();
 	if (readSolSnaps || readRHSSnaps) {
 		tecIO *datasetOut = new tecIO();
 		datasetOut->snap0 = 1;
@@ -870,11 +887,8 @@ int main(int argc, char *argv[])
 
 		datasetOut->activateReorder(firstFileSnaps.c_str());
 		datasetOut->activateGEMSbin(firstFileSnaps.c_str());
-		t1 = MPI_Wtime();
 		datasetOut->batchWrite(deimInterpOut, "./", deimPrefix);
-		t2 = MPI_Wtime();
-		cout << "Output took " << t2 - t1 << " seconds" << endl;
-	
+		
 	} else {
 		meta *datasetOut = new meta();
 		datasetOut->snap0 = 1;
@@ -887,11 +901,13 @@ int main(int argc, char *argv[])
 
 		datasetOut->nPoints = nCells * nVars;
 		assert(datasetOut->nPoints == nCells * nVars);
-		t1 = MPI_Wtime();
 		datasetOut->batchWrite(deimInterpOut, "./", deimPrefix);
-		t2 = MPI_Wtime();
-		cout << "Output took " << t2 - t1 << " seconds" << endl;
 	}
+	t1_end = MPI_Wtime();
+	aggregateTiming(t1_end - t1_start, "timings.dat", "Interpolant mode write");
+
+	t0_end = MPI_Wtime();
+	aggregateTiming(t0_end - t0_start, timingOutput, "Complete run");
 
 	cout.rdbuf(strm_buffer);
 	MPI_Finalize();
