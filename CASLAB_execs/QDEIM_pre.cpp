@@ -348,9 +348,9 @@ int main(int argc, char *argv[])
 	}
 	destroyPMat(URHS_T, false); 
 
-	vector<int> gP;		// gP will contain zero-indexed cell IDs of sampled cells
+	vector<int> gP; // will contain zero-indexed cell IDs of sampled cells
 	vector<int> itype;
-	set<int> samplingPoints;
+	set<int> samplingPoints;  // set version of gP, for automatically rejecting repeated entries
 
 	// get QR and boundary points
 	t1_start = MPI_Wtime();
@@ -360,8 +360,11 @@ int main(int argc, char *argv[])
 	if (rank == 0)
 	{
 		if (sampType != 3) {
-			readMat(qrSampBin, gP); 	// automatically resizes gP to nDOF (the size of P.bin)
-			gP.resize(numModesRHS); 	// resize it back down to numModesRHS. I feel like readMat just read the first numModesRHS integers? Seems inefficient.
+
+			// read QR samples
+			// gP MAY contain DOFs corresponding to the SAME CELL at this point
+			readMat(qrSampBin, gP);
+			gP.resize(numModesRHS);
 
 			// sampled QR cells
 			cout << "Extracting QR points..." << endl;
@@ -380,6 +383,11 @@ int main(int argc, char *argv[])
 			}
 			cout << "Goal is " << PointsNeeded << " points" << endl;
 			cout << "Points after qr: " << samplingPoints.size() << " of " << PointsNeeded << endl;
+
+			// gP now only contains unique sampled cell indices
+			gP.resize(samplingPoints.size(), 0);
+			copy(samplingPoints.begin(), samplingPoints.end(), gP.begin());
+
 		}
 
 		// get desired boundary labels
@@ -436,6 +444,8 @@ int main(int argc, char *argv[])
 					auto check = samplingPoints.emplace(bcIDs[bc][bPoints[it]]); //  add index of interator (i.e. cell_id, zero-indexed)
 					if (!check.second) {
 						cout << "Repeated element " << bcIDs[bc][bPoints[it]] << "\r";
+					} else {
+						gP.push_back(bcIDs[bc][bPoints[it]]); // need to keep track of this for GappyPOD+E
 					}
 				}
 			}
@@ -502,7 +512,7 @@ int main(int argc, char *argv[])
 		pMat *U_E, *VT_E;
 		vector<double> S_E;
 		int M, N, minDim;
-		int numQRPoints, numCurrentPoints, numCurrentDOFs;
+		int numInitPoints, numCurrentPoints, numCurrentDOFs;
 		int cellID;
 
 		pMat *rVec = new pMat(1, nDOF, evenG, false);
@@ -510,34 +520,42 @@ int main(int argc, char *argv[])
 
 		// sort and broadcast gP to all processes
 		if (rank == 0)
-			numQRPoints = samplingPoints.size();
+			numInitPoints = gP.size();
 
-		MPI_Bcast(&numQRPoints, 1, MPI_INT, 0, MPI_COMM_WORLD);
+		MPI_Bcast(&numInitPoints, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		if (rank != 0)
-			gP.resize(numQRPoints, 0);
+			gP.resize(numInitPoints, 0);
 		MPI_Bcast(gP.data(), gP.size(), MPI_INT, 0, MPI_COMM_WORLD);
-		numCurrentPoints = numQRPoints;
+		numCurrentPoints = numInitPoints;
 
-		// grab first QR point rows, BUT ordered by cell, then by var
+		// grab initial cell rows, BUT ordered by cell, then by var
 		pMat *URHS_samp_E = new pMat(PointsNeeded*nVars, datasetRHS->nSets, evenG, false);
 		pMat *URHS_samp_E_copy = new pMat(PointsNeeded*nVars, datasetRHS->nSets, evenG, false);
 		for (int j = 0; j < numCurrentPoints; ++j) {
+			cout << (double)j / numCurrentPoints * 100 << " percent points extracted \r";
 			for (int k = 0; k < nVars; ++k)
 				URHS_samp_E_copy->changeContext(URHS, 1, numModesRHS, gP[j] + k * nCells, 0, j * nVars + k, 0, false);
 		}
 
+		// local timing variables
+		double tE_start;
+		double tE1, tE2, tE3, tE4, tE5, tE6;
+		tE1 = 0.0; tE2 = 0.0; tE3 = 0.0; tE4 = 0.0; tE5 = 0.0; tE6 = 0.0;
+
 		// loop over number of requires samples left
-		int outFreq = (PointsNeeded - numQRPoints)/1000 + 1; 	// this is potentially a lot of output, scale to roughly 1000 lines of output
-		for (int i = 0; i < (PointsNeeded - numQRPoints); ++i) {
+		int outFreq = (PointsNeeded - numInitPoints)/1000 + 1; 	// this is potentially a lot of output, scale to roughly 1000 lines of output
+		for (int i = 0; i < (PointsNeeded - numInitPoints); ++i) {
 
 			if ( (i % outFreq) == 0)
-				cout << (double)i / (PointsNeeded - numQRPoints) * 100 << " percent GappyPOD+E points sampled \r";
+				cout << (double)i / (PointsNeeded - numInitPoints) * 100 << " percent GappyPOD+E points sampled \r";
 
 			numCurrentDOFs = numCurrentPoints * nVars;
 
 			// copy first numCurrentDOFs rows from URHS_samp_E_copy to URHS_samp_E
 			// we do this because URHS_samp_E will be destroyed during the SVD
+			tE_start = MPI_Wtime();
 			URHS_samp_E->changeContext(URHS_samp_E_copy, numCurrentDOFs, numModesRHS, 0, 0, 0, 0, false);
+			tE1 += (MPI_Wtime() - tE_start);
 
 			// compute SVD of sampled URHS, hold on to singular values and RIGHT singular vectors
 			M = numCurrentDOFs; 
@@ -548,13 +566,18 @@ int main(int argc, char *argv[])
 			VT_E = new pMat(minDim, N, evenG, false); // this *might* not need to be reallocated/deleted every iterations, could always be [numModesRHS x numModesRHS]
 			S_E.resize(minDim, 0.0);
 
+			tE_start = MPI_Wtime();
 			URHS_samp_E->svd_run(M, N, 0, 0, U_E, VT_E, S_E, false); // contents of URHS_samp_E are destroyed during SVD
+			tE2 += (MPI_Wtime() - tE_start);
 			destroyPMat(U_E, false);
 
 			// compute vector-matrix product of last right singular vector transposed and URHS transposed
+			tE_start = MPI_Wtime();
 			rVec->matrix_Product('N', 'T', 1, nDOF, minDim, VT_E, minDim-1, 0, URHS, 0, 0, 1.0, 0.0, 0, 0);
+			tE3 += (MPI_Wtime() - tE_start);
 			destroyPMat(VT_E, false);
 
+			tE_start = MPI_Wtime();
 			// zero out DOFs that have already been selected
 			for (int j = 0; j < rVec->dataD.size(); ++j) {
 				if (nonUniqueVec->dataD[j] == 1.0)
@@ -565,8 +588,11 @@ int main(int argc, char *argv[])
 			for (int j = 0; j < rVec->dataD.size(); ++j)
 				rVec->dataD[j] = rVec->dataD[j] * rVec->dataD[j];
 
+			tE4 += (MPI_Wtime() - tE_start);
+
 			// get unique cell ID
 			int breakSignal = 0;
+			tE_start = MPI_Wtime();
 			for (int j = 0; j < nDOF; ++j) {
 
 				double maxGlobal = 0;
@@ -609,6 +635,7 @@ int main(int argc, char *argv[])
 				}
 				
 			}
+			tE5 += (MPI_Wtime() - tE_start);
 
 			// broadcast new cell ID to all processes, insert into gP vector
 			MPI_Bcast(&cellID, 1, MPI_INT, 0, MPI_COMM_WORLD);			
@@ -616,10 +643,20 @@ int main(int argc, char *argv[])
 			numCurrentPoints++;
 
 			// append newly sampled rows of URHS to URHS_samp_E_copy
+			tE_start = MPI_Wtime();
 			for (int k = 0; k < nVars; ++k)
 				URHS_samp_E_copy->changeContext(URHS, 1, numModesRHS, k * nCells + gP.back(), 0, (numCurrentPoints-1) * nVars + k, 0, false);
+			tE6 += (MPI_Wtime() - tE_start);
 
 		}
+
+		// aggregate timings
+		aggregateTiming(tE1, timingOutput, "GPOD+E - URHS_samp_E copy");
+		aggregateTiming(tE2, timingOutput, "GPOD+E - SVD");
+		aggregateTiming(tE3, timingOutput, "GPOD+E - rVec solve");
+		aggregateTiming(tE4, timingOutput, "GPOD+E - Zero and square");
+		aggregateTiming(tE5, timingOutput, "GPOD+E - Find unique");
+		aggregateTiming(tE6, timingOutput, "GPOD+E - Append rows");
 
 		// cleanup
 		cout << endl;
@@ -755,7 +792,7 @@ int main(int argc, char *argv[])
 	t2_end = MPI_Wtime();
 	aggregateTiming(t2_end - t2_start, timingOutput, "Oversampling");
 	t1_end = MPI_Wtime();
-	aggregateTiming(t1_end - t1_start, "timings.dat", "Full sampling");
+	aggregateTiming(t1_end - t1_start, timingOutput, "Full sampling");
 
 	if (rank == 0) {
 		gP.resize(samplingPoints.size(), 0);
