@@ -19,7 +19,13 @@ int main(int argc, char *argv[])
 	// timing variables and output file
 	double t0_start, t0_end, t1_start, t1_end, t2_start, t2_end;
 	string timingOutput = "timings.dat";
-	t0_start = MPI_Wtime();
+
+	// clear timing file if it already exists
+	ofstream out;
+	out.open(timingOutput, ofstream::out | ofstream::trunc);
+	out.close();
+
+	t0_start = MPI_Wtime(); // full program timing
 
 	int debug_proc = 0;
 	inputFile.getParamInt("stdout_proc", debug_proc);
@@ -326,13 +332,19 @@ int main(int argc, char *argv[])
 	// This writes the pivot indices to disk, since it's easier to do this than collect to rank 0 process
 	int PointsNeeded = max(numModesRHS, int(nCells * pSampling)); // total number of cells that need to be sampled
 	vector<int> P;
-
+	string qrSampBin = "P.bin";
 	if (sampType != 3) {
-		t1_start = MPI_Wtime();
-		cout << "Computing QR decomposition..." << endl;
-		URHS_T->qr_run(URHS_T->M, URHS_T->N, 0, 0, P, "./", false);  // contents of URHS_T are DESTROYED during QR decomposition
-		t1_end = MPI_Wtime();
-		aggregateTiming(t1_end - t1_start, timingOutput, "QR decomposition");
+		try {
+			inputFile.getParamString("qrSampBin", qrSampBin);
+			cout << "Retrieving QR sampling points from " << qrSampBin << endl;
+		} catch (int e) {
+			cout << "qrSampBin not specified, computing it now." << endl;
+			t1_start = MPI_Wtime();
+			cout << "Computing QR decomposition..." << endl;
+			URHS_T->qr_run(URHS_T->M, URHS_T->N, 0, 0, P, "./", false);  // contents of URHS_T are DESTROYED during QR decomposition
+			t1_end = MPI_Wtime();
+			aggregateTiming(t1_end - t1_start, timingOutput, "QR decomposition");
+		}
 	}
 	destroyPMat(URHS_T, false); 
 
@@ -348,7 +360,7 @@ int main(int argc, char *argv[])
 	if (rank == 0)
 	{
 		if (sampType != 3) {
-			readMat("P.bin", gP); 	// automatically resizes gP to nDOF (the size of P.bin)
+			readMat(qrSampBin, gP); 	// automatically resizes gP to nDOF (the size of P.bin)
 			gP.resize(numModesRHS); 	// resize it back down to numModesRHS. I feel like readMat just read the first numModesRHS integers? Seems inefficient.
 
 			// sampled QR cells
