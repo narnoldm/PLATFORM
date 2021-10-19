@@ -672,6 +672,11 @@ int main(int argc, char *argv[])
 		int numCurrentDOFs;
 		int modeThresh, modeIdx; 
 		int cellID;
+		
+		// local timing variables
+		double tD_start;
+		double tD1, tD2, tD3, tD4, tD5, tD6;
+		tD1 = 0.0; tD2 = 0.0; tD3 = 0.0; tD4 = 0.0; tD5 = 0.0; tD6 = 0.0;
 
 		pMat *rVec = new pMat(nDOF, 1, evenG, false);
 		pMat *nonUniqueVec = new pMat(nDOF, 1, evenG, false); // marker to determine if a degree of freedom has already been selected
@@ -687,11 +692,14 @@ int main(int argc, char *argv[])
 
 		// loop over number of desired sampling points (index i)
 		int outFreq = PointsNeeded/1000 + 1;
+		tD_start = MPI_Wtime();
 		for (int i = 0; i < PointsNeeded; ++i) {
 
 			if ( (i % outFreq) == 0)
 				cout << (double)i / (PointsNeeded) * 100 << " percent GappyPOD+D points sampled \r";
 
+			
+			tD_start = MPI_Wtime();
 			// zero out DOFs that have already been selected
 			for (int j = 0; j < rVec->dataD.size(); ++j) {
 				if (nonUniqueVec->dataD[j] == 1.0)
@@ -702,10 +710,12 @@ int main(int argc, char *argv[])
 			for (int j = 0; j < rVec->dataD.size(); ++j) {
 				rVec->dataD[j] = abs(rVec->dataD[j]);
 			}
+			tD1 += (MPI_Wtime() - tD_start);
 
 			// find the argmax of rVec
 			// loop until a unique point is added
 			int breakSignal = 0;
+			tD_start = MPI_Wtime();
 			for (int j = 0; j < nDOF; ++j) {
 
 				double maxGlobal = 0;
@@ -748,6 +758,7 @@ int main(int argc, char *argv[])
 				}
 				
 			}
+			tD2 += (MPI_Wtime() - tD_start);
 
 			// broadcast new cell ID to all processes, insert into gP vector
 			MPI_Bcast(&cellID, 1, MPI_INT, 0, MPI_COMM_WORLD);			
@@ -755,9 +766,11 @@ int main(int argc, char *argv[])
 			numCurrentDOFs = (i+1) * nVars;
 
 			// append newly sampled rows of URHS to URHS_samp_E_copy, and transfer to URHS_samp_E (will be destroyed in least-squares solve)
+			tD_start = MPI_Wtime();
 			for (int k = 0; k < nVars; ++k)
 				URHS_samp_E_copy->changeContext(URHS, 1, numModesRHS, k * nCells + gP.back(), 0, i * nVars + k, 0, false);
 			URHS_samp_E->changeContext(URHS_samp_E_copy, numCurrentDOFs, numModesRHS, 0, 0, 0, 0, false);
+			tD3 += (MPI_Wtime() - tD_start);
 
 			modeThresh = min(i+1, numModesRHS); 	// d in paper, forces ceiling of numModesRHS
 			modeIdx = (i+1) % (numModesRHS-1); 		// k in paper, cycles through modes
@@ -768,15 +781,30 @@ int main(int argc, char *argv[])
 			// solve least squares, should ALWAYS be an overdetermined system for systems with more than one variable
 			// on exit, solution is in first modeThresh rows of lsSol
 			// this is the c vector in paper
+			tD_start = MPI_Wtime();
 			lsSol->leastSquares('N', numCurrentDOFs, modeThresh, 1, URHS_samp_E, 0, 0, 0, 0);
+			tD4 += (MPI_Wtime() - tD_start);
 
 			// compute new rvec
 			// first, U[:, 1:d]*c
+			tD_start = MPI_Wtime();
 			rVec->matrix_Product('N', 'N', nDOF, 1, modeThresh, URHS, 0, 0, lsSol, 0, 0, 1.0, 0.0, 0, 0);
+			tD5 += (MPI_Wtime() - tD_start);
+
 			// second, U[:, k] - U[:, 1:d]*c
+			tD_start = MPI_Wtime();
 			rVec->matrix_Sum('N', nDOF, 1, URHS, 0, modeIdx, 0, 0, 1.0, -1.0);
+			tD6 += (MPI_Wtime() - tD_start);
 
 		}
+
+		// aggregate timings
+		aggregateTiming(tD1, timingOutput, "GPOD+D - Zero and absolute val");
+		aggregateTiming(tD2, timingOutput, "GPOD+D - Fine unique");
+		aggregateTiming(tD3, timingOutput, "GPOD+D - Append rows");
+		aggregateTiming(tD4, timingOutput, "GPOD+D - Least squares");
+		aggregateTiming(tD5, timingOutput, "GPOD+D - rVec matmul");
+		aggregateTiming(tD6, timingOutput, "GPOD+D - rVec matsum");
 
 		// cleanup 
 		cout << endl;
