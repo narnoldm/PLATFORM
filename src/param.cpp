@@ -133,10 +133,6 @@ bool paramMap::getParamString(std::string parastr, std::string &Param)
                 }
         }
         std::cout << "param not found " << parastr << std::endl;
-        if (isMPI && (!rank))
-                throw(-1);
-        if (isMPI == false)
-                throw(-1);
 
         return false;
 }

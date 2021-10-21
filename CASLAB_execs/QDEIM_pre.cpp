@@ -332,13 +332,13 @@ int main(int argc, char *argv[])
 	// This writes the pivot indices to disk, since it's easier to do this than collect to rank 0 process
 	int PointsNeeded = max(numModesRHS, int(nCells * pSampling)); // total number of cells that need to be sampled
 	vector<int> P;
-	string qrSampBin = "P.bin";
+	string qrSampBin;
 	if (sampType != 3) {
-		try {
-			inputFile.getParamString("qrSampBin", qrSampBin);
+		if(inputFile.getParamString("qrSampBin", qrSampBin)){
 			cout << "Retrieving QR sampling points from " << qrSampBin << endl;
-		} catch (int e) {
+		} else {
 			cout << "qrSampBin not specified, computing it now." << endl;
+			qrSampBin = "P.bin";
 			t1_start = MPI_Wtime();
 			cout << "Computing QR decomposition..." << endl;
 			URHS_T->qr_run(URHS_T->M, URHS_T->N, 0, 0, P, "./", false);  // contents of URHS_T are DESTROYED during QR decomposition
