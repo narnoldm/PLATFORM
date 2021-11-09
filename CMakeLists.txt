@@ -26,16 +26,6 @@ ExternalProject_add(Boost
 set(Boost_INCLUDE_DIR ${CMAKE_BINARY_DIR}/Boost-prefix/src/Boost)
 
 
-ExternalProject_Add(Eigen3
-    GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
-    CMAKE_ARGS -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} 
-    UPDATE_COMMAND ""
-    CONFIGURE_COMMAND ""
-    CMAKE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND ""
-)
-set(Eigen_INCLUDE_DIR ${CMAKE_BINARY_DIR}/Eigen3-prefix/src/Eigen3)
 
 
 
@@ -74,7 +64,7 @@ endif()
 add_subdirectory(3rd_Party/tecio/teciosrc)
 
 add_subdirectory(src)
-add_subdirectory(executables)
+add_subdirectory(CraftTec_tutorial)
 add_subdirectory(utilities)
 
 

@@ -12,7 +12,7 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 
 add_library(pMat STATIC pMat.cpp processGrid.cpp)
 
-add_dependencies(pMat Eigen3)
+
 
 
 if(${isINTEL})

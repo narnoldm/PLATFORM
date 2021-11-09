@@ -15,7 +15,7 @@
 #include <mkl_scalapack.h>
 
 #endif
-//#include <pblas.h>
+
 
 /// CBLACS functions
 extern "C" void Cblacs_pinfo(int *MYPNUM, int *NPROCS);

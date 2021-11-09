@@ -13,16 +13,11 @@
 #include <sstream>
 #include <algorithm>
 #include <numeric>
+#include <assert.h>
 
 //#include "extern_func.hpp"
 #include "processGrid.hpp"
 
-#ifdef USE_MKL
-#ifndef EIGEN_USE_MKL_ALL
-#define EIGEN_USE_MKL_ALL
-#endif
-#endif
-#include <Eigen/Dense>
 
 /*** 
 *pMat: This file contains the headers for the PGrid and pMat classes.
@@ -33,7 +28,6 @@
 /***
  * pMat class is the underlying structure for all of PDP
  * contains the abstraction needed to call PBLACS and ScaLAPACK functions
- * Refactor is currently needed (note N is number of rows M is number of columns)
  * */
 class pMat
 {
@@ -96,18 +90,6 @@ public:
 	int svd_run(int, int, int, int, pMat *&, pMat *&, std::vector<double> &);
 	int svd_run(int, int, int, int, pMat *&, pMat *&, std::vector<double> &, bool);
 
-	// MOS
-	int mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S);
-	int mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S, int modeStart, int modeEnd);
-	int mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S, int modeStart, int modeEnd,
-				int mosStep, PGrid *procGrid);
-
-	// QR decomposition
-	int qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv);
-	int qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv, std::string outdir, bool stdout);
-
-	// Least-squares 
-	int leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int ja, int ib, int jb); 
 
 	//Utilities
 	int transpose(pMat *);

@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
     tSVD=t2-t1;
     A->read_bin("A.bin");
     t1=MPI_Wtime();
-    A->mos_run(A->M,A->N,0,0,U,VT,S);
+    A->svd_run(A->M,A->N,0,0,U,VT,S);
     t2=MPI_Wtime();
     tMOS=t2-t1;
 
