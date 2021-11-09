@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
     VT2=new pMat(dataset1->nSets,dataset1->nSets,evenG,0,0,0.0);
     S2.resize(dataset1->nSets);
 
-    evenMat->mos_run(dataset1->nPoints,dataset1->nSets,0,0,U2,VT2,S2);
+    evenMat->svd_run(dataset1->nPoints,dataset1->nSets,0,0,U2,VT2,S2);
 
     for(int i=0;i<S2.size();i++)
         cout<<S2[i]<<endl;

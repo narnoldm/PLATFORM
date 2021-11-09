@@ -3,7 +3,6 @@
 #include "metadata.hpp"
 
 
-
 using namespace::std;
 int main(int argc, char *argv[])
 {
@@ -13,11 +12,7 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     std::ofstream sink("/dev/null");
     streambuf *strm_buffer = cout.rdbuf();
-    int out=0;
-    if(argc==2)
-        out=atoi(argv[1]);
-    
-    if (rank != out)
+    if (rank != 0)
     {
         std::cout.rdbuf(sink.rdbuf());
     }
@@ -41,29 +36,53 @@ int main(int argc, char *argv[])
     token.push_back("tecplot");
     token.push_back(prefix);
     token.push_back(suffix);
-    token.push_back("150000");
-    token.push_back("151000");
+    token.push_back("150010");
+    token.push_back("150050");
     token.push_back("10");
     token.push_back("Static_Pressure");
     token.push_back("-1");
-    token.push_back("Temperature");
-    token.push_back("-1");
+    //token.push_back("Temperature");
+    //token.push_back("-1");
     dataset1 = new tecIO(token);
     string outdir="out";
-    string outfile="stuff";
+    string outfile="U";
 
-    
+
     loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
     dataset1->batchRead(loadMat);
-
     evenMat=new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
-
     evenMat->changeContext(loadMat);
-    delete loadMat;
-    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
-    loadMat->changeContext(evenMat);
 
-    dataset1->batchWrite(loadMat,outdir,outfile);
+    pMat *U,*VT;
+    vector<double> S;
+
+    U=new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
+    VT=new pMat(dataset1->nSets,dataset1->nSets,evenG,0,0,0.0);
+    S.resize(dataset1->nSets);
+
+    evenMat->svd_run(dataset1->nPoints,dataset1->nSets,0,0,U,VT,S);
+    VT->printMat();
+    evenMat->changeContext(loadMat);
+
+    pMat *U2,*VT2;
+    vector<double> S2;
+
+    U2=new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
+    VT2=new pMat(dataset1->nSets,dataset1->nSets,evenG,0,0,0.0);
+    S2.resize(dataset1->nSets);
+
+    evenMat->svd_run(dataset1->nPoints,dataset1->nSets,0,0,U2,VT2,S2);
+
+
+
+    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
+    loadMat->changeContext(U);
+
+    dataset1->meshFile = dataset1->prefix+std::to_string(dataset1->snap0)+dataset1->suffix;
+    dataset1->fixedMesh = true;
+
+    dataset1->batchWrite(evenMat,"even",outfile);
+    dataset1->batchWrite(loadMat,"load",outfile);
 
     delete loadMat,evenMatFromLoad,evenMat;
     delete evenG,dataset1;
