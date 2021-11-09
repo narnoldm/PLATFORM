@@ -28,15 +28,6 @@ set(Boost_INCLUDE_DIR ${CMAKE_BINARY_DIR}/Boost-prefix/src/Boost)
 
 
 
-
-
-
-
-
-
-
-
-
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
 message("${CMAKE_CXX_COMPILER_ID} detected")
 set(isINTEL 1)
