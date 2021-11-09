@@ -1,7 +1,7 @@
 
 
 #include "metadata.hpp"
-
+#include "param.hpp"
 
 using namespace::std;
 int main(int argc, char *argv[])
@@ -18,9 +18,7 @@ int main(int argc, char *argv[])
         std::cout.rdbuf(sink.rdbuf());
     }
 
-    cout << "testing binaryset metadata" << endl;
-
-    
+    paramMap p1("demoInput.txt",rank);
 
     string prefix = "testsplit/test";
     string suffix = ".bin";
@@ -28,29 +26,27 @@ int main(int argc, char *argv[])
     PGrid *evenG;
     evenG = new PGrid(rank,size,0);
 
-    pMat *loadMat, *evenMatFromLoad, *evenMat;
+    pMat *evenMat;
 
     string outdir="out";
     string outfile="U";
+    p1.getParamString("outdir",outdir);
+    p1.getParamString("outfile",outfile);
 
     meta *dataset1;
     vector<string> token;
-    token.push_back("input");
-    token.push_back("binaryset");
-    token.push_back(prefix);
-    token.push_back(suffix);
-    token.push_back("1");
-    token.push_back("10");
-    token.push_back("1");
-    //token.push_back("Temperature");
-    //token.push_back("-1");
+
+    string lToken;
+    p1.getParamString("token",lToken);
+
+ 
+    tokenparse(lToken,"|",token);
     dataset1 = new meta(token);
 
 
-    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
-    dataset1->batchRead(loadMat);
-    evenMat=new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
-    evenMat->changeContext(loadMat);
+    evenMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
+    dataset1->batchRead(evenMat);
+
 
     pMat *U,*VT;
     vector<double> S;
@@ -61,28 +57,10 @@ int main(int argc, char *argv[])
     evenMat->svd_run(dataset1->nPoints,dataset1->nSets,0,0,U,VT,S);
     evenMat->outerProductSum(U,'N',VT,'N',S,0);
 
-    for(int i=0;i<S.size();i++)
-        cout<<S[i]<<endl;
 
+    dataset1->batchWrite(U,outdir,outfile);
 
-    pMat *U2,*VT2;
-    vector<double> S2;
-
-    U2=new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,0,0.0);
-    VT2=new pMat(dataset1->nSets,dataset1->nSets,evenG,0,0,0.0);
-    S2.resize(dataset1->nSets);
-
-    evenMat->svd_run(dataset1->nPoints,dataset1->nSets,0,0,U2,VT2,S2);
-
-    for(int i=0;i<S2.size();i++)
-        cout<<S2[i]<<endl;
-
-    loadMat = new pMat(dataset1->nPoints,dataset1->nSets,evenG,0,1,0.0);
-    loadMat->changeContext(U);
-    dataset1->batchWrite(loadMat,outdir,outfile);
-
-    delete loadMat,evenMatFromLoad,evenMat;
-    delete evenG,dataset1;
+   
 
 
     cout.rdbuf(strm_buffer);

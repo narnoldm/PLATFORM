@@ -26,7 +26,6 @@ int main(int argc, char *argv[])
     cout << "testing metadata" << endl;
 
     
-
     string prefix = "testsplit/test";
     string suffix = ".bin";
 
@@ -34,7 +33,6 @@ int main(int argc, char *argv[])
     evenG = new PGrid(rank,size,0);
 
     pMat *loadMat, *evenMatFromLoad, *evenMat;
-
 
     meta *dataset1;
     dataset1 = new meta(1,100,1,prefix,suffix);
