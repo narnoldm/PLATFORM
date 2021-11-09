@@ -29,7 +29,7 @@ PGrid::PGrid(int r, int s, int type)
                 pdims[0] = 1;
                 pdims[1] = 1;
         }
-        cout << rank << " " << size;
+        cout << "rank: "<<rank << " " <<"size: "<< size<<endl;
         cout << "initializing Cblacs" << endl;
         Cblacs_pinfo(&rank, &size);
         Cblacs_get(-1, 0, &icntxt);
@@ -41,12 +41,7 @@ PGrid::PGrid(int r, int s, int type)
         MPI_Barrier(MPI_COMM_WORLD);
         delete[] order;
 }
-PGrid::PGrid(int r, int s)
-{
 
-
-
-}
 PGrid::~PGrid()
 {
         cout << "clearing pblacs buffers" << endl;
