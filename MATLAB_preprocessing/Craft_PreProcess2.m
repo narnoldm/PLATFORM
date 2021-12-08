@@ -18,7 +18,7 @@ cells=l/vars
 
 
 fileStart=251
-fileEnd=750
+fileEnd=2500
 fileSkip=1
 filePrefix='./POD/inj_bot.podqcons'
 
@@ -37,7 +37,7 @@ for i=1:vars
     
 end
 xlabel('Point ID')
-saveas(gca,'Raw_Primitive_Variables.png')
+saveas(gca,'Raw_Cons_Variables.png')
 
 
 %% Serial Scan over fileset to calculate normalization values 
@@ -75,7 +75,7 @@ varNorms=varSums./(cells*fileCount);
 varNorms=sqrt(varNorms)
 
 
-
+format longe
 varNorms
 
 

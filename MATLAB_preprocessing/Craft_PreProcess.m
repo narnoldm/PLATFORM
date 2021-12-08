@@ -7,7 +7,7 @@ clc;clear all;close all;
 %subtraction
 
 
-A1=binread('./POD/inj_bot.podqcons00000251');
+A1=binread('./POD/inj_bot.podqnc00000251');
 
 %get vector length
 l=length(A1)
@@ -18,9 +18,9 @@ cells=l/vars
 
 
 fileStart=251
-fileEnd=750
+fileEnd=2500
 fileSkip=1
-filePrefix='./POD/inj_bot.podqcons'
+filePrefix='./POD/inj_bot.podqnc'
 
 
 %quick plot check on variables
@@ -83,7 +83,7 @@ A_MAT=zeros(l,fileCount);
 fileCol=1;
 mkdir A_norm
 modesDir='A_norm/'
-fileCount=1;
+fileCount=0;
 for fileId=fileStart:fileSkip:fileEnd
     fileCount=fileCount+1;
     fileId
@@ -98,7 +98,7 @@ for fileId=fileStart:fileSkip:fileEnd
     binwrite(strcat(modesDir,'A',num2str(fileCount),'.bin'),Apert); 
 end
 
-
+format longe
 varNorms
 
 
