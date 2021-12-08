@@ -56,6 +56,7 @@ add_subdirectory(3rd_Party/tecio/teciosrc)
 
 add_subdirectory(src)
 add_subdirectory(CraftTec_tutorial)
+add_subdirectory(CraftTec_Exec)
 add_subdirectory(utilities)
 
 
