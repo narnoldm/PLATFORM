@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     vector<double> S;
 
     int nModes = modeEnd - modeStart + 1;
-    V = new pMat(dataset1->nPoints, nModes, evenG, 0, 0, 0.0);
+    V = new pMat(dataset1->nPoints, dataset1->nSets, evenG, 0, 0, 0.0);
     YT = new pMat(dataset1->nSets, dataset1->nSets, evenG, 0, 0, 0.0);
 
     S.resize(dataset1->nSets);
