@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
     pMat *evenMat;
 
     meta *dataset1;
-    dataset1 = new tecIO(token);
+    dataset1 = new meta(token);
     string outdir = "out2";
     string outfile = "U";
 
