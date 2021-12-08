@@ -99,7 +99,7 @@ for fileId=fileStart:fileSkip:fileEnd
 end
 
 
-
+varNorms
 
 
 

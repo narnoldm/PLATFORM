@@ -76,7 +76,7 @@ varNorms=sqrt(varNorms)
 
 
 
-
+varNorms
 
 
 

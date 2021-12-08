@@ -20,8 +20,7 @@ int main(int argc, char *argv[])
         std::cout.rdbuf(sink.rdbuf());
     }
 
-    int mosStep = 0;
-    inputFile.getParamInt("mosStep", mosStep);
+
     int modeStart, modeEnd;
     inputFile.getParamInt("modeStart", modeStart);
     inputFile.getParamInt("modeEnd", modeEnd);
