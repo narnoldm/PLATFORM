@@ -1,0 +1,22 @@
+#PBS -S /bin/bash
+#PBS -N standard
+#
+#PBS -l select=1:ncpus=128:mpiprocs=128
+#PBS -l ccm=1
+#PBS -l matlab=1
+#PBS -l application=matlab
+#PBS -l walltime=24:00:00
+
+#PBS -o out.out
+#PBS -e err.err
+
+#PBS -m ae
+#PBS -M ""
+
+#PBS -q HIE
+#PBS -A AFPRD43472001
+
+#PBS -r n
+cd ${PBS_O_WORKDIR}
+
+
