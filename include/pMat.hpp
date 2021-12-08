@@ -20,8 +20,6 @@
 
 
 
-#include <Eigen/Dense>
-
 /*** 
 *pMat: This file contains the headers for the PGrid and pMat classes.
 *These define how the code distributes data into the ScaLAPACK format
@@ -92,12 +90,6 @@ public:
 
 	int svd_run(int, int, int, int, pMat *&, pMat *&, std::vector<double> &);
 	int svd_run(int, int, int, int, pMat *&, pMat *&, std::vector<double> &, bool);
-
-	// MOS
-	int mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S);
-	int mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S, int modeStart, int modeEnd);
-	int mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S, int modeStart, int modeEnd,
-				int mosStep, PGrid *procGrid);
 
 	//Utilities
 	int transpose(pMat *);
