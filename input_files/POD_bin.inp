@@ -1,0 +1,20 @@
+stdout_proc = 0
+
+!This way for now need to add array input option
+inputString=input|binaryset|./A_norm/A|.bin|1|2250|1
+
+
+!Averaging
+readAvg=false
+avgFile=""
+
+
+!MOS option 
+mosStep=0
+
+modeStart=1
+modeEnd=100
+
+
+
+
