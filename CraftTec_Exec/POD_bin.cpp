@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
 
     YT->write_bin("YT.bin");
 
-    meta *Uout = new tecIO();
+    meta *Uout = new meta();
     Uout->snap0 = 1;
     Uout->snapF = V->N;
     Uout->snapSkip = 1;
