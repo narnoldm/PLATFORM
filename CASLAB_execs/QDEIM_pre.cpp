@@ -538,8 +538,8 @@ int main(int argc, char *argv[])
 		}
 
 		// local timing variables
-		double tE_start;
-		double tE1, tE2, tE3, tE4, tE5, tE6;
+		double tE_start, tE_start2;
+		double tE1, tE2, tE3, tE4, tE5, tE6, tE7, tE8, tE9, tE10, tE11;
 		tE1 = 0.0; tE2 = 0.0; tE3 = 0.0; tE4 = 0.0; tE5 = 0.0; tE6 = 0.0;
 
 		// loop over number of requires samples left
@@ -599,18 +599,26 @@ int main(int argc, char *argv[])
 				double maxLocal = 0;
 				int argMaxLocal = -1;
 				int argMaxGlobal = -1;
+				
+				tE_start2 = MPI_Wtime();
 				rVec->dMax(1, 0, maxLocal, argMaxLocal);
+				tE7 += (MPI_Wtime() - tE_start2);
 
 				// Allreduce(MPI_MAX) the maximum value
+				tE_start2 = MPI_Wtime();
 				MPI_Allreduce(&maxLocal, &maxGlobal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+				tE8 += (MPI_Wtime() - tE_start2);
 
 				// if rank doesn't own the max, set argMaxLocal = -1 so that MPI_MAX can determine the correct argMaxGlobal
 				if (maxLocal != maxGlobal) {
 					argMaxLocal = -1;
 				}
+				tE_start2 = MPI_Wtime();
 				MPI_Reduce(&argMaxLocal, &argMaxGlobal, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+				tE9 += (MPI_Wtime() - tE_start2);
 
 				// emplace cell ID in samplingPoints, if unique entry found signal to all processes to break
+				tE_start2 = MPI_Wtime();
 				if (rank == 0) {
 					
 					cellID = argMaxGlobal % nCells;
@@ -620,11 +628,14 @@ int main(int argc, char *argv[])
 				}
 
 				MPI_Allreduce(MPI_IN_PLACE, &breakSignal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+				tE10 += (MPI_Wtime() - tE_start2);
+
 				if (breakSignal == 1) {
 					break;
 				} else if (maxLocal == maxGlobal) {
 					// multiple processes may have maxLocal == maxGlobal, so just iterate and check
 					// zero out value in rVec so that it doesn't get picked up by argmax anymore
+					tE_start2 = MPI_Wtime();
 					for (int k = 0; k < rVec->dataD.size(); ++k) {
 						if (rVec->dataD[k] == maxGlobal) {
 							rVec->dataD[k] = 0.0;
@@ -632,6 +643,8 @@ int main(int argc, char *argv[])
 							break;
 						}
 					}
+					tE11 += (MPI_Wtime() - tE_start2);
+
 				}
 				
 			}
@@ -657,6 +670,11 @@ int main(int argc, char *argv[])
 		aggregateTiming(tE4, timingOutput, "GPOD+E - Zero and square");
 		aggregateTiming(tE5, timingOutput, "GPOD+E - Find unique");
 		aggregateTiming(tE6, timingOutput, "GPOD+E - Append rows");
+		aggregateTiming(tE7, timingOutput, "GPOD+E - pdamax_");
+		aggregateTiming(tE8, timingOutput, "GPOD+E - max allreduce");
+		aggregateTiming(tE9, timingOutput, "GPOD+E - argmax reduce");
+		aggregateTiming(tE10, timingOutput, "GPOD+E - break allreduce");
+		aggregateTiming(tE11, timingOutput, "GPOD+E - unique marking");
 
 		// cleanup
 		cout << endl;
