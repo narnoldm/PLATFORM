@@ -38,16 +38,6 @@ ExternalProject_Add(Eigen3
 set(Eigen_INCLUDE_DIR ${CMAKE_BINARY_DIR}/Eigen3-prefix/src/Eigen3)
 
 
-set(GTEST_INSTALL_LOCATION ${CMAKE_BINARY_DIR}/external/googleTest)
-ExternalProject_Add(googletest
-    GIT_REPOSITORY https://github.com/google/googletest
-    CMAKE_ARGS -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_INSTALL_PREFIX=${GTEST_INSTALL_LOCATION}
-)
-include_directories(${GTEST_INSTALL_LOCATION}/include)
-link_directories(${GTEST_INSTALL_LOCATION}/lib)
-
-
-
 
 
 
@@ -84,14 +74,6 @@ add_subdirectory(src)
 add_subdirectory(CASLAB_execs)
 
 
-
-
-
-
-
-
-enable_testing()
-add_subdirectory(tst)
 
 
 
