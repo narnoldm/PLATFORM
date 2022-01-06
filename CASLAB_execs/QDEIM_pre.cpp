@@ -328,6 +328,33 @@ int main(int argc, char *argv[])
 	int sampType;
 	inputFile.getParamInt("sampType", sampType);
 
+	// For greedy sampling methods, determine whether greedy objective function
+	// is computed by cell or degree of freedom.
+	int sampMethod;
+	int greedyDOF;
+	if (sampType > 1) {
+		if(inputFile.getParamInt("sampMethod", sampMethod)){
+			switch(sampMethod) {
+				case 0:
+					cout << "Oversampling by DEGREE OF FREEDOM" << endl;
+					greedyDOF = nDOF;
+					break;
+				case 1:
+					cout << "Oversampling by CELL" << endl;
+					greedyDOF = nCells;
+					break;
+				default:
+					cout << "Invalid value of sampMethod" << endl;
+					throw(-1);
+			}
+
+		} else {
+			sampMethod = 0;
+			cout << "Defaulting to oversampling by DEGREE OF FREEDOM" << endl;
+			greedyDOF = nDOF;
+		}
+	}
+
 	// compute QR factorization of U^T
 	// This writes the pivot indices to disk, since it's easier to do this than collect to rank 0 process
 	int PointsNeeded = max(numModesRHS, int(nCells * pSampling)); // total number of cells that need to be sampled
@@ -516,6 +543,9 @@ int main(int argc, char *argv[])
 		int cellID;
 
 		pMat *rVec = new pMat(1, nDOF, evenG, false);
+		pMat *rVecCell;
+		if (sampMethod == 1)
+			rVecCell = new pMat(1, nCells, evenG, false);
 		pMat *nonUniqueVec = new pMat(1, nDOF, evenG, false); // marker to determine if a degree of freedom has already been selected
 
 		// sort and broadcast gP to all processes
@@ -528,7 +558,15 @@ int main(int argc, char *argv[])
 		MPI_Bcast(gP.data(), gP.size(), MPI_INT, 0, MPI_COMM_WORLD);
 		numCurrentPoints = numInitPoints;
 
+		// mark DOFs that have already been sampled
+		for (int j = 0; j < numInitPoints; ++j) {
+			for (int k = 0; k < nVars; ++k) {
+				nonUniqueVec->setElement(0, k * nCells + gP[j], 1.0);
+			}
+		}
+
 		// grab initial cell rows, BUT ordered by cell, then by var
+		// NOTE: in hindsight, I'm not sure if this is strictly necessary, pretty sure row permutations don't matter to SVD
 		pMat *URHS_samp_E = new pMat(PointsNeeded*nVars, datasetRHS->nSets, evenG, false);
 		pMat *URHS_samp_E_copy = new pMat(PointsNeeded*nVars, datasetRHS->nSets, evenG, false);
 		for (int j = 0; j < numCurrentPoints; ++j) {
@@ -536,11 +574,17 @@ int main(int argc, char *argv[])
 			for (int k = 0; k < nVars; ++k)
 				URHS_samp_E_copy->changeContext(URHS, 1, numModesRHS, gP[j] + k * nCells, 0, j * nVars + k, 0, false);
 		}
+		cout << endl;
 
 		// local timing variables
 		double tE_start, tE_start2;
-		double tE1, tE2, tE3, tE4, tE5, tE6, tE7, tE8, tE9, tE10, tE11;
+		double tE1, tE2, tE3, tE4, tE5, tE6, tE7, tE8, tE9, tE10;
 		tE1 = 0.0; tE2 = 0.0; tE3 = 0.0; tE4 = 0.0; tE5 = 0.0; tE6 = 0.0;
+
+		// variables for computing argsort
+		int breakSignal;
+		double maxLocal, maxGlobal;
+		int argMaxLocal, argMaxGlobal;
 
 		// loop over number of requires samples left
 		int outFreq = (PointsNeeded - numInitPoints)/1000 + 1; 	// this is potentially a lot of output, scale to roughly 1000 lines of output
@@ -560,9 +604,9 @@ int main(int argc, char *argv[])
 			// compute SVD of sampled URHS, hold on to singular values and RIGHT singular vectors
 			M = numCurrentDOFs; 
 			N = numModesRHS;
-			minDim = min(M,N);
+			minDim = min(M, N);
 
-			U_E = new pMat(M, minDim, evenG, false); 	// this will always change, must be reallocated/deleted
+			U_E = new pMat(M, minDim, evenG, false);  // this will always change, must be reallocated/deleted
 			VT_E = new pMat(minDim, N, evenG, false); // this *might* not need to be reallocated/deleted every iterations, could always be [numModesRHS x numModesRHS]
 			S_E.resize(minDim, 0.0);
 
@@ -588,70 +632,80 @@ int main(int argc, char *argv[])
 			for (int j = 0; j < rVec->dataD.size(); ++j)
 				rVec->dataD[j] = rVec->dataD[j] * rVec->dataD[j];
 
+			// if sampling by cell, compute sum for each cell
+			if (sampMethod == 1) {
+				// zero out to start
+				for (int j = 0; j < rVecCell->dataD.size(); ++j)
+					rVecCell->dataD[j] = 0.0;
+				for (int j = 0; j < nVars; ++j) {
+					rVecCell->matrix_Sum('N', 1, nCells, rVec, 0, j * nCells, 0, 0, 1.0, 1.0);
+				}
+			}
 			tE4 += (MPI_Wtime() - tE_start);
 
 			// get unique cell ID
-			int breakSignal = 0;
 			tE_start = MPI_Wtime();
-			for (int j = 0; j < nDOF; ++j) {
 
-				double maxGlobal = 0;
-				double maxLocal = 0;
-				int argMaxLocal = -1;
-				int argMaxGlobal = -1;
-				
-				tE_start2 = MPI_Wtime();
+			breakSignal = 0;
+			maxGlobal = 0;
+			maxLocal = 0;
+			argMaxLocal = -1;
+			argMaxGlobal = -1;
+			
+			tE_start2 = MPI_Wtime();
+			if (sampMethod == 1) {
+				rVecCell->dMax(1, 0, maxLocal, argMaxLocal);
+			} else {
 				rVec->dMax(1, 0, maxLocal, argMaxLocal);
-				tE7 += (MPI_Wtime() - tE_start2);
-
-				// Allreduce(MPI_MAX) the maximum value
-				tE_start2 = MPI_Wtime();
-				MPI_Allreduce(&maxLocal, &maxGlobal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-				tE8 += (MPI_Wtime() - tE_start2);
-
-				// if rank doesn't own the max, set argMaxLocal = -1 so that MPI_MAX can determine the correct argMaxGlobal
-				if (maxLocal != maxGlobal) {
-					argMaxLocal = -1;
-				}
-				tE_start2 = MPI_Wtime();
-				MPI_Reduce(&argMaxLocal, &argMaxGlobal, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-				tE9 += (MPI_Wtime() - tE_start2);
-
-				// emplace cell ID in samplingPoints, if unique entry found signal to all processes to break
-				tE_start2 = MPI_Wtime();
-				if (rank == 0) {
-					
-					cellID = argMaxGlobal % nCells;
-					auto check = samplingPoints.emplace(cellID);
-					if (check.second)
-						breakSignal = 1;
-				}
-
-				MPI_Allreduce(MPI_IN_PLACE, &breakSignal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-				tE10 += (MPI_Wtime() - tE_start2);
-
-				if (breakSignal == 1) {
-					break;
-				} else if (maxLocal == maxGlobal) {
-					// multiple processes may have maxLocal == maxGlobal, so just iterate and check
-					// zero out value in rVec so that it doesn't get picked up by argmax anymore
-					tE_start2 = MPI_Wtime();
-					for (int k = 0; k < rVec->dataD.size(); ++k) {
-						if (rVec->dataD[k] == maxGlobal) {
-							rVec->dataD[k] = 0.0;
-							nonUniqueVec->dataD[k] = 1.0; // mark this DOF to not be selected in the next point selection iteration
-							break;
-						}
-					}
-					tE11 += (MPI_Wtime() - tE_start2);
-
-				}
-				
 			}
+			tE7 += (MPI_Wtime() - tE_start2);
+
+			// Allreduce(MPI_MAX) the maximum value
+			tE_start2 = MPI_Wtime();
+			MPI_Allreduce(&maxLocal, &maxGlobal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+			tE8 += (MPI_Wtime() - tE_start2);
+
+			// if rank doesn't own the max, set argMaxLocal = -1 so that MPI_MAX can determine the correct argMaxGlobal
+			if (maxLocal != maxGlobal) {
+				argMaxLocal = -1;
+			}
+			tE_start2 = MPI_Wtime();
+			MPI_Allreduce(&argMaxLocal, &argMaxGlobal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+			tE9 += (MPI_Wtime() - tE_start2);
+
+			// emplace cell ID in samplingPoints
+			tE_start2 = MPI_Wtime();
+			if (sampMethod == 1) {
+				cellID = argMaxGlobal;
+			} else {
+				cellID = argMaxGlobal % nCells;
+			}
+
+			if (rank == 0) {
+				auto check = samplingPoints.emplace(cellID);
+				if (check.second) {
+					breakSignal = 1;
+				}
+			}
+			MPI_Allreduce(MPI_IN_PLACE, &breakSignal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+			tE10 += (MPI_Wtime() - tE_start2);
+
+			if (breakSignal == 0) {
+				cout << "Non-unique cell found in greedy algorithm" << endl;
+				cout << "Something went wrong..." << endl;
+				cout << "argMaxGlobal: " << argMaxGlobal << endl;
+				cout << "maxGlobal: " << maxGlobal << endl;
+				MPI_Barrier(MPI_COMM_WORLD);
+				throw(-1);
+			}
+
+			// mark all DOFs associated with selected cell
+			for (int k = 0; k < nVars; ++k)
+				nonUniqueVec->setElement(0, k * nCells + cellID, 1.0);
+
 			tE5 += (MPI_Wtime() - tE_start);
 
-			// broadcast new cell ID to all processes, insert into gP vector
-			MPI_Bcast(&cellID, 1, MPI_INT, 0, MPI_COMM_WORLD);			
+			// insert into gP vector
 			gP.push_back(cellID);
 			numCurrentPoints++;
 
@@ -674,7 +728,6 @@ int main(int argc, char *argv[])
 		aggregateTiming(tE8, timingOutput, "GPOD+E - max allreduce");
 		aggregateTiming(tE9, timingOutput, "GPOD+E - argmax reduce");
 		aggregateTiming(tE10, timingOutput, "GPOD+E - break allreduce");
-		aggregateTiming(tE11, timingOutput, "GPOD+E - unique marking");
 
 		// cleanup
 		cout << endl;
