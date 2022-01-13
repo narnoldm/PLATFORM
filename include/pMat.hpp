@@ -118,6 +118,7 @@ public:
 	int changeContext(pMat *);
 	int changeContext(pMat *, bool);
 	int dMax(int, int, double &, int &);
+	int argmax_vec();
 	int dSum(int, int, double &);
 
 	//Other

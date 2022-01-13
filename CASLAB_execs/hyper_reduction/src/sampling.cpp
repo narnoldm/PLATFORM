@@ -98,13 +98,12 @@ void eigenvector_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCells
 
 	// local timing variables
 	double tE_start, tE_start2;
-	double tE1, tE2, tE3, tE4, tE5, tE6, tE7, tE8, tE9, tE10;
-	tE1 = 0.0; tE2 = 0.0; tE3 = 0.0; tE4 = 0.0; tE5 = 0.0; tE6 = 0.0;
+	double tE1, tE2, tE3, tE4, tE5, tE6, tE7;
+	tE1 = 0.0; tE2 = 0.0; tE3 = 0.0; tE4 = 0.0; tE5 = 0.0; tE6 = 0.0; tE7 = 0.0;
 
 	// variables for computing argsort
 	int breakSignal;
-	double maxLocal, maxGlobal;
-	int argMaxLocal, argMaxGlobal;
+	int argMaxGlobal;
 
 	// loop over number of requires samples left
 	int outFreq = (PointsNeeded - numInitPoints)/1000 + 1; 	// this is potentially a lot of output, scale to roughly 1000 lines of output
@@ -166,32 +165,13 @@ void eigenvector_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCells
 		// get unique cell ID
 		tE_start = MPI_Wtime();
 
-		breakSignal = 0;
-		maxGlobal = 0;
-		maxLocal = 0;
-		argMaxLocal = -1;
-		argMaxGlobal = -1;
-
 		tE_start2 = MPI_Wtime();
 		if (sampMethod == 1) {
-			rVecCell->dMax(1, 0, maxLocal, argMaxLocal);
+			argMaxGlobal = rVecCell->argmax_vec();
 		} else {
-			rVec->dMax(1, 0, maxLocal, argMaxLocal);
+			argMaxGlobal = rVec->argmax_vec();
 		}
-		tE7 += (MPI_Wtime() - tE_start2);
-
-		// Allreduce(MPI_MAX) the maximum value
-		tE_start2 = MPI_Wtime();
-		MPI_Allreduce(&maxLocal, &maxGlobal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-		tE8 += (MPI_Wtime() - tE_start2);
-
-		// if rank doesn't own the max, set argMaxLocal = -1 so that MPI_MAX can determine the correct argMaxGlobal
-		if (maxLocal != maxGlobal) {
-			argMaxLocal = -1;
-		}
-		tE_start2 = MPI_Wtime();
-		MPI_Allreduce(&argMaxLocal, &argMaxGlobal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-		tE9 += (MPI_Wtime() - tE_start2);
+		tE5 += (MPI_Wtime() - tE_start2);
 
 		// emplace cell ID in samplingPoints
 		tE_start2 = MPI_Wtime();
@@ -201,29 +181,22 @@ void eigenvector_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCells
 			cellID = argMaxGlobal % nCells;
 		}
 
+		// check for uniqueness
 		if (rank == 0) {
 			auto check = samplingPoints.emplace(cellID);
-			if (check.second) {
-				breakSignal = 1;
+			if (!check.second) {
+				cout << "Non-unique cell found in greedy algorithm" << endl;
+				cout << "Something went wrong..." << endl;
+				cout << "argMaxGlobal: " << argMaxGlobal << endl;
+				throw(-1);
 			}
-		}
-		MPI_Allreduce(MPI_IN_PLACE, &breakSignal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-		tE10 += (MPI_Wtime() - tE_start2);
-
-		if (breakSignal == 0) {
-			cout << "Non-unique cell found in greedy algorithm" << endl;
-			cout << "Something went wrong..." << endl;
-			cout << "argMaxGlobal: " << argMaxGlobal << endl;
-			cout << "maxGlobal: " << maxGlobal << endl;
-			MPI_Barrier(MPI_COMM_WORLD);
-			throw(-1);
 		}
 
 		// mark all DOFs associated with selected cell
 		for (int k = 0; k < nVars; ++k)
 			nonUniqueVec->setElement(0, k * nCells + cellID, 1.0);
 
-		tE5 += (MPI_Wtime() - tE_start);
+		tE6 += (MPI_Wtime() - tE_start);
 
 		// insert into gP vector
 		gP.push_back(cellID);
@@ -233,7 +206,7 @@ void eigenvector_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCells
 		tE_start = MPI_Wtime();
 		for (int k = 0; k < nVars; ++k)
 			URHS_samp_E_copy->changeContext(URes, 1, numModesRHS, k * nCells + gP.back(), 0, (numCurrentPoints-1) * nVars + k, 0, false);
-		tE6 += (MPI_Wtime() - tE_start);
+		tE7 += (MPI_Wtime() - tE_start);
 
 	}
 
@@ -242,12 +215,9 @@ void eigenvector_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCells
 	aggregateTiming(tE2, timingOutput, "GPOD+E - SVD");
 	aggregateTiming(tE3, timingOutput, "GPOD+E - rVec solve");
 	aggregateTiming(tE4, timingOutput, "GPOD+E - Zero and square");
-	aggregateTiming(tE5, timingOutput, "GPOD+E - Find unique");
-	aggregateTiming(tE6, timingOutput, "GPOD+E - Append rows");
-	aggregateTiming(tE7, timingOutput, "GPOD+E - pdamax_");
-	aggregateTiming(tE8, timingOutput, "GPOD+E - max allreduce");
-	aggregateTiming(tE9, timingOutput, "GPOD+E - argmax reduce");
-	aggregateTiming(tE10, timingOutput, "GPOD+E - break allreduce");
+	aggregateTiming(tE5, timingOutput, "GPOD+E - argmax");
+	aggregateTiming(tE6, timingOutput, "GPOD+E - Find unique (includes argmax)");
+	aggregateTiming(tE7, timingOutput, "GPOD+E - Append rows");
 
 	// cleanup
 	cout << endl;
@@ -302,11 +272,7 @@ void classic_greedy_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCe
 	double tD_start;
 	double tD1, tD2, tD3, tD4, tD5, tD6;
 	tD1 = 0.0; tD2 = 0.0; tD3 = 0.0; tD4 = 0.0; tD5 = 0.0; tD6 = 0.0;
-
-	// variables for computing argsort
-	int breakSignal;
-	double maxLocal, maxGlobal;
-	int argMaxLocal, argMaxGlobal;
+	int argMaxGlobal;
 
 	// extract first column of URHS to rVec
 	rVec->changeContext(URes, nDOF, 1, 0, 0, 0, 0, false);
@@ -343,28 +309,12 @@ void classic_greedy_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCe
 		tD1 += (MPI_Wtime() - tD_start);
 
 		// find the argmax of rVec
-		// loop until a unique point is added
-		int breakSignal = 0;
 		tD_start = MPI_Wtime();
-
-		maxGlobal = 0;
-		maxLocal = 0;
-		argMaxLocal = -1;
-		argMaxGlobal = -1;
 		if (sampMethod == 1) {
-			rVecCell->dMax(0, 0, maxLocal, argMaxLocal);
+			argMaxGlobal = rVecCell->argmax_vec();
 		} else {
-			rVec->dMax(0, 0, maxLocal, argMaxLocal);
+			argMaxGlobal = rVec->argmax_vec();
 		}
-
-		// Allreduce(MPI_MAX) the maximum value
-		MPI_Allreduce(&maxLocal, &maxGlobal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-
-		// if rank doesn't own the max, set argMaxLocal = -1 so that MPI_MAX can determine the correct argMaxGlobal
-		if (maxLocal != maxGlobal) {
-			argMaxLocal = -1;
-		}
-		MPI_Allreduce(&argMaxLocal, &argMaxGlobal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
 		// emplace cell ID in samplingPoints, if unique entry found signal to all processes to break
 		if (sampMethod == 1) {
@@ -375,22 +325,14 @@ void classic_greedy_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCe
 
 		if (rank == 0) {
 			auto check = samplingPoints.emplace(cellID);
-			if (check.second) {
-				breakSignal = 1;
+			if (!check.second) {
+				cout << "Non-unique cell found in greedy algorithm" << endl;
+				cout << "Something went wrong..." << endl;
+				cout << "argMaxGlobal: " << argMaxGlobal << endl;
+				throw(-1);
 			}
 		}
-
-		MPI_Allreduce(MPI_IN_PLACE, &breakSignal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 		tD2 += (MPI_Wtime() - tD_start);
-
-		if (breakSignal == 0) {
-			cout << "Non-unique cell found in greedy algorithm" << endl;
-			cout << "Something went wrong..." << endl;
-			cout << "argMaxGlobal: " << argMaxGlobal << endl;
-			cout << "maxGlobal: " << maxGlobal << endl;
-			MPI_Barrier(MPI_COMM_WORLD);
-			throw(-1);
-		}
 
 		// mark all DOFs associated with selected cell
 		for (int k = 0; k < nVars; ++k)
@@ -435,7 +377,7 @@ void classic_greedy_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCe
 
 	// aggregate timings
 	aggregateTiming(tD1, timingOutput, "GPOD+D - Zero and absolute val");
-	aggregateTiming(tD2, timingOutput, "GPOD+D - Fine unique");
+	aggregateTiming(tD2, timingOutput, "GPOD+D - Find unique");
 	aggregateTiming(tD3, timingOutput, "GPOD+D - Append rows");
 	aggregateTiming(tD4, timingOutput, "GPOD+D - Least squares");
 	aggregateTiming(tD5, timingOutput, "GPOD+D - rVec matmul");

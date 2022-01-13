@@ -968,6 +968,41 @@ int pMat::dMax(int dim, int rc, double &val, int &index)
 		index--; // return to C indexing
 
 }
+
+// Computes global argmax of one-dimensional pMat
+int pMat::argmax_vec() {
+
+		// only valid for "vectors" (one-dimensiona pMat)
+		int vecType;
+		if (N == 1) {
+			vecType = 0; // column vector
+		} else if (M == 1) {
+			vecType = 1; // row vector
+		} else {
+			cout << "pMat::argmax_vec only accepts one-dimensiona pMats" << endl;
+			cout << "This pMat has dimensions (" << M << ", " << N << ")" << endl;
+			throw(-1);
+		}
+
+		double maxLocal = 0.0;
+		double maxGlobal = 0.0;
+		int argMaxLocal = -1;
+		int argMaxGlobal = -1;
+
+		this->dMax(vecType, 0, maxLocal, argMaxLocal);
+
+		// Allreduce(MPI_MAX) the maximum value
+		MPI_Allreduce(&maxLocal, &maxGlobal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
+		// if rank doesn't own the max, set argMaxLocal = -1 so that MPI_MAX can determine the correct argMaxGlobal
+		if (maxLocal != maxGlobal) {
+			argMaxLocal = -1;
+		}
+		MPI_Allreduce(&argMaxLocal, &argMaxGlobal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+
+		return argMaxGlobal;
+}
+
 int pMat::dSum(int dim, int rc, double &val)
 {
 
