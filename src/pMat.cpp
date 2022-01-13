@@ -1059,8 +1059,6 @@ int pMat::leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int
 	// get LWORK and WORK
 	pdgels_(&trans, &m, &n, &nrhs, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, WORK.data(), &LWORK, &info);
 
-	// cout << "WORK = " << WORK[0] << ", LWORK = " << LWORK << ", info = " << info << endl;
-
 	if (info < 0) {
 		cout << "Error in least-squares solve setup in argument: " << -info << endl;
 		throw(-1);
@@ -1069,14 +1067,12 @@ int pMat::leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int
 	// set up real run
 	LWORK = WORK[0];
 	WORK.resize(LWORK);
-	// cout << "WORK Allocated: " << LWORK / (1e6) * 8 << " MB per processor" << endl;
 
 	// least squares solve
 	double t1, t2;
 	t1 = MPI_Wtime();
 	pdgels_(&trans, &m, &n, &nrhs, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, WORK.data(), &LWORK, &info);
 	t2 = MPI_Wtime();
-	// cout << "Least-squares solve complete in " << t2 - t1 << " seconds" << endl;
 	WORK.resize(0);
 
 	return 1;

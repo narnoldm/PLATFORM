@@ -5,7 +5,7 @@
 
 #include <set>
 
-using namespace ::std;
+using namespace::std;
 
 int main(int argc, char *argv[]) {
 	MPI_Init(&argc, &argv);
@@ -359,7 +359,7 @@ int main(int argc, char *argv[]) {
 	int PointsNeeded = max(numModesRHS, int(nCells * pSampling)); // total number of cells that need to be sampled
 	vector<int> P;
 	string qrSampBin;
-	if (sampType != 3) {
+	if ((sampType != 3) && (sampType != 4)) {
 		if(inputFile.getParamString("qrSampBin", qrSampBin)){
 			cout << "Retrieving QR sampling points from " << qrSampBin << endl;
 		} else {
@@ -384,7 +384,7 @@ int main(int argc, char *argv[]) {
 
 	// all sampling here is done by rank 0 process
 	if (rank == 0) {
-		if (sampType != 3) {
+		if ((sampType != 3) && (sampType != 4)) {
 
 			// read QR samples
 			// gP MAY contain DOFs corresponding to the SAME CELL at this point
@@ -502,9 +502,12 @@ int main(int argc, char *argv[]) {
 	} else if (sampType == 2) {
 		eigenvector_oversampling(URHS, USol, sampMethod, nCells, nVars, nDOF, numModesRHS, PointsNeeded, samplingPoints, gP, timingOutput);
 
-	// classic greedy sampling
+	// GNAT sampling, from Ben's preprint paper
 	} else if (sampType == 3) {
-		classic_greedy_oversampling(URHS, USol, sampMethod, nCells, nVars, nDOF, numModesRHS, PointsNeeded, samplingPoints, gP, timingOutput);
+		gnat_oversampling_peherstorfer(URHS, USol, sampMethod, nCells, nVars, nDOF, numModesRHS, PointsNeeded, samplingPoints, gP, timingOutput);
+
+	} else if (sampType == 4) {
+		gnat_oversampling_carlberg(URHS, USol, sampMethod, nCells, nVars, nDOF, numModesRHS, PointsNeeded, samplingPoints, gP, timingOutput);
 
 	} else {
 		cout << "Invalid choice of sampling type: " << sampType << endl;

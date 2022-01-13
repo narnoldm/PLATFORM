@@ -227,7 +227,7 @@ void eigenvector_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCells
 	destroyPMat(nonUniqueVec, false);
 }
 
-void classic_greedy_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCells, int nVars, int nDOF, int numModesRHS,
+void gnat_oversampling_peherstorfer(pMat* URes, pMat* USol, int sampMethod, int nCells, int nVars, int nDOF, int numModesRHS,
 							  int PointsNeeded, set<int>& samplingPoints, vector<int>& gP, string& timingOutput) {
 
 	int rank;
@@ -376,12 +376,12 @@ void classic_greedy_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCe
 	}
 
 	// aggregate timings
-	aggregateTiming(tD1, timingOutput, "GPOD+D - Zero and absolute val");
-	aggregateTiming(tD2, timingOutput, "GPOD+D - Find unique");
-	aggregateTiming(tD3, timingOutput, "GPOD+D - Append rows");
-	aggregateTiming(tD4, timingOutput, "GPOD+D - Least squares");
-	aggregateTiming(tD5, timingOutput, "GPOD+D - rVec matmul");
-	aggregateTiming(tD6, timingOutput, "GPOD+D - rVec matsum");
+	aggregateTiming(tD1, timingOutput, "GNAT (Peherstorfer) - Zero and absolute val");
+	aggregateTiming(tD2, timingOutput, "GNAT (Peherstorfer) - Find unique");
+	aggregateTiming(tD3, timingOutput, "GNAT (Peherstorfer) - Append rows");
+	aggregateTiming(tD4, timingOutput, "GNAT (Peherstorfer) - Least squares");
+	aggregateTiming(tD5, timingOutput, "GNAT (Peherstorfer) - rVec matmul");
+	aggregateTiming(tD6, timingOutput, "GNAT (Peherstorfer) - rVec matsum");
 
 	// cleanup
 	cout << endl;
@@ -391,3 +391,188 @@ void classic_greedy_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCe
 	destroyPMat(nonUniqueVec, false);
 }
 
+void gnat_oversampling_carlberg(pMat* URes, pMat* USol, int sampMethod, int nCells, int nVars, int nDOF, int numModesRHS,
+							  int PointsNeeded, set<int>& samplingPoints, vector<int>& gP, string& timingOutput) {
+
+	int rank;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+	PGrid* evenG = URes->pG; // reuse process grid
+
+	// declare some variables for this routine
+	int numCurrentDOFs, numInitPoints;
+	int cellID;
+
+	pMat *rVec = new pMat(nDOF, 1, evenG, false);
+	pMat *rVecCell;
+	if (sampMethod == 1)
+		rVecCell = new pMat(nCells, 1, evenG, false);
+	pMat *nonUniqueVec = new pMat(nDOF, 1, evenG, false); // marker to determine if a degree of freedom has already been selected
+	pMat *URHS_samp_E = new pMat(PointsNeeded * nVars, numModesRHS, evenG, false);
+	pMat *URHS_samp_E_copy = new pMat(PointsNeeded * nVars, numModesRHS, evenG, false);
+
+	// this is the same dimension as URHS_samp_E because PDGELS requires that URHS_samp_E and lsSol have same row block size
+	// no way to force blocking sizes in pMat currently
+	pMat *lsSol = new pMat(PointsNeeded * nVars, numModesRHS, evenG, false);
+
+	// sort and broadcast gP to all processes
+	if (rank == 0)
+		numInitPoints = gP.size();
+
+	MPI_Bcast(&numInitPoints, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	if (rank != 0)
+		gP.resize(numInitPoints, 0);
+	MPI_Bcast(gP.data(), gP.size(), MPI_INT, 0, MPI_COMM_WORLD);
+
+	// mark DOFs that have already been sampled
+	for (int j = 0; j < numInitPoints; ++j) {
+		for (int k = 0; k < nVars; ++k) {
+			nonUniqueVec->setElement(k * nCells + gP[j], 0, 1.0);
+		}
+	}
+
+	// local timing variables
+	double tD_start;
+	double tD1, tD2, tD3, tD4, tD5, tD6;
+	tD1 = 0.0; tD2 = 0.0; tD3 = 0.0; tD4 = 0.0; tD5 = 0.0; tD6 = 0.0;
+	int argMaxGlobal;
+
+	// extract first column of URHS to rVec
+	rVec->changeContext(URes, nDOF, 1, 0, 0, 0, 0, false);
+
+	// carbon copy from paper
+	int nc = numModesRHS;  // number working columns
+	int na = PointsNeeded - numInitPoints;  // remaining points needed
+	int nb = 0;  // counter
+	int nit = min(nc, na);  // number of greedy iterations
+	int nai_min = floor((double)na / nc);
+	int nai;
+
+	// greedy loop
+	tD_start = MPI_Wtime();
+	for (int i = 0; i < nit; ++i) {
+
+		cout << (double)i / nit * 100 << " percent GNAT points sampled \r";
+
+		tD_start = MPI_Wtime();
+
+		for (int j = 0; j < rVec->dataD.size(); ++j) {
+			// zero out DOFs that have already been selected
+			if (nonUniqueVec->dataD[j] == 1.0) {
+				rVec->dataD[j] = 0.0;
+			// compute elementwise square of rVec
+			} else {
+				rVec->dataD[j] = rVec->dataD[j] * rVec->dataD[j];
+			}
+		}
+
+		// if sampling by cell, compute sum for each cell
+		if (sampMethod == 1) {
+			// zero out to start
+			for (int j = 0; j < rVecCell->dataD.size(); ++j)
+				rVecCell->dataD[j] = 0.0;
+			for (int j = 0; j < nVars; ++j) {
+				rVecCell->matrix_Sum('N', nCells, 1, rVec, j * nCells, 0, 0, 0, 1.0, 1.0);
+			}
+		}
+		tD1 += (MPI_Wtime() - tD_start);
+
+		// sample cell loop
+		// need an extra sampling point for this loop
+		nai = nai_min;
+		if ((i + 1) <= (na % nc))
+			nai++;
+
+		for (int j = 0; j < nai; ++j) {
+
+			tD_start = MPI_Wtime();
+			if (sampMethod == 1) {
+				argMaxGlobal = rVecCell->argmax_vec();
+			} else {
+				argMaxGlobal = rVec->argmax_vec();
+			}
+
+			// emplace cell ID in samplingPoints
+			if (sampMethod == 1) {
+				cellID = argMaxGlobal;
+			} else {
+				cellID = argMaxGlobal % nCells;
+			}
+
+			if (rank == 0) {
+				auto check = samplingPoints.emplace(cellID);
+				if (!check.second) {
+					cout << "Non-unique cell found in greedy algorithm" << endl;
+					cout << "Something went wrong..." << endl;
+					cout << "argMaxGlobal: " << argMaxGlobal << endl;
+					throw(-1);
+				}
+			}
+			tD2 += (MPI_Wtime() - tD_start);
+
+			// mark all DOFs associated with selected cell
+			for (int k = 0; k < nVars; ++k) {
+				nonUniqueVec->setElement(k * nCells + cellID, 0, 1.0);
+				if (sampMethod == 0) {
+					rVec->setElement(k * nCells + cellID, 0, 0.0);
+				}
+			}
+			if (sampMethod == 1)
+				rVecCell->setElement(cellID, 0, 0.0);
+
+			// insert into gP vector
+			gP.push_back(cellID);
+			numCurrentDOFs = (i + 1) * nVars;
+
+			// append newly sampled rows of URHS to URHS_samp_E_copy, and transfer to URHS_samp_E (will be destroyed in least-squares solve)
+			tD_start = MPI_Wtime();
+			for (int k = 0; k < nVars; ++k)
+				URHS_samp_E_copy->changeContext(URes, 1, numModesRHS, k * nCells + gP.back(), 0, i * nVars + k, 0, false);
+			URHS_samp_E->changeContext(URHS_samp_E_copy, numCurrentDOFs, numModesRHS, 0, 0, 0, 0, false);
+			tD3 += (MPI_Wtime() - tD_start);
+
+		}
+
+		// have gotten all the samples we need
+		if (i == (nit - 1))
+			break;
+
+		// set up inputs to least-squares solve
+		// this is the b term in || Ax - b ||
+		lsSol->changeContext(URHS_samp_E, numCurrentDOFs, 1, 0, i + 1, 0, 0, false);
+
+		// solve least squares, should ALWAYS be an overdetermined system for systems with more than one variable
+		// on exit, solution is in first modeThresh rows of lsSol
+		// this is the alpha vector in paper
+		tD_start = MPI_Wtime();
+		lsSol->leastSquares('N', numCurrentDOFs, i + 1, 1, URHS_samp_E, 0, 0, 0, 0);
+		tD4 += (MPI_Wtime() - tD_start);
+
+		// compute new rvec
+		// first, U[:, 1:nb] * alpha
+		tD_start = MPI_Wtime();
+		rVec->matrix_Product('N', 'N', nDOF, 1, i + 1, URes, 0, 0, lsSol, 0, 0, 1.0, 0.0, 0, 0);
+		tD5 += (MPI_Wtime() - tD_start);
+
+		// second, U[:, k] - U[:, 1:nb] * alpha
+		tD_start = MPI_Wtime();
+		rVec->matrix_Sum('N', nDOF, 1, URes, 0, i + 1, 0, 0, 1.0, -1.0);
+		tD6 += (MPI_Wtime() - tD_start);
+
+	}
+
+	// aggregate timings
+	aggregateTiming(tD1, timingOutput, "GNAT (Carlberg) - Zero and absolute val");
+	aggregateTiming(tD2, timingOutput, "GNAT (Carlberg) - Find unique");
+	aggregateTiming(tD3, timingOutput, "GNAT (Carlberg) - Append rows");
+	aggregateTiming(tD4, timingOutput, "GNAT (Carlberg) - Least squares");
+	aggregateTiming(tD5, timingOutput, "GNAT (Carlberg) - rVec matmul");
+	aggregateTiming(tD6, timingOutput, "GNAT (Carlberg) - rVec matsum");
+
+	// cleanup
+	cout << endl;
+	destroyPMat(URHS_samp_E_copy, false);
+	destroyPMat(URHS_samp_E, false);
+	destroyPMat(rVec, false);
+	destroyPMat(nonUniqueVec, false);
+}
