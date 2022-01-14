@@ -2,6 +2,45 @@
 
 using namespace ::std;
 
+void qr_sampling(paramMap inputFile, const string& qrSampFileStr, int nCells, pMat* U_T, vector<int>& gP, set<int>& samplingPoints) {
+
+	string qrSampBin;
+	if (inputFile.getParamString(qrSampFileStr, qrSampBin)){
+			cout << "Retrieving QR sampling points from " << qrSampBin << endl;
+	} else {
+		cout << qrSampFileStr << " not specified, computing it now." << endl;
+		qrSampBin = "P.bin";
+		vector<int> P;
+		U_T->qr_run(U_T->M, U_T->N, 0, 0, P, "./", qrSampBin, false);  // contents of U_T are DESTROYED during QR decomposition
+	}
+
+	// read QR samples
+	int rank;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+	if (rank == 0) {
+		// gP MAY contain DOFs corresponding to the SAME CELL at this point
+		readMat(qrSampBin, gP);
+		gP.resize(U_T->M);
+
+		// sampled QR cells
+		cout << "Extracting QR points..." << endl;
+		for (int i = 0; i < gP.size(); i++) {
+			gP[i]--; //switch to 0 indexing
+
+			//switch to zero-indexed cell IDs
+			cout << i << " " << gP[i] << " " << endl;
+			gP[i] = gP[i] % nCells;
+			auto check = samplingPoints.emplace(gP[i]);
+			if (!check.second)
+			{
+				cout << "Repeated element" << endl;
+			}
+		}
+	}
+
+}
+
 void random_oversampling(int nCells, int PointsNeeded, set<int>& samplingPoints) {
 
 	int rank;

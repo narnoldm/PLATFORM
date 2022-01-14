@@ -798,10 +798,14 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
 
 int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv)
 {
-        qr_run(m, n, ia, ja, ipiv, "./", true);
+    qr_run(m, n, ia, ja, ipiv, "./", "P.bin", true);
 }
 
-int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string outdir, bool stdout)
+int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string outdir, bool stdout) {
+	qr_run(m, n, ia, ja, ipiv, outdir, "P.bin", stdout);
+}
+
+int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string outdir, string outfile, bool stdout)
 {
         if (stdout)
                 cout << "QR initializing" << endl;
@@ -849,7 +853,7 @@ int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string ou
         MPI_Barrier(MPI_COMM_WORLD);
         int ONE = 1;
         MPI_File fH;
-        std::string pivot_name = outdir + "/P.bin";
+        std::string pivot_name = outdir + "/" + outfile;
         MPI_File_open(MPI_COMM_WORLD, pivot_name.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fH);
         if (printRank)
         {

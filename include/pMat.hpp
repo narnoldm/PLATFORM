@@ -106,6 +106,7 @@ public:
 	// QR decomposition
 	int qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv);
 	int qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv, std::string outdir, bool stdout);
+	int qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv, std::string outdir, std::string outfile, bool stdout);
 
 	// Least-squares 
 	int leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int ja, int ib, int jb); 

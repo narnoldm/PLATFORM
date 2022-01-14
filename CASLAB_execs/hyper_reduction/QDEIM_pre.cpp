@@ -35,53 +35,38 @@ int main(int argc, char *argv[]) {
 	}
 
 	// DEIM interpolant output format, based on GEMS ROM type
-	// 0: SP-LSVT ([P^T U]^+)
-	// 1: Galerkin (V^T U * [P^T U]^+)
+	// 0: Full residual ([P^T URes]^+, where URes is the full residual basis)
+	// 1: Galerkin (USol^T URes * [P^T URes]^+, where URes is the RHS basis)
+	// 2: Separate residual ([P^T URes]^+, [P^T USol]^+, and URes^T USol, where URes is the RHS basis)
 	int interpolantFormat;
 	inputFile.getParamInt("interpolantFormat", interpolantFormat);
 
-	// check whether user wants to compute bases or load them
-	bool readRHSSnaps = false;
-	inputFile.getParamBool("readRHSSnaps", readRHSSnaps); 	// whether to compute RHS basis here
+	// Residual basis path
+	string inputRes;
+	inputFile.getParamString("resInputString", inputRes); 	// PDP-demarcated input for residual basis
 
-	// RHS snapshots or basis paths
-	string inputRHS;
-	inputFile.getParamString("rhsInputString", inputRHS); 	// PDP-demarcated input for RHS data/basis
+	// parse residual basis string
+	vector<string> tokenRes;
+	cout << "Residual input string is: " << inputRes << endl;
+	tokenparse(inputRes, "|", tokenRes);
 
-	// parse RHS basis string
-	vector<string> tokenRHS;
-	cout << "RHS input string is: " << inputRHS << endl;
-	tokenparse(inputRHS, "|", tokenRHS);
-
-	int numModesRHS;
+	int numModesRes;
 	string firstFileBasis;
-	// setup RHS/residual basis input, compare parameters against solution basis input
-	meta *datasetRHS;
-	if (readRHSSnaps) {
-		datasetRHS = new tecIO(tokenRHS);
-		firstFileBasis = datasetRHS->prefix + to_string(datasetRHS->snap0) + datasetRHS->suffix;
-		dynamic_cast<tecIO *>(datasetRHS)->activateReorder(firstFileBasis.c_str());
-		inputFile.getParamInt("numModesRHS", numModesRHS);
-
-	// setup basis if reading basis
-	} else {
-		datasetRHS = new meta(tokenRHS);
-		firstFileBasis = datasetRHS->prefix + to_string(datasetRHS->snap0) + datasetRHS->suffix;
-		numModesRHS = datasetRHS->nSets;
-	}
+	// setup residual basis input, compare parameters against solution basis input
+	meta *datasetRes;
+	datasetRes = new meta(tokenRes);
+	firstFileBasis = datasetRes->prefix + to_string(datasetRes->snap0) + datasetRes->suffix;
+	numModesRes = datasetRes->nSets;
 
 	int numModesMax;
 
 	// repeat input reads for solution data if performing preprocessing for Galerkin ROM
-	bool readSolSnaps = false;
 	bool inputMatch = false;
 	bool modesDiff = false;
 	int numModesSol = 0;
 	string firstFileSnaps;
 	meta *datasetSol;
-	if (interpolantFormat == 1) {
-
-		inputFile.getParamBool("readSolSnaps", readSolSnaps); 	// whether to compute solution basis here
+	if (interpolantFormat > 0) {
 
 		string inputSol;
 		inputFile.getParamString("solInputString", inputSol); 	// PDP-demarcated input for solution data/basis
@@ -91,44 +76,27 @@ int main(int argc, char *argv[]) {
 		tokenparse(inputSol, "|", tokenSol);
 
 		// if input are identical, bases will just be copied from solution basis to RHS basis
-		if (inputSol == inputRHS) {
+		if (inputSol == inputRes) {
 			cout << "Solution and RHS input strings were identical..." << endl;
 			inputMatch = true;
 		}
 
 		// setup solution basis input
-		if (readSolSnaps) {
-			datasetSol = new tecIO(tokenSol);
-			firstFileSnaps = datasetSol->prefix + to_string(datasetSol->snap0) + datasetSol->suffix;
-			dynamic_cast<tecIO *>(datasetSol)->activateReorder(firstFileSnaps.c_str());
-			inputFile.getParamInt("numModesSol", numModesSol);
+		datasetSol = new meta(tokenSol);
+		firstFileSnaps = datasetSol->prefix + to_string(datasetSol->snap0) + datasetSol->suffix;
+		numModesSol = datasetSol->nSets;
 
-			// if dataset is same and mode counts are not same, note this
-			// I'm pretty sure the readRHSSnaps check is redundant, if inputMatch is already true
-			if ( (readRHSSnaps) && (inputMatch) && (numModesSol != numModesRHS) ) {
-				modesDiff = true;
-				cout << "Solution and RHS bases have same datasets, but different mode counts..." << endl;
-			}
-
-		} else {
-			datasetSol = new meta(tokenSol);
-			firstFileSnaps = datasetSol->prefix + to_string(datasetSol->snap0) + datasetSol->suffix;
-			numModesSol = datasetSol->nSets;
-
-			if (!readRHSSnaps) {
-				int metaCheck = compareMeta(datasetSol, datasetRHS);
-				if (metaCheck == 2) {
-					modesDiff = true;
-					cout << "Solution and RHS bases have same datasets, but different mode counts..." << endl;
-				}
-			}
+		int metaCheck = compareMeta(datasetSol, datasetRes);
+		if (metaCheck == 2) {
+			modesDiff = true;
+			cout << "Solution and RHS bases have same datasets, but different mode counts..." << endl;
 		}
 
-		numModesMax = max(numModesSol, numModesRHS); // determines which basis has more modes, only relevant if bases come from same dataset
+		numModesMax = max(numModesSol, numModesRes); // determines which basis has more modes, only relevant if bases come from same dataset
 
 	} else {
 
-		numModesMax = numModesRHS;
+		numModesMax = numModesRes;
 
 	}
 
@@ -143,181 +111,73 @@ int main(int argc, char *argv[]) {
 
 	PGrid *evenG;
 	evenG = new PGrid(rank, size, 0);
-	pMat *U, *A, *VT; 	// temporary basis matrices
-	pMat *USol;
-	pMat *URHS, *URHS_T;
+	pMat *USol, *USol_T;
+	pMat *URes, *URes_T;
 
-	int nCells = 0, nVars = 0, nDOF = 0;
-
-	// ##### SETTING UP RHS BASIS ##### //
-	cout << "Loading RHS/residual basis..." << endl;
-
-	// compute SVD of FOM snapshots, if computing POD basis here
-	if (readRHSSnaps) {
-		A = new pMat(datasetRHS->nPoints, datasetRHS->nSets, evenG, 0, 0, 0.0, false);
-		t1_start = MPI_Wtime();
-		datasetRHS->batchRead(A);
-		t1_end = MPI_Wtime();
-		aggregateTiming(t1_end - t1_start, timingOutput, "Residual snapshot load");
-
-		nCells = dynamic_cast<tecIO *>(datasetRHS)->nCells;
-		nVars  = dynamic_cast<tecIO *>(datasetRHS)->numVars;
-
-		t1_start = MPI_Wtime();
-
-		// TODO: this would need to include options to set centering and normalization profiles
-		tecIO *datasetTec = dynamic_cast<tecIO *>(datasetRHS);
-		datasetTec->calcAvg(A);
-		datasetTec->subAvg(A);
-		datasetTec->calcNorm(A);
-		datasetTec->normalize(A);
-
-		t1_end = MPI_Wtime();
-		aggregateTiming(t1_end - t1_start, timingOutput, "Residual snapshot preprocessing");
-
-		int MRHS = datasetRHS->nPoints;
-		int NRHS = datasetRHS->nSets;
-
-		vector<double> SRHS;
-
-		U = new pMat(MRHS, min(MRHS, NRHS), evenG, false);
-		VT = new pMat(min(MRHS, NRHS), NRHS, evenG, false);
-		SRHS.resize(min(MRHS, NRHS));
-
-		A->svd_run(MRHS, NRHS, 0, 0, U, VT, SRHS);
-		destroyPMat(A, false);
-		destroyPMat(VT, false);
-
-		// extract numModesRHS modes from U
-		URHS = new pMat(U->M, numModesRHS, evenG, false);
-		URHS->changeContext(U, U->M, numModesRHS, 0, 0, 0, 0, false);
-
-		// if basis datasets match, also extract solution basis here
-		if ( (interpolantFormat == 1) && inputMatch) {
-			USol = new pMat(U->M, numModesSol, evenG, false);
-			// if mode counts are different, extract modes from U
-			if (modesDiff) {
-				USol->changeContext(U, U->M, numModesSol, 0, 0, 0, 0, false);
-
-			// if bases are identical
-			} else {
-				USol = URHS; // just use same address, don't need to allocate more memory
-			}
-
-		}
-
-		destroyPMat(U, false);
-
-		// URHS_T is just transpose of URHS
-		URHS_T = new pMat(numModesRHS, URHS->M, evenG, false);
-		URHS_T->transpose(URHS, URHS_T->M, URHS_T->N, 0, 0);
-
-	} else {
-
-		// have to provide number of cells and variables, since reading from binary here (not SZPLT)
-		inputFile.getParamInt("nCells", nCells);
-		inputFile.getParamInt("nVars", nVars);
-
-		// read modes from disk
-		URHS = new pMat(datasetRHS->nPoints, datasetRHS->nSets, evenG, false);
-
-		t1_start = MPI_Wtime();
-		if ( (interpolantFormat == 1) && (inputMatch || (modesDiff && (numModesRHS < numModesMax)))) {
-			// if bases are identical, or if same basis set and solution basis has more modes, just load it now
-			USol = new pMat(datasetSol->nPoints, datasetSol->nSets, evenG, false);
-			datasetSol->batchRead(USol);
-			URHS->changeContext(USol, USol->M, numModesRHS, 0, 0, 0, 0, false);
-		} else {
-			// if bases totally different, of solution basis set is same but has more modes than RHS basis, load solution basis now
-			datasetRHS->batchRead(URHS);
-		}
-		t1_end = MPI_Wtime();
-		aggregateTiming(t1_end - t1_start, timingOutput, "Residual mode load");
-
-		// URHS_T is just transpose of URHS
-		URHS_T = new pMat(numModesRHS, URHS->M, evenG, false);
-		URHS_T->transpose(URHS);
-
-	}
-
+	int nCells, nVars, nDOF;
+	inputFile.getParamInt("nCells", nCells);
+	inputFile.getParamInt("nVars", nVars);
 	nDOF = nCells * nVars;
 
-	// ##### FINISH RHS BASIS ##### //
+	// ##### SETTING UP RHS/RESIDUAL BASIS ##### //
+	cout << "Loading RHS/residual basis..." << endl;
+
+	// read modes from disk
+	URes = new pMat(datasetRes->nPoints, datasetRes->nSets, evenG, false);
+
+	t1_start = MPI_Wtime();
+	if ( (interpolantFormat > 0) && (inputMatch || (modesDiff && (numModesRes < numModesMax)))) {
+		// if bases are identical, or if same basis set and solution basis has more modes, just load it now
+		USol = new pMat(datasetSol->nPoints, datasetSol->nSets, evenG, false);
+		datasetSol->batchRead(USol);
+		URes->changeContext(USol, USol->M, numModesRes, 0, 0, 0, 0, false);
+	} else {
+		// if bases totally different, of solution basis set is same but has more modes than RHS basis, load solution basis now
+		datasetRes->batchRead(URes);
+	}
+	t1_end = MPI_Wtime();
+	aggregateTiming(t1_end - t1_start, timingOutput, "Residual/RHS basis load");
+
+	// URes_T is just transpose of URes
+	URes_T = new pMat(numModesRes, URes->M, evenG, false);
+	URes_T->transpose(URes);
+
+	// ##### FINISH RESIDUAL/RHS BASIS ##### //
 
 	// ##### SETTING UP SOLUTION TRIAL BASIS ##### //
-	if (interpolantFormat == 1) {
+	if (interpolantFormat > 0) {
 		cout << "Loading solution basis..." << endl;
 
-		// compute SVD of FOM snapshots, if computing POD basis here
-		if (readSolSnaps) {
+		// if inputMatch, basis has already been copied
+		if (!inputMatch) {
+			USol = new pMat(datasetSol->nPoints, datasetSol->nSets, evenG, false);
 
-			// if inputMatch, this has already been computed
-			if (!inputMatch) {
-				A = new pMat(datasetSol->nPoints, datasetSol->nSets, evenG, 0, 0, 0.0, false);
+			// if same basis set, but solution basis has fewer modes than residual basis, extract first numModesSol modes from URes
+			if (modesDiff && (numModesSol < numModesMax)) {
+				USol->changeContext(URes, URes->M, numModesSol, 0, 0, 0, 0, false);
+
+			// otherwise just load from disk
+			} else {
 				t1_start = MPI_Wtime();
-				datasetSol->batchRead(A);
+				datasetSol->batchRead(USol);
 				t1_end = MPI_Wtime();
-				aggregateTiming(t1_end - t1_start, timingOutput, "Solution snapshot load");
-
-				assert(nCells == dynamic_cast<tecIO *>(datasetSol)->nCells);
-				assert(nVars  == dynamic_cast<tecIO *>(datasetSol)->numVars);
-
-				t1_start = MPI_Wtime();
-
-				// TODO: this would need to include options to set centering and normalization profiles
-				tecIO *datasetTec = dynamic_cast<tecIO *>(datasetSol);
-				datasetTec->calcAvg(A);
-				datasetTec->subAvg(A);
-				datasetTec->calcNorm(A);
-				datasetTec->normalize(A);
-
-				t1_end = MPI_Wtime();
-				aggregateTiming(t1_end - t1_start, timingOutput, "Solution snapshot preprocessing");
-				int MSol = datasetSol->nPoints;
-				int NSol = datasetSol->nSets;
-
-				vector<double> SSol;
-
-				U = new pMat(MSol, min(MSol, NSol), evenG, false);
-				VT = new pMat(min(MSol, NSol), NSol, evenG, false);
-				SSol.resize(min(MSol, NSol));
-
-				A->svd_run(MSol, NSol, 0, 0, U, VT, SSol);
-				destroyPMat(A, false);
-				destroyPMat(VT, false);
-
-				// extract numModesSol modes from U
-				USol = new pMat(U->M, numModesSol, evenG, false);
-				USol->changeContext(U, U->M, numModesSol, 0, 0, 0, 0, false);
-				destroyPMat(U, false); // don't need this anymore
-
+				aggregateTiming(t1_end - t1_start, timingOutput, "Solution basis load");
 			}
-
-		} else {
-
-			// if inputMatch, basis has already been copied
-			if (!inputMatch) {
-				USol = new pMat(datasetSol->nPoints, datasetSol->nSets, evenG, false);
-
-				// if same basis set, but solution basis has fewer modes than RHS basis, extract first numModesSol modes from URHS
-				if (modesDiff && (numModesSol < numModesMax)) {
-					USol->changeContext(URHS, URHS->M, numModesSol, 0, 0, 0, 0, false);
-
-				// otherwise just load from disk
-				} else {
-					t1_start = MPI_Wtime();
-					datasetSol->batchRead(USol);
-					t1_end = MPI_Wtime();
-					aggregateTiming(t1_end - t1_start, timingOutput, "Solution basis load");
-				}
-			}
-
 		}
+
+		USol_T = new pMat(numModesSol, USol->M, evenG, false);
+		USol_T->transpose(USol);
+
 	}
 
 	// ##### FINISH SOLUTION TRIAL BASIS ##### //
 
 	// ##### START SAMPLING ##### //
+
+	t1_start = MPI_Wtime();
+	vector<int> gP; // will contain zero-indexed cell IDs of sampled cells
+	set<int> samplingPoints;  // set version of gP, for automatically rejecting repeated entries
+	int PointsNeeded = max(numModesMax, int(nCells * pSampling));
 
 	// type of sampling
 	// 0: QR only, no oversampling (QDEIM)
@@ -330,89 +190,60 @@ int main(int argc, char *argv[]) {
 	// For greedy sampling methods, determine whether greedy objective function
 	// is computed by cell or degree of freedom.
 	int sampMethod;
-	int greedyDOF;
 	if (sampType > 1) {
 		if(inputFile.getParamInt("sampMethod", sampMethod)){
 			switch(sampMethod) {
 				case 0:
 					cout << "Oversampling by DEGREE OF FREEDOM" << endl;
-					greedyDOF = nDOF;
 					break;
 				case 1:
 					cout << "Oversampling by CELL" << endl;
-					greedyDOF = nCells;
 					break;
 				default:
 					cout << "Invalid value of sampMethod" << endl;
 					throw(-1);
 			}
-
 		} else {
 			sampMethod = 0;
 			cout << "Defaulting to oversampling by DEGREE OF FREEDOM" << endl;
-			greedyDOF = nDOF;
 		}
 	}
 
-	// compute QR factorization of U^T
-	// This writes the pivot indices to disk, since it's easier to do this than collect to rank 0 process
-	int PointsNeeded = max(numModesRHS, int(nCells * pSampling)); // total number of cells that need to be sampled
-	vector<int> P;
-	string qrSampBin;
+	// ----- QR SAMPLING ----- //
+ 
+	string qrSampBin_res, qrSampBin_sol;
 	if ((sampType != 3) && (sampType != 4)) {
-		if(inputFile.getParamString("qrSampBin", qrSampBin)){
-			cout << "Retrieving QR sampling points from " << qrSampBin << endl;
-		} else {
-			cout << "qrSampBin not specified, computing it now." << endl;
-			qrSampBin = "P.bin";
-			t1_start = MPI_Wtime();
-			cout << "Computing QR decomposition..." << endl;
-			URHS_T->qr_run(URHS_T->M, URHS_T->N, 0, 0, P, "./", false);  // contents of URHS_T are DESTROYED during QR decomposition
-			t1_end = MPI_Wtime();
-			aggregateTiming(t1_end - t1_start, timingOutput, "QR decomposition");
+		t1_start = MPI_Wtime();
+
+		qr_sampling(inputFile, "qrSampBinRes", nCells, URes_T, gP, samplingPoints);
+		if (interpolantFormat > 0)
+			qr_sampling(inputFile, "qrSampBinSol", nCells, USol_T, gP, samplingPoints);
+
+		if (rank == 0) {
+			// copy unique indices from samplingPoints to gP
+			gP.resize(samplingPoints.size(), 0);
+			copy(samplingPoints.begin(), samplingPoints.end(), gP.begin());
+			cout << "Goal is " << PointsNeeded << " points" << endl;
+			cout << "Points after qr: " << samplingPoints.size() << " of " << PointsNeeded << endl;
 		}
+		MPI_Barrier(MPI_COMM_WORLD);
+		t1_end = MPI_Wtime();
+		aggregateTiming(t1_end - t1_start, timingOutput, "QR decomposition");
 	}
-	destroyPMat(URHS_T, false);
+	destroyPMat(URes_T, false);
+	if (interpolantFormat > 0)
+		destroyPMat(USol_T, false);
 
-	vector<int> gP; // will contain zero-indexed cell IDs of sampled cells
-	vector<int> itype;
-	set<int> samplingPoints;  // set version of gP, for automatically rejecting repeated entries
+	// ----- FINISH QR SAMPLING ----- //
 
-	// get QR and boundary points
-	t1_start = MPI_Wtime();
+	// ----- BOUNDARY SAMPLING ----- //
+
+	// get boundary points
 	t2_start = MPI_Wtime();
 
 	// all sampling here is done by rank 0 process
+	vector<int> itype;
 	if (rank == 0) {
-		if ((sampType != 3) && (sampType != 4)) {
-
-			// read QR samples
-			// gP MAY contain DOFs corresponding to the SAME CELL at this point
-			readMat(qrSampBin, gP);
-			gP.resize(numModesRHS);
-
-			// sampled QR cells
-			cout << "Extracting QR points..." << endl;
-			for (int i = 0; i < gP.size(); i++) {
-				gP[i]--; //switch to 0 indexing
-
-				//switch to zero-indexed cell IDs
-				cout << i << " " << gP[i] << " " << endl;
-				gP[i] = gP[i] % nCells;
-				auto check = samplingPoints.emplace(gP[i]);
-				if (!check.second)
-				{
-					cout << "Repeated element" << endl;
-				}
-			}
-			cout << "Goal is " << PointsNeeded << " points" << endl;
-			cout << "Points after qr: " << samplingPoints.size() << " of " << PointsNeeded << endl;
-
-			// gP now only contains unique sampled cell indices
-			gP.resize(samplingPoints.size(), 0);
-			copy(samplingPoints.begin(), samplingPoints.end(), gP.begin());
-
-		}
 
 		// get desired boundary labels
 		int numSampledBounds = 0;
@@ -484,10 +315,13 @@ int main(int argc, char *argv[]) {
 
 	}
 	MPI_Barrier(MPI_COMM_WORLD);
-	t2_end = MPI_Wtime(); // this is a serial timing, so has to be right after barrier
+	t2_end = MPI_Wtime();
 	aggregateTiming(t2_end - t2_start, timingOutput, "Boundary sampling");
 
-	// oversampling
+	// ----- FINISH BOUNDARY SAMPLING ----- //
+
+	// ----- OVERSAMPLING ----- //
+
 	t2_start = MPI_Wtime();
 
 	// no oversampling
@@ -500,23 +334,26 @@ int main(int argc, char *argv[]) {
 
 	// eigenvector-based oversampling
 	} else if (sampType == 2) {
-		eigenvector_oversampling(URHS, USol, sampMethod, nCells, nVars, nDOF, numModesRHS, PointsNeeded, samplingPoints, gP, timingOutput);
+		eigenvector_oversampling(URes, USol, sampMethod, nCells, nVars, nDOF, numModesRes, PointsNeeded, samplingPoints, gP, timingOutput);
 
 	// GNAT sampling, from Ben's preprint paper
 	} else if (sampType == 3) {
-		gnat_oversampling_peherstorfer(URHS, USol, sampMethod, nCells, nVars, nDOF, numModesRHS, PointsNeeded, samplingPoints, gP, timingOutput);
+		gnat_oversampling_peherstorfer(URes, USol, sampMethod, nCells, nVars, nDOF, numModesRes, PointsNeeded, samplingPoints, gP, timingOutput);
 
 	} else if (sampType == 4) {
-		gnat_oversampling_carlberg(URHS, USol, sampMethod, nCells, nVars, nDOF, numModesRHS, PointsNeeded, samplingPoints, gP, timingOutput);
+		gnat_oversampling_carlberg(URes, USol, sampMethod, nCells, nVars, nDOF, numModesRes, PointsNeeded, samplingPoints, gP, timingOutput);
 
 	} else {
 		cout << "Invalid choice of sampling type: " << sampType << endl;
 	}
+
 	MPI_Barrier(MPI_COMM_WORLD);
 	t2_end = MPI_Wtime();
 	aggregateTiming(t2_end - t2_start, timingOutput, "Oversampling");
 	t1_end = MPI_Wtime();
 	aggregateTiming(t1_end - t1_start, timingOutput, "Full sampling");
+
+	// ----- FINISH OVERSAMPLING ----- //
 
 	if (rank == 0) {
 		gP.resize(samplingPoints.size(), 0);
@@ -538,13 +375,6 @@ int main(int argc, char *argv[]) {
 		string tempname = "sampling";
 		Pname.push_back(tempname);
 
-		// could probably generalize this without the conditionals
-		if (readSolSnaps) {
-			dynamic_cast<tecIO *>(datasetSol)->writeSingleFile("sampling.szplt", Pname, gPD.data(), firstFileSnaps);
-		} else if (readRHSSnaps) {
-			dynamic_cast<tecIO *>(datasetRHS)->writeSingleFile("sampling.szplt", Pname, gPD.data(), firstFileSnaps);
-		}
-
 	}
 
 	if (rank != 0) {
@@ -555,23 +385,16 @@ int main(int argc, char *argv[]) {
 
 	cout << "Calculating DEIM interpolant..." << endl;
 
-	// URHS_samp is P^T * URHS
-	pMat *URHS_samp;
-	URHS_samp = new pMat(gP.size() * nVars, numModesRHS, evenG, false);
+	// URes_samp is P^T * URes
+	pMat *URes_samp;
+	URes_samp = new pMat(gP.size() * nVars, numModesRes, evenG, false);
 
-	// extract rows of URHS
-	// would it not be easier to just construct the full selection matrix P? Then multiply P^T * U?
-
-	// permute rows with pdlapiv, then copy first gp.size()*nVars rows
-
-	// multiply URHS by actual selection matrix
-
-	// copying individual rows of URHS
+	// copying individual rows of URes
 	t1_start = MPI_Wtime();
 	for (int i = 0; i < gP.size(); i++) {
 		cout << (double)i / gP.size() * 100 << " percent points extracted \r";
 		for (int j = 0; j < nVars; j++)
-			URHS_samp->changeContext(URHS, 1, numModesRHS, gP[i] + j * nCells, 0, i + j * gP.size(), 0, false);
+			URes_samp->changeContext(URes, 1, numModesRes, gP[i] + j * nCells, 0, i + j * gP.size(), 0, false);
 	}
 	cout << endl;
 	t1_end = MPI_Wtime();
@@ -579,27 +402,27 @@ int main(int argc, char *argv[]) {
 
 
 	t1_start = MPI_Wtime();
-	// compute [P^T * URHS]^+ component of DEIM interpolant
+	// compute [P^T * URes]^+ component of DEIM interpolant
 	cout << "Computing pseudo-inverse..." << endl;
-	pMat *pinvURHS_samp = new pMat(URHS_samp->N, URHS_samp->M, evenG, false);
-	pinvURHS_samp->pinv(URHS_samp);
-	destroyPMat(URHS_samp, false);
+	pMat *pinvURes_samp = new pMat(URes_samp->N, URes_samp->M, evenG, false);
+	pinvURes_samp->pinv(URes_samp);
+	destroyPMat(URes_samp, false);
 
 	pMat *deimInterp_T;
 	if (interpolantFormat == 1) {
-		// compute USol^T * URHS
+		// compute USol^T * URes
 		cout << "Computing V^T * U ..." << endl;
-		pMat *USol_URHS = new pMat(numModesSol, numModesRHS, evenG, false);
-		USol_URHS->matrix_Product('T', 'N', numModesSol, numModesRHS, USol->M, USol, 0, 0, URHS, 0, 0, 1.0, 0.0, 0, 0);
+		pMat *USol_URes = new pMat(numModesSol, numModesRes, evenG, false);
+		USol_URes->matrix_Product('T', 'N', numModesSol, numModesRes, USol->M, USol, 0, 0, URes, 0, 0, 1.0, 0.0, 0, 0);
 
-		// compute full DEIM interpolant for Galerkin, USol^T * URHS * [P^T * URHS]^+
+		// compute full DEIM interpolant for Galerkin, USol^T * URes * [P^T * URes]^+
 		cout << "Computing complete DEIM interpolant..." << endl;
-		pMat *deimInterp = new pMat(USol_URHS->M, pinvURHS_samp->N, evenG, false);
-		deimInterp->matrix_Product('N', 'N', deimInterp->M, deimInterp->N, pinvURHS_samp->M, USol_URHS, 0, 0, pinvURHS_samp, 0, 0, 1.0, 0.0, 0, 0);
+		pMat *deimInterp = new pMat(USol_URes->M, pinvURes_samp->N, evenG, false);
+		deimInterp->matrix_Product('N', 'N', deimInterp->M, deimInterp->N, pinvURes_samp->M, USol_URes, 0, 0, pinvURes_samp, 0, 0, 1.0, 0.0, 0, 0);
 
 
-		destroyPMat(USol_URHS, false);
-		destroyPMat(pinvURHS_samp, false);
+		destroyPMat(USol_URes, false);
+		destroyPMat(pinvURes_samp, false);
 
 		deimInterp_T = new pMat(deimInterp->N, deimInterp->M, deimInterp->pG, false);
 		deimInterp_T->transpose(deimInterp);
@@ -607,10 +430,10 @@ int main(int argc, char *argv[]) {
 
 	} else {
 
-		// full DEIM interpolant for SP-LSVT is just [P^T * URHS]^+
-		deimInterp_T = new pMat(pinvURHS_samp->N, pinvURHS_samp->M, pinvURHS_samp->pG, false);
-		deimInterp_T->transpose(pinvURHS_samp);
-		destroyPMat(pinvURHS_samp, false);
+		// full DEIM interpolant for SP-LSVT is just [P^T * URes]^+
+		deimInterp_T = new pMat(pinvURes_samp->N, pinvURes_samp->M, pinvURes_samp->pG, false);
+		deimInterp_T->transpose(pinvURes_samp);
+		destroyPMat(pinvURes_samp, false);
 
 	}
 	t1_end = MPI_Wtime();
@@ -620,61 +443,29 @@ int main(int argc, char *argv[]) {
 	// insert zeros where it is not sampled, for GEMS input
 	cout << "Emplacing zeros into DEIM interpolant..." << endl;
 	t1_start = MPI_Wtime();
-	pMat *deimInterpOut = new pMat(datasetRHS->nPoints, numModesRHS, evenG, false);
+	pMat *deimInterpOut = new pMat(datasetRes->nPoints, numModesRes, evenG, false);
 	for (int i = 0; i < gP.size(); i++) {
 		cout << (double)i / gP.size() * 100 << " percent points emplaced \r";
 		for (int j = 0; j < nVars; j++)
-			deimInterpOut->changeContext(deimInterp_T, 1, numModesRHS, i + j * gP.size(), 0, gP[i] + j * nCells, 0, false);
+			deimInterpOut->changeContext(deimInterp_T, 1, numModesRes, i + j * gP.size(), 0, gP[i] + j * nCells, 0, false);
 	}
 	cout << endl;
 	t1_end = MPI_Wtime();
 	aggregateTiming(t1_end - t1_start, "timings.dat", "Interpolant zero emplacement");
 
-	// what is the purpose of this? We can't use this stuff with GEMS, and it will get activated no matter what if computing the SVD
-	t1_start = MPI_Wtime();
-	if (readSolSnaps || readRHSSnaps) {
-		tecIO *datasetOut = new tecIO();
-		datasetOut->snap0 = 1;
-		datasetOut->snapF = deimInterpOut->N;
-		datasetOut->snapSkip = 1;
-		datasetOut->nSets = deimInterpOut->N;
-		//datasetOut->prefix = "deimInterp";
-		//datasetOut->suffix = ".szplt";
-		datasetOut->isInit = true;
+	meta *datasetOut = new meta();
+	datasetOut->snap0 = 1;
+	datasetOut->snapF = deimInterpOut->N;
+	datasetOut->snapSkip = 1;
+	datasetOut->nSets = deimInterpOut->N;
+	datasetOut->prefix = "deimInterp";
+	datasetOut->suffix = ".bin";
+	datasetOut->isInit = true;
 
-		if (readSolSnaps) {
-			datasetOut->meshFile = datasetSol->prefix + to_string(datasetSol->snap0) + datasetSol->suffix;
-			datasetOut->varName = dynamic_cast<tecIO *>(datasetSol)->varName;
-			datasetOut->varIndex = dynamic_cast<tecIO *>(datasetSol)->varIndex;
-		} else {
-			datasetOut->meshFile = datasetRHS->prefix + to_string(datasetRHS->snap0) + datasetRHS->suffix;
-			datasetOut->varName = dynamic_cast<tecIO *>(datasetRHS)->varName;
-			datasetOut->varIndex = dynamic_cast<tecIO *>(datasetRHS)->varIndex;
-		}
+	datasetOut->nPoints = nCells * nVars;
+	assert(datasetOut->nPoints == nCells * nVars);
+	datasetOut->batchWrite(deimInterpOut, "./", deimPrefix);
 
-		datasetOut->fixedMesh = true;
-		datasetOut->getDimNodes();
-		datasetOut->numVars = datasetOut->varName.size();
-		datasetOut->nPoints = datasetOut->nCells * datasetOut->numVars;
-
-		datasetOut->activateReorder(firstFileSnaps.c_str());
-		datasetOut->activateGEMSbin(firstFileSnaps.c_str());
-		datasetOut->batchWrite(deimInterpOut, "./", deimPrefix);
-
-	} else {
-		meta *datasetOut = new meta();
-		datasetOut->snap0 = 1;
-		datasetOut->snapF = deimInterpOut->N;
-		datasetOut->snapSkip = 1;
-		datasetOut->nSets = deimInterpOut->N;
-		datasetOut->prefix = "deimInterp";
-		datasetOut->suffix = ".bin";
-		datasetOut->isInit = true;
-
-		datasetOut->nPoints = nCells * nVars;
-		assert(datasetOut->nPoints == nCells * nVars);
-		datasetOut->batchWrite(deimInterpOut, "./", deimPrefix);
-	}
 	t1_end = MPI_Wtime();
 	aggregateTiming(t1_end - t1_start, "timings.dat", "Interpolant mode write");
 
