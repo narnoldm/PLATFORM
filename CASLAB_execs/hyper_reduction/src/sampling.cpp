@@ -1,7 +1,8 @@
 #include "sampling.hpp"
 
-using namespace ::std;
+using namespace :: std;
 
+// computes sampling points from pivots of QR decomposition of U_T
 void qr_sampling(paramMap inputFile, const string& qrSampFileStr, int nCells, pMat* U_T, vector<int>& gP, set<int>& samplingPoints) {
 
 	string qrSampBin;
@@ -41,6 +42,7 @@ void qr_sampling(paramMap inputFile, const string& qrSampFileStr, int nCells, pM
 
 }
 
+// randomly samples cells
 void random_oversampling(int nCells, int PointsNeeded, set<int>& samplingPoints) {
 
 	int rank;
@@ -83,6 +85,7 @@ void random_oversampling(int nCells, int PointsNeeded, set<int>& samplingPoints)
 	}
 }
 
+// eigenvector-based sampling from Peherstorfer et al., 2018 (preprint)
 void eigenvector_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCells, int nVars, int nDOF, int numModesRHS,
 							  int PointsNeeded, set<int>& samplingPoints, vector<int>& gP, string& timingOutput) {
 
@@ -266,6 +269,7 @@ void eigenvector_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCells
 	destroyPMat(nonUniqueVec, false);
 }
 
+// GNAT sampling based on algorithm from Peherstorfer et al., 2018 (preprint)
 void gnat_oversampling_peherstorfer(pMat* URes, pMat* USol, int sampMethod, int nCells, int nVars, int nDOF, int numModesRHS,
 							  int PointsNeeded, set<int>& samplingPoints, vector<int>& gP, string& timingOutput) {
 
@@ -430,6 +434,7 @@ void gnat_oversampling_peherstorfer(pMat* URes, pMat* USol, int sampMethod, int 
 	destroyPMat(nonUniqueVec, false);
 }
 
+// GNAT sampling based on algorithm from Carlberg et al., 2017
 void gnat_oversampling_carlberg(pMat* URes, pMat* USol, int sampMethod, int nCells, int nVars, int nDOF, int numModesRHS,
 							  int PointsNeeded, set<int>& samplingPoints, vector<int>& gP, string& timingOutput) {
 
@@ -615,3 +620,70 @@ void gnat_oversampling_carlberg(pMat* URes, pMat* USol, int sampMethod, int nCel
 	destroyPMat(rVec, false);
 	destroyPMat(nonUniqueVec, false);
 }
+
+// computes gappy POD regressor [P^T * U]^+ for saving to disk
+void calc_regressor(pMat* U, pMat* regressor, vector<int>& gP, int nCells, int nVars) {
+
+	pMat *U_samp;
+	U_samp = new pMat(gP.size() * nVars, U->N, U->pG, false);
+
+	assert (regressor->M == U_samp->N);
+	assert (regressor->N == U_samp->M);
+
+	// copying rows of U
+	for (int i = 0; i < gP.size(); i++) {
+		cout << (double)i / gP.size() * 100 << " percent points extracted \r";
+		for (int j = 0; j < nVars; j++)
+			U_samp->changeContext(U, 1, U->N, gP[i] + j * nCells, 0, i + j * gP.size(), 0, false);
+	}
+	cout << endl;
+
+	// compute [P^T * U]^+
+	cout << "Computing pseudo-inverse..." << endl;
+	regressor->pinv(U_samp);
+	destroyPMat(U_samp, false);
+
+}
+
+/**
+ *  Put regressor into GEMS format, with zeros at unsampled degrees of freedom
+ *
+ *  If transA = 'T', AIn is assumed to be in its original [P^T * U]^+ format, and must be transposed first.
+ *  AOut must already be allocated, initialized with zeros, and have the same dimension as the basis (U) it is derived from.
+ *  Does not destroy AIn, that is the user's responsibility.
+ */
+void emplace_zeros(const char transA, pMat* AIn, pMat* AOut, vector<int>& gP, int nCells, int nVars) {
+
+	pMat* regressor;
+	int numModes;
+
+	// check dimensions of AIn and AOut, set regressor
+	if (transA == 'T') {
+		assert (AIn->N == (gP.size() * nVars));
+		numModes = AIn->M;
+		regressor = new pMat(AIn->N, AIn->M, AIn->pG, false);
+		regressor->transpose(AIn);
+	} else if (transA == 'F') {
+		assert(AIn->M == (gP.size() * nVars));
+		numModes = AIn->N;
+		regressor = AIn;
+	} else {
+		cout << "Invalid value of transA: " << transA << endl;
+		throw(-1);
+	}
+	assert (AOut->M == (nCells * nVars));
+	assert (AOut->N == numModes);
+
+	// transfer rows from regressor to AOut
+	for (int i = 0; i < gP.size(); i++) {
+		cout << (double)i / gP.size() * 100 << " percent points emplaced \r";
+		for (int j = 0; j < nVars; j++)
+			AOut->changeContext(regressor, 1, numModes, i + j * gP.size(), 0, gP[i] + j * nCells, 0, false);
+	}
+	cout << endl;
+
+	if (transA == 'T')
+		destroyPMat(regressor);
+
+}
+

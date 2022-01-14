@@ -1,23 +1,16 @@
 stdout_proc = 0
 
 ! DEIM interpolant format
-! 0: [P^T * URHS]^+ (MP-LSVT)
-! 1: USol^T * URHS * [P^T * U]^+ (Galerkin format)
-interpolantFormat = 0
+! 0: [P^T * URes]^+ (Full residual)
+! 1: USol^T * URHS * [P^T * URHS]^+ (Galerkin format)
+! 2: [P^T * URHS]^+, [P^T * USol]^+, and USol^T * URHS (separate residual bases)
+regressorFormat = 0
 
-!!!!! RHS Basis !!!!!
-readRHSSnaps = false
-rhsInputString = input|binaryset|/home/chris/Research/GEMS_runs/straightDuct_3D/dataProc/podBases/0p15ms_to_0p16ms_samp1/Spatial_Modes/Spatial_Mode_|.bin|1|25|1
-
-! not required if loading from binary modes
-numModesRHS = 25 
+!!!!! Residual/RHS Basis !!!!!
+resInputString = input|binaryset|/home/chris/Research/GEMS_runs/straightDuct_3D/dataProc/podBases/0p15ms_to_0p16ms_samp1/Spatial_Modes/Spatial_Mode_|.bin|1|25|1
 
 !!!!! Solution Basis !!!!!
-readSolSnaps = false
 solInputString = input|binaryset|/home/chris/Research/GEMS_runs/straightDuct_3D/dataProc/podBases/0p15ms_to_0p16ms_samp1/Spatial_Modes/Spatial_Mode_|.bin|1|25|1
-
-! not required if loading from binary modes
-numModesSol = 25
 
 !!!!! System Data !!!!!
 nCells = 160000
@@ -28,7 +21,8 @@ nVars = 9
 ! 0 = no oversampling
 ! 1 = random
 ! 2 = eigenvalue
-! 3 = DEIM greedy (not implemented)
+! 3 = GNAT (Peherstorfer)
+! 4 = GNAT (Carlberg)
 sampType = 1
 
 ! For greedy sampling (sampType > 1)
@@ -48,7 +42,4 @@ dfd_itype_file = /home/chris/Research/GEMS_runs/straightDuct_3D/mesh/partition_1
 
 ! percent of points to be sampled (If points is less than boundary cells will cause issues)
 pSampling = 0.01
-
-! Output options
-deimModesPrefix = pinv_mode_
 
