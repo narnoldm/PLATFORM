@@ -15,8 +15,11 @@
 
 void qr_sampling(paramMap inputFile, const std::string& qrSampFileStr, int nCells, pMat* U_T, std::vector<int>& gP, std::set<int>& samplingPoints);
 void random_oversampling(int nCells, int PointsNeeded, std::set<int>& samplingPoints);
-void eigenvector_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCells, int nVars, int nDOF, int numModesRHS,
-							  int PointsNeeded, std::set<int>& samplingPoints, std::vector<int>& gP, std::string& timingOutput);
+
+void eigenvector_oversampling(std::vector<pMat*> U_vec, int sampMethod, int nCells, int nVars, int PointsNeeded,
+                              std::set<int>& samplingPoints, std::vector<int>& gP, std::string& timingOutput);
+void eigenvector_oversampling_metric(pMat* U, pMat* U_samp, pMat* U_samp_copy, pMat* rVec, pMat* rVecSum, pMat* nonUniqueVec, int numCurrentDOFs);
+
 void gnat_oversampling_peherstorfer(pMat* URes, pMat* USol, int sampMethod, int nCells, int nVars, int nDOF, int numModesRHS,
 							  int PointsNeeded, std::set<int>& samplingPoints, std::vector<int>& gP, std::string& timingOutput);
 void gnat_oversampling_carlberg(pMat* URes, pMat* USol, int sampMethod, int nCells, int nVars, int nDOF, int numModesRHS,

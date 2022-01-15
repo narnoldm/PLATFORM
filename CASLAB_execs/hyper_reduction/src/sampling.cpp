@@ -6,11 +6,10 @@ using namespace :: std;
 void qr_sampling(paramMap inputFile, const string& qrSampFileStr, int nCells, pMat* U_T, vector<int>& gP, set<int>& samplingPoints) {
 
 	string qrSampBin;
-	if (inputFile.getParamString(qrSampFileStr, qrSampBin)){
+	if (inputFile.getParamString(qrSampFileStr, qrSampBin, "P.bin")){
 			cout << "Retrieving QR sampling points from " << qrSampBin << endl;
 	} else {
 		cout << qrSampFileStr << " not specified, computing it now." << endl;
-		qrSampBin = "P.bin";
 		vector<int> P;
 		U_T->qr_run(U_T->M, U_T->N, 0, 0, P, "./", qrSampBin, false);  // contents of U_T are DESTROYED during QR decomposition
 	}
@@ -86,24 +85,28 @@ void random_oversampling(int nCells, int PointsNeeded, set<int>& samplingPoints)
 }
 
 // eigenvector-based sampling from Peherstorfer et al., 2018 (preprint)
-void eigenvector_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCells, int nVars, int nDOF, int numModesRHS,
+void eigenvector_oversampling(const vector<pMat*> U_vec, int sampMethod, int nCells, int nVars,
 							  int PointsNeeded, set<int>& samplingPoints, vector<int>& gP, string& timingOutput) {
 
 	int rank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
 	// declare some variables for this routine
-	pMat *U_E, *VT_E;
-	vector<double> S_E;
-	int M, N, minDim;
+	int nDOF = nCells * nVars;
 	int numInitPoints, numCurrentPoints, numCurrentDOFs;
 	int cellID;
 
-	PGrid* evenG = URes->pG; // reuse process grid
+	int numModesMax = 0;
+	for (int i = 0; i < U_vec.size(); ++i) {
+		numModesMax = max(numModesMax, U_vec[i]->N);
+	}
 
-	// greedy sampling metric vector
-	pMat *rVec = new pMat(1, nDOF, evenG, false);
-	pMat *rVecCell;
+	PGrid* evenG = U_vec[0]->pG; // reuse process grid
+
+	// greedy sampling metrics
+	pMat *rVec = new pMat(1, nDOF, evenG, false);  // to be reused for each basis
+	pMat *rVecSum = new pMat(1, nDOF, evenG, false);  // sum for all bases
+	pMat *rVecCell;  // metric for mesh cell
 	if (sampMethod == 1)
 		rVecCell = new pMat(1, nCells, evenG, false);
 
@@ -127,24 +130,27 @@ void eigenvector_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCells
 	}
 
 	// Grab initial cell rows, BUT ordered by cell, then by var
-	// This is done because newly sampled rows get appended to END of URHS_samp_E,
-	// and we want to just copy the first N rows when copying URHS_samp_E
-	pMat *URHS_samp_E = new pMat(PointsNeeded*nVars, numModesRHS, evenG, false);
-	pMat *URHS_samp_E_copy = new pMat(PointsNeeded*nVars, numModesRHS, evenG, false);
-	for (int j = 0; j < numCurrentPoints; ++j) {
-		cout << (double)j / numCurrentPoints * 100 << " percent points extracted \r";
-		for (int k = 0; k < nVars; ++k)
-			URHS_samp_E_copy->changeContext(URes, 1, numModesRHS, gP[j] + k * nCells, 0, j * nVars + k, 0, false);
+	// This is done because newly sampled rows get appended to END of U_samp,
+	// and we want to just copy the first N rows when copying U_samp
+	vector<pMat*> U_samp_vec;
+	vector<pMat*> U_samp_copy_vec;
+	for (int i = 0; i < U_vec.size(); ++i) {
+		U_samp_vec.push_back(new pMat(PointsNeeded*nVars, U_vec[i]->N, evenG, false));
+		U_samp_copy_vec.push_back(new pMat(PointsNeeded*nVars, U_vec[i]->N, evenG, false));
+		for (int j = 0; j < numCurrentPoints; ++j) {
+			cout << (double)j / numCurrentPoints * 100 << " percent points extracted \r";
+			for (int k = 0; k < nVars; ++k)
+				U_samp_copy_vec[i]->changeContext(U_vec[i], 1, U_vec[i]->N, gP[j] + k * nCells, 0, j * nVars + k, 0, false);
+		}
+		cout << endl;
 	}
-	cout << endl;
 
 	// local timing variables
-	double tE_start, tE_start2;
-	double tE1, tE2, tE3, tE4, tE5, tE6, tE7;
-	tE1 = 0.0; tE2 = 0.0; tE3 = 0.0; tE4 = 0.0; tE5 = 0.0; tE6 = 0.0; tE7 = 0.0;
+	double tE_start;
+	double tE1, tE2, tE3;
+	tE1 = 0.0; tE2 = 0.0; tE3 = 0.0;
 
 	// variables for computing argsort
-	int breakSignal;
 	int argMaxGlobal;
 
 	// loop over number of requires samples left
@@ -156,42 +162,15 @@ void eigenvector_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCells
 
 		numCurrentDOFs = numCurrentPoints * nVars;
 
-		// copy first numCurrentDOFs rows from URHS_samp_E_copy to URHS_samp_E
-		// we do this because URHS_samp_E will be destroyed during the SVD
+		// zero out metric vector
+		for (int j = 0; j < rVecSum->dataD.size(); ++j)
+			rVecSum->dataD[j] = 0.0;
+
+		// compute greedy sampling metric
 		tE_start = MPI_Wtime();
-		URHS_samp_E->changeContext(URHS_samp_E_copy, numCurrentDOFs, numModesRHS, 0, 0, 0, 0, false);
-		tE1 += (MPI_Wtime() - tE_start);
-
-		// compute SVD of sampled URHS, hold on to singular values and RIGHT singular vectors
-		M = numCurrentDOFs;
-		N = numModesRHS;
-		minDim = min(M, N);
-
-		U_E = new pMat(M, minDim, evenG, false);  // this will always change, must be reallocated/deleted
-		VT_E = new pMat(minDim, N, evenG, false); // this *might* not need to be reallocated/deleted every iterations, could always be [numModesRHS x numModesRHS]
-		S_E.resize(minDim, 0.0);
-
-		tE_start = MPI_Wtime();
-		URHS_samp_E->svd_run(M, N, 0, 0, U_E, VT_E, S_E, false); // contents of URHS_samp_E are destroyed during SVD
-		tE2 += (MPI_Wtime() - tE_start);
-		destroyPMat(U_E, false);
-
-		// compute vector-matrix product of last right singular vector transposed and URHS transposed
-		tE_start = MPI_Wtime();
-		rVec->matrix_Product('N', 'T', 1, nDOF, minDim, VT_E, minDim-1, 0, URes, 0, 0, 1.0, 0.0, 0, 0);
-		tE3 += (MPI_Wtime() - tE_start);
-		destroyPMat(VT_E, false);
-
-		tE_start = MPI_Wtime();
-		// zero out DOFs that have already been selected
-		for (int j = 0; j < rVec->dataD.size(); ++j) {
-			if (nonUniqueVec->dataD[j] == 1.0)
-				rVec->dataD[j] = 0.0;
+		for (int j = 0; j < U_vec.size(); ++j) {
+			eigenvector_oversampling_metric(U_vec[j], U_samp_vec[j], U_samp_copy_vec[j], rVec, rVecSum, nonUniqueVec, numCurrentDOFs);
 		}
-
-		// square elements
-		for (int j = 0; j < rVec->dataD.size(); ++j)
-			rVec->dataD[j] = rVec->dataD[j] * rVec->dataD[j];
 
 		// if sampling by cell, compute sum for each cell
 		if (sampMethod == 1) {
@@ -199,24 +178,20 @@ void eigenvector_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCells
 			for (int j = 0; j < rVecCell->dataD.size(); ++j)
 				rVecCell->dataD[j] = 0.0;
 			for (int j = 0; j < nVars; ++j) {
-				rVecCell->matrix_Sum('N', 1, nCells, rVec, 0, j * nCells, 0, 0, 1.0, 1.0);
+				rVecCell->matrix_Sum('N', 1, nCells, rVecSum, 0, j * nCells, 0, 0, 1.0, 1.0);
 			}
 		}
-		tE4 += (MPI_Wtime() - tE_start);
+		tE1 += (MPI_Wtime() - tE_start);
 
 		// get unique cell ID
 		tE_start = MPI_Wtime();
-
-		tE_start2 = MPI_Wtime();
 		if (sampMethod == 1) {
 			argMaxGlobal = rVecCell->argmax_vec();
 		} else {
-			argMaxGlobal = rVec->argmax_vec();
+			argMaxGlobal = rVecSum->argmax_vec();
 		}
-		tE5 += (MPI_Wtime() - tE_start2);
 
 		// emplace cell ID in samplingPoints
-		tE_start2 = MPI_Wtime();
 		if (sampMethod == 1) {
 			cellID = argMaxGlobal;
 		} else {
@@ -238,35 +213,70 @@ void eigenvector_oversampling(pMat* URes, pMat* USol, int sampMethod, int nCells
 		for (int k = 0; k < nVars; ++k)
 			nonUniqueVec->setElement(0, k * nCells + cellID, 1.0);
 
-		tE6 += (MPI_Wtime() - tE_start);
+		tE2 += (MPI_Wtime() - tE_start);
 
 		// insert into gP vector
 		gP.push_back(cellID);
 		numCurrentPoints++;
 
-		// append newly sampled rows of URHS to URHS_samp_E_copy
+		// append newly sampled rows of U to U_samp_copy
 		tE_start = MPI_Wtime();
-		for (int k = 0; k < nVars; ++k)
-			URHS_samp_E_copy->changeContext(URes, 1, numModesRHS, k * nCells + gP.back(), 0, (numCurrentPoints-1) * nVars + k, 0, false);
-		tE7 += (MPI_Wtime() - tE_start);
+		for (int j = 0; j < U_vec.size(); ++j) {
+			for (int k = 0; k < nVars; ++k)
+				U_samp_copy_vec[j]->changeContext(U_vec[j], 1, U_vec[j]->N, k * nCells + gP.back(), 0, (numCurrentPoints-1) * nVars + k, 0, false);
+		}
+		tE3 += (MPI_Wtime() - tE_start);
 
 	}
 
 	// aggregate timings
-	aggregateTiming(tE1, timingOutput, "GPOD+E - URHS_samp_E copy");
-	aggregateTiming(tE2, timingOutput, "GPOD+E - SVD");
-	aggregateTiming(tE3, timingOutput, "GPOD+E - rVec solve");
-	aggregateTiming(tE4, timingOutput, "GPOD+E - Zero and square");
-	aggregateTiming(tE5, timingOutput, "GPOD+E - argmax");
-	aggregateTiming(tE6, timingOutput, "GPOD+E - Find unique (includes argmax)");
-	aggregateTiming(tE7, timingOutput, "GPOD+E - Append rows");
+	aggregateTiming(tE1, timingOutput, "GPOD+E - Metric calculation");
+	aggregateTiming(tE2, timingOutput, "GPOD+E - Find unique");
+	aggregateTiming(tE3, timingOutput, "GPOD+E - Append rows");
 
 	// cleanup
 	cout << endl;
-	destroyPMat(URHS_samp_E, false);
-	destroyPMat(URHS_samp_E_copy, false);
+	for (int i = 0; i < U_vec.size(); ++i) {
+		destroyPMat(U_samp_vec[i], false);
+		destroyPMat(U_samp_copy_vec[i], false);
+	}
 	destroyPMat(rVec, false);
+	destroyPMat(rVecSum, false);
+	if (sampMethod == 1)
+		destroyPMat(rVecCell, false);
 	destroyPMat(nonUniqueVec, false);
+}
+
+// computes greedy sampling metric for a single basis via eigenvector-based oversampling
+void eigenvector_oversampling_metric(pMat* U, pMat* U_samp, pMat* U_samp_copy, pMat* rVec, pMat* rVecSum, pMat* nonUniqueVec, int numCurrentDOFs) {
+
+	// copy first numCurrentDOFs rows from URHS_samp_E_copy to URHS_samp_E
+	// we do this because URHS_samp_E will be destroyed during the SVD
+	U_samp->changeContext(U_samp_copy, numCurrentDOFs, U->N, 0, 0, 0, 0, false);
+
+	// compute SVD of sampled URHS, hold on to singular values and RIGHT singular vectors
+	int M = numCurrentDOFs;
+	int N = U->N;
+	int minDim = min(M, N);
+
+	pMat* U_E = new pMat(M, minDim, U->pG, false);  // this will always change, must be reallocated/deleted
+	pMat* VT_E = new pMat(minDim, N, U->pG, false); // this *might* not need to be reallocated/deleted every iterations
+	vector<double> S_E(minDim, 0.0);
+
+	U_samp->svd_run(M, N, 0, 0, U_E, VT_E, S_E, false); // contents of U_samp are destroyed during SVD
+	destroyPMat(U_E, false);
+
+	// compute vector-matrix product of last right singular vector transposed and U transposed
+	rVec->matrix_Product('N', 'T', 1, U->M, minDim, VT_E, minDim-1, 0, U, 0, 0, 1.0, 0.0, 0, 0);
+	destroyPMat(VT_E, false);
+
+	for (int j = 0; j < rVec->dataD.size(); ++j) {
+		if (nonUniqueVec->dataD[j] != 1.0) {
+			// add contribution from sampled degrees of freedom
+			rVecSum->dataD[j] += rVec->dataD[j] * rVec->dataD[j];
+		}
+	}
+
 }
 
 // GNAT sampling based on algorithm from Peherstorfer et al., 2018 (preprint)
@@ -683,7 +693,7 @@ void emplace_zeros(const char transA, pMat* AIn, pMat* AOut, vector<int>& gP, in
 	cout << endl;
 
 	if (transA == 'T')
-		destroyPMat(regressor);
+		destroyPMat(regressor, false);
 
 }
 

@@ -16,7 +16,20 @@ paramMap::paramMap(std::string file, int r)
         intParam.clear();
         doubleParam.clear();
 }
-bool paramMap::getParamInt(std::string parastr, int &Param)
+
+bool paramMap::getParamInt(std::string parastr, int &Param) {
+
+	bool foundParam = getParamInt(parastr, Param, 0);
+	if (!foundParam) {
+		if (isMPI && (!rank))
+			throw(-1);
+        if (isMPI == false)
+			throw(-1);
+	}
+
+}
+
+bool paramMap::getParamInt(std::string parastr, int &Param, const int defaultVal)
 {
         //std::cout<<"Looking for "<<parastr<<std::endl;
         std::fstream inFile;
@@ -52,10 +65,23 @@ bool paramMap::getParamInt(std::string parastr, int &Param)
                 }
         }
         std::cout << "param not found " << parastr << std::endl;
-
+		Param = defaultVal;
         return false;
 }
-bool paramMap::getParamDouble(std::string parastr, double &Param)
+
+bool paramMap::getParamDouble(std::string parastr, double &Param) {
+
+	bool foundParam = getParamDouble(parastr, Param, 0.0);
+	if (!foundParam) {
+		if (isMPI && (!rank))
+			throw(-1);
+        if (isMPI == false)
+			throw(-1);
+	}
+
+}
+
+bool paramMap::getParamDouble(std::string parastr, double &Param, const double defaultVal)
 {
         std::fstream inFile;
         inFile.open(filename);
@@ -88,11 +114,23 @@ bool paramMap::getParamDouble(std::string parastr, double &Param)
                 }
         }
         std::cout << "param not found " << parastr << std::endl;
-
+		Param = defaultVal;
         return false;
 }
 
-bool paramMap::getParamString(std::string parastr, std::string &Param)
+bool paramMap::getParamString(std::string parastr, std::string &Param) {
+
+	bool foundParam = getParamString(parastr, Param, "");
+	if (!foundParam) {
+		if (isMPI && (!rank))
+			throw(-1);
+        if (isMPI == false)
+			throw(-1);
+	}
+
+}
+
+bool paramMap::getParamString(std::string parastr, std::string &Param, const std::string defaultVal)
 {
         //std::cout<<"Looking for "<<parastr<<std::endl;
 
@@ -127,11 +165,23 @@ bool paramMap::getParamString(std::string parastr, std::string &Param)
                 }
         }
         std::cout << "param not found " << parastr << std::endl;
-
+		Param = defaultVal;
         return false;
 }
 
-bool paramMap::getParamBool(std::string parastr, bool &Param)
+bool paramMap::getParamBool(std::string parastr, bool &Param) {
+
+	bool foundParam = getParamBool(parastr, Param, false);
+	if (!foundParam) {
+		if (isMPI && (!rank))
+			throw(-1);
+        if (isMPI == false)
+			throw(-1);
+	}
+
+}
+
+bool paramMap::getParamBool(std::string parastr, bool &Param, const bool defaultVal)
 {
         //std::cout<<"Looking for "<<parastr<<std::endl;
 
@@ -179,7 +229,7 @@ bool paramMap::getParamBool(std::string parastr, bool &Param)
                 }
         }
         std::cout << "param not found " << parastr << std::endl;
-
+		Param = defaultVal;
         return false;
 }
 //std::string paramMap::buildString
