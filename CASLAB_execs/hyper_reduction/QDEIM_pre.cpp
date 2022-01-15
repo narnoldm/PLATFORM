@@ -348,9 +348,10 @@ int main(int argc, char *argv[]) {
 
 		// GNAT sampling, from Ben's preprint paper
 		case 3:
-			gnat_oversampling_peherstorfer(URes, USol, sampMethod, nCells, nVars, nDOF, numModesRes, PointsNeeded, samplingPoints, gP, timingOutput);
+			gnat_oversampling_peherstorfer(U_vec, sampMethod, nCells, nVars, PointsNeeded, samplingPoints, gP, timingOutput);
 			break;
 
+		// GNAT sampling, from Carlberg's 2017 paper
 		case 4:
 			gnat_oversampling_carlberg(U_vec, sampMethod, nCells, nVars, PointsNeeded, samplingPoints, gP, timingOutput);
 			break;
