@@ -132,8 +132,7 @@ void eigenvector_oversampling(const vector<pMat*> U_vec, int sampMethod, int nCe
 	// Grab initial cell rows, BUT ordered by cell, then by var
 	// This is done because newly sampled rows get appended to END of U_samp,
 	// and we want to just copy the first N rows when copying U_samp
-	vector<pMat*> U_samp_vec;
-	vector<pMat*> U_samp_copy_vec;
+	vector<pMat*> U_samp_vec, U_samp_copy_vec;
 	for (int i = 0; i < U_vec.size(); ++i) {
 		U_samp_vec.push_back(new pMat(PointsNeeded*nVars, U_vec[i]->N, evenG, false));
 		U_samp_copy_vec.push_back(new pMat(PointsNeeded*nVars, U_vec[i]->N, evenG, false));
@@ -445,29 +444,33 @@ void gnat_oversampling_peherstorfer(pMat* URes, pMat* USol, int sampMethod, int 
 }
 
 // GNAT sampling based on algorithm from Carlberg et al., 2017
-void gnat_oversampling_carlberg(pMat* URes, pMat* USol, int sampMethod, int nCells, int nVars, int nDOF, int numModesRHS,
-							  int PointsNeeded, set<int>& samplingPoints, vector<int>& gP, string& timingOutput) {
+void gnat_oversampling_carlberg(vector<pMat*> U_vec, int sampMethod, int nCells, int nVars, int PointsNeeded,
+							    set<int>& samplingPoints, vector<int>& gP, string& timingOutput) {
 
 	int rank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-	PGrid* evenG = URes->pG; // reuse process grid
-
 	// declare some variables for this routine
+	int nDOF = nCells * nVars;
 	int numCurrentDOFs, numInitPoints;
 	int cellID;
 
+	int numModesMax = 0;
+	int numModesMin = 1000000000;
+	for (int i = 0; i < U_vec.size(); ++i) {
+		numModesMax = max(numModesMax, U_vec[i]->N);
+		numModesMin = min(numModesMin, U_vec[i]->N);
+	}
+
+	PGrid* evenG = U_vec[0]->pG; // reuse process grid
+
 	pMat *rVec = new pMat(nDOF, 1, evenG, false);
+	pMat *rVecSum = new pMat(nDOF, 1, evenG, false);
 	pMat *rVecCell;
 	if (sampMethod == 1)
 		rVecCell = new pMat(nCells, 1, evenG, false);
-	pMat *nonUniqueVec = new pMat(nDOF, 1, evenG, false); // marker to determine if a degree of freedom has already been selected
-	pMat *URHS_samp_E = new pMat(PointsNeeded * nVars, numModesRHS, evenG, false);
-	pMat *URHS_samp_E_copy = new pMat(PointsNeeded * nVars, numModesRHS, evenG, false);
 
-	// this is the same dimension as URHS_samp_E because PDGELS requires that URHS_samp_E and lsSol have same row block size
-	// no way to force blocking sizes in pMat currently
-	pMat *lsSol = new pMat(PointsNeeded * nVars, numModesRHS, evenG, false);
+	pMat *nonUniqueVec = new pMat(nDOF, 1, evenG, false); // marker to determine if a degree of freedom has already been selected
 
 	// sort and broadcast gP to all processes
 	if (rank == 0)
@@ -478,10 +481,44 @@ void gnat_oversampling_carlberg(pMat* URes, pMat* USol, int sampMethod, int nCel
 		gP.resize(numInitPoints, 0);
 	MPI_Bcast(gP.data(), gP.size(), MPI_INT, 0, MPI_COMM_WORLD);
 
+	vector<pMat*> lsSol_vec, U_samp_vec, U_samp_copy_vec;
+	for (int i = 0; i < U_vec.size(); ++i) {
+
+		// this is the same dimension as U_samp because PDGELS requires that U_samp and lsSol have same row block size
+		// no way to force blocking sizes in pMat currently
+		lsSol_vec.push_back(new pMat(PointsNeeded * nVars, U_vec[i]->N, evenG, false));
+
+		// Grab initial cell rows, BUT ordered by cell, then by var
+		// This is done because newly sampled rows get appended to END of U_samp,
+		// and we want to just copy the first N rows when copying U_samp
+		U_samp_vec.push_back(new pMat(PointsNeeded * nVars, U_vec[i]->N, evenG, false));
+		U_samp_copy_vec.push_back(new pMat(PointsNeeded * nVars, U_vec[i]->N, evenG, false));
+		for (int j = 0; j < numInitPoints; ++j) {
+			cout << (double)j / numInitPoints * 100 << " percent points extracted \r";
+			for (int k = 0; k < nVars; ++k)
+				U_samp_copy_vec[i]->changeContext(U_vec[i], 1, U_vec[i]->N, gP[j] + k * nCells, 0, j * nVars + k, 0, false);
+		}
+		cout << endl;
+
+		// extract first column of U to rVecSum
+		rVecSum->matrix_Sum('N', nDOF, 1, U_vec[i], 0, 0, 0, 0, 1.0, 1.0);
+
+	}
+
 	// mark DOFs that have already been sampled
 	for (int j = 0; j < numInitPoints; ++j) {
 		for (int k = 0; k < nVars; ++k) {
 			nonUniqueVec->setElement(k * nCells + gP[j], 0, 1.0);
+		}
+	}
+
+	for (int j = 0; j < rVecSum->dataD.size(); ++j) {
+		// zero out DOFs that have already been selected
+		if (nonUniqueVec->dataD[j] == 1.0) {
+			rVecSum->dataD[j] = 0.0;
+		// compute elementwise square of rVec
+		} else {
+			rVecSum->dataD[j] = rVecSum->dataD[j] * rVecSum->dataD[j];
 		}
 	}
 
@@ -491,11 +528,8 @@ void gnat_oversampling_carlberg(pMat* URes, pMat* USol, int sampMethod, int nCel
 	tD1 = 0.0; tD2 = 0.0; tD3 = 0.0; tD4 = 0.0; tD5 = 0.0; tD6 = 0.0;
 	int argMaxGlobal;
 
-	// extract first column of URHS to rVec
-	rVec->changeContext(URes, nDOF, 1, 0, 0, 0, 0, false);
-
 	// carbon copy from paper
-	int nc = numModesRHS;  // number working columns
+	int nc = numModesMin;  // number working columns
 	int na = PointsNeeded - numInitPoints;  // remaining points needed
 	int nb = 0;  // counter
 	int nit = min(nc, na);  // number of greedy iterations
@@ -503,30 +537,18 @@ void gnat_oversampling_carlberg(pMat* URes, pMat* USol, int sampMethod, int nCel
 	int nai;
 
 	// greedy loop
-	tD_start = MPI_Wtime();
 	for (int i = 0; i < nit; ++i) {
 
 		cout << (double)i / nit * 100 << " percent GNAT points sampled \r";
 
 		tD_start = MPI_Wtime();
-
-		for (int j = 0; j < rVec->dataD.size(); ++j) {
-			// zero out DOFs that have already been selected
-			if (nonUniqueVec->dataD[j] == 1.0) {
-				rVec->dataD[j] = 0.0;
-			// compute elementwise square of rVec
-			} else {
-				rVec->dataD[j] = rVec->dataD[j] * rVec->dataD[j];
-			}
-		}
-
 		// if sampling by cell, compute sum for each cell
 		if (sampMethod == 1) {
 			// zero out to start
 			for (int j = 0; j < rVecCell->dataD.size(); ++j)
 				rVecCell->dataD[j] = 0.0;
 			for (int j = 0; j < nVars; ++j) {
-				rVecCell->matrix_Sum('N', nCells, 1, rVec, j * nCells, 0, 0, 0, 1.0, 1.0);
+				rVecCell->matrix_Sum('N', nCells, 1, rVecSum, j * nCells, 0, 0, 0, 1.0, 1.0);
 			}
 		}
 		tD1 += (MPI_Wtime() - tD_start);
@@ -543,7 +565,7 @@ void gnat_oversampling_carlberg(pMat* URes, pMat* USol, int sampMethod, int nCel
 			if (sampMethod == 1) {
 				argMaxGlobal = rVecCell->argmax_vec();
 			} else {
-				argMaxGlobal = rVec->argmax_vec();
+				argMaxGlobal = rVecSum->argmax_vec();
 			}
 
 			// emplace cell ID in samplingPoints
@@ -562,13 +584,12 @@ void gnat_oversampling_carlberg(pMat* URes, pMat* USol, int sampMethod, int nCel
 					throw(-1);
 				}
 			}
-			tD2 += (MPI_Wtime() - tD_start);
 
 			// mark all DOFs associated with selected cell
 			for (int k = 0; k < nVars; ++k) {
 				nonUniqueVec->setElement(k * nCells + cellID, 0, 1.0);
 				if (sampMethod == 0) {
-					rVec->setElement(k * nCells + cellID, 0, 0.0);
+					rVecSum->setElement(k * nCells + cellID, 0, 0.0);
 				}
 			}
 			if (sampMethod == 1)
@@ -577,12 +598,15 @@ void gnat_oversampling_carlberg(pMat* URes, pMat* USol, int sampMethod, int nCel
 			// insert into gP vector
 			gP.push_back(cellID);
 			numCurrentDOFs = (i + 1) * nVars;
+			tD2 += (MPI_Wtime() - tD_start);
 
-			// append newly sampled rows of URHS to URHS_samp_E_copy, and transfer to URHS_samp_E (will be destroyed in least-squares solve)
+			// append newly sampled rows of U to U_samp_copy, and transfer to U_samp (will be destroyed in least-squares solve)
 			tD_start = MPI_Wtime();
-			for (int k = 0; k < nVars; ++k)
-				URHS_samp_E_copy->changeContext(URes, 1, numModesRHS, k * nCells + gP.back(), 0, i * nVars + k, 0, false);
-			URHS_samp_E->changeContext(URHS_samp_E_copy, numCurrentDOFs, numModesRHS, 0, 0, 0, 0, false);
+			for (int m = 0; m < U_vec.size(); ++m) {
+				for (int k = 0; k < nVars; ++k)
+					U_samp_copy_vec[m]->changeContext(U_vec[m], 1, U_vec[m]->N, k * nCells + gP.back(), 0, i * nVars + k, 0, false);
+				U_samp_vec[m]->changeContext(U_samp_copy_vec[m], numCurrentDOFs, U_vec[m]->N, 0, 0, 0, 0, false);
+			}
 			tD3 += (MPI_Wtime() - tD_start);
 
 		}
@@ -591,44 +615,63 @@ void gnat_oversampling_carlberg(pMat* URes, pMat* USol, int sampMethod, int nCel
 		if (i == (nit - 1))
 			break;
 
-		// set up inputs to least-squares solve
-		// this is the b term in || Ax - b ||
-		lsSol->changeContext(URHS_samp_E, numCurrentDOFs, 1, 0, i + 1, 0, 0, false);
-
-		// solve least squares, should ALWAYS be an overdetermined system for systems with more than one variable
-		// on exit, solution is in first modeThresh rows of lsSol
-		// this is the alpha vector in paper
+		// zero out metric vector
 		tD_start = MPI_Wtime();
-		lsSol->leastSquares('N', numCurrentDOFs, i + 1, 1, URHS_samp_E, 0, 0, 0, 0);
-		tD4 += (MPI_Wtime() - tD_start);
+		for (int j = 0; j < rVecSum->dataD.size(); ++j)
+			rVecSum->dataD[j] = 0.0;
 
-		// compute new rvec
-		// first, U[:, 1:nb] * alpha
-		tD_start = MPI_Wtime();
-		rVec->matrix_Product('N', 'N', nDOF, 1, i + 1, URes, 0, 0, lsSol, 0, 0, 1.0, 0.0, 0, 0);
-		tD5 += (MPI_Wtime() - tD_start);
-
-		// second, U[:, k] - U[:, 1:nb] * alpha
-		tD_start = MPI_Wtime();
-		rVec->matrix_Sum('N', nDOF, 1, URes, 0, i + 1, 0, 0, 1.0, -1.0);
-		tD6 += (MPI_Wtime() - tD_start);
+		// compute greedy sampling metric
+		for (int j = 0; j < U_vec.size(); ++j) {
+			gnat_oversampling_carlberg_metric(U_vec[j], U_samp_vec[j], lsSol_vec[j], i, rVec, rVecSum, nonUniqueVec, numCurrentDOFs);
+		}
+		tD3 += (MPI_Wtime() - tD_start);
 
 	}
 
 	// aggregate timings
-	aggregateTiming(tD1, timingOutput, "GNAT (Carlberg) - Zero and absolute val");
+	aggregateTiming(tD1, timingOutput, "GNAT (Carlberg) - Metric calculation");
 	aggregateTiming(tD2, timingOutput, "GNAT (Carlberg) - Find unique");
 	aggregateTiming(tD3, timingOutput, "GNAT (Carlberg) - Append rows");
-	aggregateTiming(tD4, timingOutput, "GNAT (Carlberg) - Least squares");
-	aggregateTiming(tD5, timingOutput, "GNAT (Carlberg) - rVec matmul");
-	aggregateTiming(tD6, timingOutput, "GNAT (Carlberg) - rVec matsum");
 
 	// cleanup
 	cout << endl;
-	destroyPMat(URHS_samp_E_copy, false);
-	destroyPMat(URHS_samp_E, false);
+	for (int i = 0; i < U_vec.size(); ++i) {
+		destroyPMat(U_samp_copy_vec[i], false);
+		destroyPMat(U_samp_vec[i], false);
+		destroyPMat(lsSol_vec[i], false);
+	}
 	destroyPMat(rVec, false);
+	destroyPMat(rVecSum, false);
+	if (sampMethod == 1)
+		destroyPMat(rVecCell, false);
 	destroyPMat(nonUniqueVec, false);
+}
+
+void gnat_oversampling_carlberg_metric(pMat* U, pMat* U_samp, pMat* lsSol, int iterNum, pMat* rVec, pMat* rVecSum, pMat* nonUniqueVec, int numCurrentDOFs) {
+
+	// set up inputs to least-squares solve
+	// this is the b term in || Ax - b ||
+	lsSol->changeContext(U_samp, numCurrentDOFs, 1, 0, iterNum + 1, 0, 0, false);
+
+	// solve least squares, should ALWAYS be an overdetermined system for systems with more than one variable
+	// on exit, solution is in first modeThresh rows of lsSol
+	// this is the alpha vector in paper
+	lsSol->leastSquares('N', numCurrentDOFs, iterNum + 1, 1, U_samp, 0, 0, 0, 0);
+
+	// compute metric
+	// first, U[:, 1:nb] * alpha
+	rVec->matrix_Product('N', 'N', U->M, 1, iterNum + 1, U, 0, 0, lsSol, 0, 0, 1.0, 0.0, 0, 0);
+
+	// second, U[:, k] - U[:, 1:nb] * alpha
+	rVec->matrix_Sum('N', U->M, 1, U, 0, iterNum + 1, 0, 0, 1.0, -1.0);
+
+	for (int j = 0; j < rVec->dataD.size(); ++j) {
+		if (nonUniqueVec->dataD[j] != 1.0) {
+			// add contribution from sampled degrees of freedom
+			rVecSum->dataD[j] += rVec->dataD[j] * rVec->dataD[j];
+		}
+	}
+
 }
 
 // computes gappy POD regressor [P^T * U]^+ for saving to disk

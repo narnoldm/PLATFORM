@@ -352,7 +352,7 @@ int main(int argc, char *argv[]) {
 			break;
 
 		case 4:
-			gnat_oversampling_carlberg(URes, USol, sampMethod, nCells, nVars, nDOF, numModesRes, PointsNeeded, samplingPoints, gP, timingOutput);
+			gnat_oversampling_carlberg(U_vec, sampMethod, nCells, nVars, PointsNeeded, samplingPoints, gP, timingOutput);
 			break;
 
 		default:

@@ -22,8 +22,10 @@ void eigenvector_oversampling_metric(pMat* U, pMat* U_samp, pMat* U_samp_copy, p
 
 void gnat_oversampling_peherstorfer(pMat* URes, pMat* USol, int sampMethod, int nCells, int nVars, int nDOF, int numModesRHS,
 							  int PointsNeeded, std::set<int>& samplingPoints, std::vector<int>& gP, std::string& timingOutput);
-void gnat_oversampling_carlberg(pMat* URes, pMat* USol, int sampMethod, int nCells, int nVars, int nDOF, int numModesRHS,
-							  int PointsNeeded, std::set<int>& samplingPoints, std::vector<int>& gP, std::string& timingOutput);
+
+void gnat_oversampling_carlberg(std::vector<pMat*> U_vec, int sampMethod, int nCells, int nVars, int PointsNeeded,
+								std::set<int>& samplingPoints, std::vector<int>& gP, std::string& timingOutput);
+void gnat_oversampling_carlberg_metric(pMat* U, pMat* U_samp, pMat* lsSol, int iterNum, pMat* rVec, pMat* rVecSum, pMat* nonUniqueVec, int numCurrentDOFs);
 
 void calc_regressor(pMat* U, pMat* regressor, std::vector<int>& gP, int nCells, int nVars);
 void emplace_zeros(const char transA, pMat* AIn, pMat* AOut, std::vector<int>& gP, int nCells, int nVars);
