@@ -27,10 +27,14 @@ int main(int argc, char *argv[])
     inputFile.getParamInt("modeEnd", modeEnd);
 
     string avgFile = "";
+    bool subAvg = true;
     bool readAvg = false;
-    inputFile.getParamBool("readAvg", readAvg);
-    if (readAvg)
-        inputFile.getParamString("avgFile", avgFile);
+    inputFile.getParamBool("subAvg", subAvg);
+    if (subAvg) {
+        inputFile.getParamBool("readAvg", readAvg);
+        if (readAvg)
+            inputFile.getParamString("avgFile", avgFile);
+    }
 
     string input = "";
     inputFile.getParamString("inputString", input);
@@ -53,15 +57,14 @@ int main(int argc, char *argv[])
         evenMat = new pMat(dataset1->nPoints, dataset1->nSets, evenG, 0, 0, 0.0);
         dataset1->batchRead(evenMat);
 
-        if (readAvg)
-        {
-            dataset1->readAvg(avgFile);
+        if (subAvg) {
+            if (readAvg) {
+                dataset1->readAvg(avgFile);
+            } else {
+                dataset1->calcAvg(evenMat);
+            }
+            dataset1->subAvg(evenMat);
         }
-        else
-        {
-            dataset1->calcAvg(evenMat);
-        }
-        dataset1->subAvg(evenMat);
         dataset1->calcNorm(evenMat);
         dataset1->normalize(evenMat);
         //evenMat->write_bin("A.bin");
@@ -84,7 +87,7 @@ int main(int argc, char *argv[])
         S.resize(dataset1->nSets);
     }
 
-    if (dataset1->nPoints / dataset1->nSets >= 100)
+    if ((dataset1->nPoints / dataset1->nSets >= 100) || (mosStep > 0))
     {
         if (mosStep == 0)
         {
