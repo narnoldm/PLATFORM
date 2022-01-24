@@ -759,7 +759,6 @@ void tecIO::getDimNodes()
         }
         else
         {
-            cout << "hi" << endl;
             checkMeshDim((prefix + std::to_string(snap0) + suffix));
         }
     }
@@ -1104,7 +1103,7 @@ void tecIO::subAvg(pMat *dataMat)
             }
         }
     }
-    cout << "average subtraceted" << endl;
+    cout << "average subtracted" << endl;
 }
 
 void tecIO::addAvg(pMat *dataMat)
@@ -1145,7 +1144,7 @@ void tecIO::addAvg(pMat *dataMat)
             }
         }
     }
-    cout << "average subtraceted" << endl;
+    cout << "average added" << endl;
 }
 
 void tecIO::calcAvg(pMat *dataMat)

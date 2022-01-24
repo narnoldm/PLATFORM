@@ -7,8 +7,8 @@ int main(int argc, char *argv[]) {
 
     // some setup
 	MPI_Init(&argc, &argv);
-    int rank, size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank); 
+    int rank, size, ierr;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     ofstream sink("/dev/null");
     streambuf *strm_buffer = cout.rdbuf();
@@ -18,10 +18,10 @@ int main(int argc, char *argv[]) {
     string inpFile = argv[1];
     paramMap inputFile(inpFile);
 
-    int debug_proc;
+    int debug_proc = 0;
     inputFile.getParamInt("debug_proc", debug_proc, 0);
     if (rank != debug_proc) {
-        std::cout.rdbuf(sink.rdbuf());
+        cout.rdbuf(sink.rdbuf());
     }
 
     // ----- INPUT PARAMETERS -----
@@ -91,13 +91,13 @@ int main(int argc, char *argv[]) {
     if (errType > 1) {
         token.clear();
         tokenparse(romInputString, "|", token);
-        tecIO* setROM = new tecIO(token);
+        setROM = new tecIO(token);
 
         // error checking
         assert (setFOM->dim == setROM->dim);
         assert (setFOM->nCells == setROM->nCells);
         assert (setFOM->numVars == setROM->numVars);
-        assert (setFOM->nSets == setROM->nSets); 
+        assert (setFOM->nSets == setROM->nSets);
 
     }
 
@@ -123,14 +123,21 @@ int main(int argc, char *argv[]) {
                 system(("mkdir " + projDir).c_str());
         }
     }
+
     if (errType > 1) {
         size_t romDirPos = setROM->prefix.find_last_of("/");
         romDir = setROM->prefix.substr(0, romDirPos);
-        errDir = romDir + "/k" + to_string(setBasis->nSets);
-        errSuffix = to_string(setROM->snap0) + "_" + to_string(setROM->snapF) + "_" + to_string(setROM->snapSkip);
+        errDir = romDir;
+        errSuffix = "_" + to_string(setROM->snap0) + "_" + to_string(setROM->snapF) + "_" + to_string(setROM->snapSkip);
+        if (errType == 2) {
+            errSuffix = "_vs_raw" + errSuffix;
+        } else {
+            errSuffix = "_vs_proj" + errSuffix;
+            errDir += "/k" + to_string(setBasis->nSets);
+        }
     } else {
         errDir = fomDir + "/k" + to_string(setBasis->nSets);
-        errSuffix = to_string(setFOM->snap0) + "_" + to_string(setFOM->snapF) + "_" + to_string(setFOM->snapSkip);
+        errSuffix = "_" + to_string(setFOM->snap0) + "_" + to_string(setFOM->snapF) + "_" + to_string(setFOM->snapSkip);
     }
     if (!rank)
         system(("mkdir " + errDir).c_str());
@@ -142,7 +149,7 @@ int main(int argc, char *argv[]) {
     // load FOM data
     pMat* QTruth = new pMat(setFOM->nPoints, setFOM->nSets, evenG, false);
     setFOM->batchRead(QTruth);
-    
+
     pMat *QComp, *QTruth_proj, *latentCode, *basis;
     // project FOM data if requested
     if (projFOM) {
@@ -169,25 +176,32 @@ int main(int argc, char *argv[]) {
         }
 
         // load trial basis
+        pMat* basis = new pMat(setBasis->nPoints, setBasis->nSets, evenG, false);
         setBasis->batchRead(basis);
 
         // project data to low-dimension
         latentCode = new pMat(setBasis->nSets, setFOM->nSets, evenG, false);
         QTruth_proj = new pMat(setFOM->nPoints, setFOM->nSets, evenG, false);
         latentCode->matrix_Product('T', 'N', basis->N, QTruth->N, basis->M, basis, 0, 0, QTruth, 0, 0, 1.0, 0.0, 0, 0);
-        QTruth_proj->matrix_Product('N', 'N', basis->M, QTruth->M, basis->N, basis, 0, 0, latentCode, 0, 0, 1.0, 0.0, 0, 0);
+        QTruth_proj->matrix_Product('N', 'N', basis->M, latentCode->N, basis->N, basis, 0, 0, latentCode, 0, 0, 1.0, 0.0, 0, 0);
 
         // de-normalize and de-center, if normalization/centering was requested
-        if (normalize)
+        if (normalize) {
             setFOM->unNormalize(QTruth_proj);
-        if (center)
+            if (errType == 1)
+                setFOM->unNormalize(QTruth);
+        }
+        if (center) {
             setFOM->addAvg(QTruth_proj);
+            if (errType == 1)
+                setFOM->addAvg(QTruth);
+        }
 
         if (errType == 1) {
             QComp = QTruth_proj;
         } else {
             // don't need original FOM solution any more
-            delete QTruth;
+            destroyPMat(QTruth, false);
             QTruth = QTruth_proj;
         }
 
@@ -197,11 +211,12 @@ int main(int argc, char *argv[]) {
         if (outLatentCode)
             latentCode->write_bin(projDir + "/latentCode.bin");
 
-        delete latentCode;
+        destroyPMat(latentCode, false);
 
-    } else {
-        QComp = new pMat(setROM->nPoints, setROM->nSets, evenG, false);
     }
+
+    if (errType > 1)
+        QComp = new pMat(setROM->nPoints, setROM->nSets, evenG, false);
 
     // load ROM data
     if (errType > 1) {
@@ -214,11 +229,12 @@ int main(int argc, char *argv[]) {
 
     pMat* ones = new pMat(1, setFOM->nCells, evenG, 0, 0, 1.0, false);
     pMat* errField = new pMat(setFOM->nPoints, setFOM->nSets, evenG, false);
-    pMat* errVar = new pMat(setFOM->numVars, setFOM->nSets, 0, 0, 0.0, false);
-    pMat* norm = new pMat(setFOM->numVars, setFOM->nSets, 0, 0, 0.0, false);
+    pMat* errVar = new pMat(setFOM->numVars, setFOM->nSets, evenG, false);
+    pMat* norm = new pMat(setFOM->numVars, setFOM->nSets, evenG, false);
 
     // # absolute error #
     // full field error snapshots [abs(qTruth - qComp)]
+    cout << "Calculating absolute error" << endl;
     for (int i = 0; i < errField->dataD.size(); ++i)
         errField->dataD[i] = abs(QTruth->dataD[i] - QComp->dataD[i]);
     if (outAbsErrField)
@@ -229,7 +245,7 @@ int main(int argc, char *argv[]) {
         errVar->matrix_Product('N', 'N', 1, setFOM->nSets, setFOM->nCells, ones, 0, 0, errField, i * setFOM->nCells, 0, 1.0, 0.0, i, 0);
     for (int i = 0; i < errVar->dataD.size(); ++i)
         errVar->dataD[i] /= setFOM->nCells;
-    errVar->write_bin(errDir + "/abs_avg_err_" + errSuffix + ".bin");
+    errVar->write_bin(errDir + "/abs_avg_err" + errSuffix + ".bin");
 
     // relative variable error history [sum(abs(qTruth - qComp)) / sum(abs(qTruth))]
     // re-use errField to save memory
@@ -239,9 +255,10 @@ int main(int argc, char *argv[]) {
         norm->matrix_Product('N', 'N', 1, setFOM->nSets, setFOM->nCells, ones, 0, 0, errField, i * setFOM->nCells, 0, 1.0, 0.0, i, 0);
     for (int i = 0; i < errVar->dataD.size(); ++i)
         errVar->dataD[i] /= norm->dataD[i];
-    errVar->write_bin(errDir + "/abs_rel_err_" + errSuffix + ".bin");
+    errVar->write_bin(errDir + "/abs_rel_err" + errSuffix + ".bin");
 
     // # L2 error #
+    cout << "Calculating L2 error" << endl;
     for (int i = 0; i < errField->dataD.size(); ++i) {
         errField->dataD[i] = QTruth->dataD[i] - QComp->dataD[i];
         errField->dataD[i] = errField->dataD[i] * errField->dataD[i];
@@ -252,7 +269,7 @@ int main(int argc, char *argv[]) {
         errVar->matrix_Product('N', 'N', 1, setFOM->nSets, setFOM->nCells, ones, 0, 0, errField, i * setFOM->nCells, 0, 1.0, 0.0, i, 0);
     for (int i = 0; i < errVar->dataD.size(); ++i)
         errVar->dataD[i] = sqrt(errVar->dataD[i]) / setFOM->nCells;
-    errVar->write_bin(errDir + "/l2_avg_err_" + errSuffix + ".bin");
+    errVar->write_bin(errDir + "/l2_avg_err" + errSuffix + ".bin");
 
     // relative variable error history [||qTruth - qComp|| / ||qTruth||]
     // re-use errField to save memory
@@ -262,16 +279,18 @@ int main(int argc, char *argv[]) {
         norm->matrix_Product('N', 'N', 1, setFOM->nSets, setFOM->nCells, ones, 0, 0, errField, i * setFOM->nCells, 0, 1.0, 0.0, i, 0);
     for (int i = 0; i < errVar->dataD.size(); ++i)
         errVar->dataD[i] /= sqrt(norm->dataD[i]);
-    errVar->write_bin(errDir + "/l2_rel_err_" + errSuffix + ".bin");
+    errVar->write_bin(errDir + "/l2_rel_err" + errSuffix + ".bin");
 
     // ----- FINISH COMPUTE ERROR, WRITE OUTPUTS -----
 
     // cleanup
-    delete QTruth_proj;
-    delete QComp;
-    delete ones;
-    delete errField;
-    delete errVar;
+    MPI_Barrier(MPI_COMM_WORLD);
+    destroyPMat(QTruth, false);
+    destroyPMat(QComp, false);
+    destroyPMat(ones, false);
+    destroyPMat(errField, false);
+    destroyPMat(errVar, false);
+    destroyPMat(norm, false);
 
     cout.rdbuf(strm_buffer);
     MPI_Finalize();
