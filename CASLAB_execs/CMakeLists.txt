@@ -27,3 +27,4 @@ target_link_libraries(PDP_time param meta)
 # Subdirectories
 
 add_subdirectory(hyper_reduction)
+add_subdirectory(error_calcs)
