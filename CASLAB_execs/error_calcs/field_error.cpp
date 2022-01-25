@@ -1,30 +1,8 @@
 #include "metadata.hpp"
 #include "param.hpp"
+#include "error_funcs.hpp"
 
 using namespace :: std;
-
-void calc_integrated_error(pMat* dataMat, int rank, vector<string>& varNames, string outFile) {
-    // errDir + "/abs_avg_int_err" + errSuffix + ".dat"
-
-    pMat* onesCol = new pMat(dataMat->N, 1, dataMat->pG, 0, 0, 1.0, false);
-    pMat* dataMatInt = new pMat(dataMat->M, 1, dataMat->pG, false);
-    pMat* dataMatIntP0 = new pMat(dataMat->M, 1, dataMat->pG, 0, 2, 0.0, false);
-    double dataMatIntAvg = 0.0;
-
-    dataMatInt->matrix_Product('N', 'N', dataMat->M, 1, dataMat->N, dataMat, 0, 0, onesCol, 0, 0, 1.0, 0.0, 0, 0);
-    dataMatIntP0->changeContext(dataMatInt, false);
-    if (!rank) {
-        ofstream out;
-		out.open(outFile, ios::trunc);
-		for (int i = 0; i < dataMatIntP0->dataD.size(); ++i) {
-            out << varNames[i] + ": " << setprecision(numeric_limits<double>::digits10) << dataMatIntP0->dataD[i] << endl;
-            dataMatIntAvg += dataMatIntP0->dataD[i];
-        }
-        dataMatIntAvg /= dataMat->M;
-        out << "Average: " << setprecision(numeric_limits<double>::digits10) << dataMatIntAvg << endl;
-        out.close();
-    }
-}
 
 int main(int argc, char *argv[]) {
 
@@ -42,7 +20,7 @@ int main(int argc, char *argv[]) {
     paramMap inputFile(inpFile);
 
     int debug_proc = 0;
-    inputFile.getParamInt("debug_proc", debug_proc, 0);
+    inputFile.getParamInt("stdout_proc", debug_proc, 0);
     if (rank != debug_proc) {
         cout.rdbuf(sink.rdbuf());
     }
@@ -246,67 +224,11 @@ int main(int argc, char *argv[]) {
         setROM->batchRead(QComp);
     }
 
-    // ----- FINISH DATA LOADING AND PREPROCESSING -----
+    // ----- FINISH DATA LOADING -----
 
     // ----- COMPUTE ERROR, WRITE OUTPUTS -----
 
-    pMat* onesRow = new pMat(1, setFOM->nCells, evenG, 0, 0, 1.0, false);
-    pMat* errField = new pMat(setFOM->nPoints, setFOM->nSets, evenG, false);
-    pMat* errVar = new pMat(setFOM->numVars, setFOM->nSets, evenG, false);
-    pMat* norm = new pMat(setFOM->numVars, setFOM->nSets, evenG, false);
-
-    // # absolute error #
-    // full field error snapshots [abs(qTruth - qComp)]
-    cout << "Calculating absolute error" << endl;
-    for (int i = 0; i < errField->dataD.size(); ++i)
-        errField->dataD[i] = abs(QTruth->dataD[i] - QComp->dataD[i]);
-    if (outAbsErrField)
-        setFOM->batchWrite(errField, errDir, "abs_err_");
-
-    // variable error history [sum(abs(qTruth - qComp)) / nCells]
-    for (int i = 0; i < setFOM->numVars; ++i)
-        errVar->matrix_Product('N', 'N', 1, setFOM->nSets, setFOM->nCells, onesRow, 0, 0, errField, i * setFOM->nCells, 0, 1.0, 0.0, i, 0);
-    for (int i = 0; i < errVar->dataD.size(); ++i)
-        errVar->dataD[i] /= setFOM->nCells;
-    errVar->write_bin(errDir + "/abs_avg_err" + errSuffix + ".bin");
-    calc_integrated_error(errVar, rank, setFOM->varName, errDir + "/abs_avg_sum_err" + errSuffix + ".dat");
-
-    // relative variable error history [sum(abs(qTruth - qComp)) / sum(abs(qTruth))]
-    // re-use errField to save memory
-    for (int i = 0; i < errField->dataD.size(); ++i)
-        errField->dataD[i] = abs(QTruth->dataD[i]);
-    for (int i = 0; i < setFOM->numVars; ++i)
-        norm->matrix_Product('N', 'N', 1, setFOM->nSets, setFOM->nCells, onesRow, 0, 0, errField, i * setFOM->nCells, 0, 1.0, 0.0, i, 0);
-    for (int i = 0; i < errVar->dataD.size(); ++i)
-        errVar->dataD[i] /= norm->dataD[i];
-    errVar->write_bin(errDir + "/abs_rel_err" + errSuffix + ".bin");
-    calc_integrated_error(errVar, rank, setFOM->varName, errDir + "/abs_rel_sum_err" + errSuffix + ".dat");
-
-    // # L2 error #
-    cout << "Calculating L2 error" << endl;
-    for (int i = 0; i < errField->dataD.size(); ++i) {
-        errField->dataD[i] = QTruth->dataD[i] - QComp->dataD[i];
-        errField->dataD[i] = errField->dataD[i] * errField->dataD[i];
-    }
-
-    // variable error history [||qTruth - qComp|| / nCells]
-    for (int i = 0; i < setFOM->numVars; ++i)
-        errVar->matrix_Product('N', 'N', 1, setFOM->nSets, setFOM->nCells, onesRow, 0, 0, errField, i * setFOM->nCells, 0, 1.0, 0.0, i, 0);
-    for (int i = 0; i < errVar->dataD.size(); ++i)
-        errVar->dataD[i] = sqrt(errVar->dataD[i]) / setFOM->nCells;
-    errVar->write_bin(errDir + "/l2_avg_err" + errSuffix + ".bin");
-    calc_integrated_error(errVar, rank, setFOM->varName, errDir + "/l2_avg_sum_err" + errSuffix + ".dat");
-
-    // relative variable error history [||qTruth - qComp|| / ||qTruth||]
-    // re-use errField to save memory
-    for (int i = 0; i < errField->dataD.size(); ++i)
-        errField->dataD[i] = QTruth->dataD[i] * QTruth->dataD[i];
-    for (int i = 0; i < setFOM->numVars; ++i)
-        norm->matrix_Product('N', 'N', 1, setFOM->nSets, setFOM->nCells, onesRow, 0, 0, errField, i * setFOM->nCells, 0, 1.0, 0.0, i, 0);
-    for (int i = 0; i < errVar->dataD.size(); ++i)
-        errVar->dataD[i] /= sqrt(norm->dataD[i]);
-    errVar->write_bin(errDir + "/l2_rel_err" + errSuffix + ".bin");
-    calc_integrated_error(errVar, rank, setFOM->varName, errDir + "/l2_rel_sum_err" + errSuffix + ".dat");
+    calc_abs_and_l2_error(QTruth, QComp, setFOM, errDir, errSuffix, outAbsErrField);
 
     // ----- FINISH COMPUTE ERROR, WRITE OUTPUTS -----
 
@@ -314,10 +236,6 @@ int main(int argc, char *argv[]) {
     MPI_Barrier(MPI_COMM_WORLD);
     destroyPMat(QTruth, false);
     destroyPMat(QComp, false);
-    destroyPMat(onesRow, false);
-    destroyPMat(errField, false);
-    destroyPMat(errVar, false);
-    destroyPMat(norm, false);
 
     cout.rdbuf(strm_buffer);
     MPI_Finalize();
