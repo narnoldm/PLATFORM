@@ -1,5 +1,6 @@
 
 #include "misc_func.hpp"
+#include <cmath>
 
 using namespace ::std;
 

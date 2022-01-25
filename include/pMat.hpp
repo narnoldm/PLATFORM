@@ -78,6 +78,7 @@ public:
 	void printMat();
 	double getElement(int, int);
 	double getLocalElement(int I, int J);
+	void setElement(int I, int J, double val);
 
 	//I/O
 	int write_bin(std::string);

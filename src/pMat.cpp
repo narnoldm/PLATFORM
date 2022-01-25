@@ -1124,6 +1124,24 @@ double pMat::getLocalElement(int I, int J)
         return temp;
 }
 
+void pMat::setElement(int I, int J, double val)
+{
+        int l, m;
+        int x, y;
+
+        l = I / (pG->prow * mb);
+        m = J / (pG->pcol * nb);
+
+        x = I % mb;
+        y = J % nb;
+        if ((pG->myrow == (I / mb) % pG->prow) && (pG->mycol == (J / nb) % pG->pcol))
+        {
+                assert(((m * nb + y) * myRC[0] + l * mb + x) < nelements);
+                dataD[(m * nb + y) * myRC[0] + l * mb + x] = val;
+        }
+		MPI_Barrier(MPI_COMM_WORLD);
+}
+
 bool operator==(pMat const &p1, pMat const &p2)
 {
         if ((p1.M != p2.M) || (p1.N != p2.N))
