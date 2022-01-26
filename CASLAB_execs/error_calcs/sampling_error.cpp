@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
 	size_t fieldDirPos = setField->prefix.find_last_of("/");
 	string fieldDirBase = setField->prefix.substr(0, fieldDirPos);
 	string fieldDir = fieldDirBase + "/regression/k" + to_string(setBasis->nSets) + "/" + outDir;
-	if (!rank) {
+	if (rank == 0) {
 		DIR* dir = opendir(fieldDirBase.c_str());
 		// base directory does not exist
 		if (!dir) {
@@ -201,6 +201,15 @@ int main(int argc, char *argv[]) {
 		setField->batchWrite(QComp, fieldDir, "reg_sol_");
 
 	calc_abs_and_l2_error(QTruth, QComp, setField, fieldDir, errSuffix, outAbsErrField);
+
+    // sampling error (maximum singular value)
+	if (rank == 0) {
+		cout << "Maximum singular value of [P^T U]^+: " << setprecision(16) << S[0] << endl;
+		string outputFileName = fieldDir + "/samplingError.dat";
+		ofstream outputFile(outputFileName);
+		outputFile << setprecision(16) << S[0] << endl;
+		outputFile.close();
+	}
 
 	// ----- FINISH COMPUTE ERROR, WRITE OUTPUTS -----
 

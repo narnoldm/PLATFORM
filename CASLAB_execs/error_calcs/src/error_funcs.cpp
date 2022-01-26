@@ -14,7 +14,7 @@ void calc_integrated_error(pMat* dataMat, vector<string>& varNames, string outFi
 
     dataMatInt->matrix_Product('N', 'N', dataMat->M, 1, dataMat->N, dataMat, 0, 0, onesCol, 0, 0, 1.0, 0.0, 0, 0);
     dataMatIntP0->changeContext(dataMatInt, false);
-    if (!rank) {
+    if (rank == 0) {
         ofstream out;
 		out.open(outFile, ios::trunc);
 		for (int i = 0; i < dataMatIntP0->dataD.size(); ++i) {
