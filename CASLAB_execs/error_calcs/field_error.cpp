@@ -137,11 +137,11 @@ int main(int argc, char *argv[]) {
             errDir += "/k" + to_string(setBasis->nSets);
         }
     } else {
-        errDir = fomDir + "/k" + to_string(setBasis->nSets);
+        errDir = fomDir + "/projection/k" + to_string(setBasis->nSets);
         errSuffix = "_" + to_string(setFOM->snap0) + "_" + to_string(setFOM->snapF) + "_" + to_string(setFOM->snapSkip);
     }
     if (!rank)
-        system(("mkdir " + errDir).c_str());
+        system(("mkdir -p " + errDir).c_str());
 
     // ----- FINISH PREPROCESSING -----
 
