@@ -62,7 +62,7 @@ void calc_abs_and_l2_error(pMat* dataTruth, pMat* dataComp, tecIO* setData, stri
     for (int i = 0; i < setData->numVars; ++i)
         norm->matrix_Product('N', 'N', 1, setData->nSets, setData->nCells, onesRow, 0, 0, errField, i * setData->nCells, 0, 1.0, 0.0, i, 0);
     for (int i = 0; i < errVar->dataD.size(); ++i)
-        errVar->dataD[i] /= norm->dataD[i];
+        errVar->dataD[i] /= (norm->dataD[i] / setData->nCells);  // need to divide by nCells to negate nCells in numerator
     errVar->write_bin(errDir + "/abs_rel_err" + errSuffix + ".bin");
     calc_integrated_error(errVar, setData->varName, errDir + "/abs_rel_sum_err" + errSuffix + ".dat");
 
@@ -88,7 +88,7 @@ void calc_abs_and_l2_error(pMat* dataTruth, pMat* dataComp, tecIO* setData, stri
     for (int i = 0; i < setData->numVars; ++i)
         norm->matrix_Product('N', 'N', 1, setData->nSets, setData->nCells, onesRow, 0, 0, errField, i * setData->nCells, 0, 1.0, 0.0, i, 0);
     for (int i = 0; i < errVar->dataD.size(); ++i)
-        errVar->dataD[i] /= sqrt(norm->dataD[i]);
+        errVar->dataD[i] /= (sqrt(norm->dataD[i]) / setData->nCells);  // need to divide by nCells to negate nCells in numerator
     errVar->write_bin(errDir + "/l2_rel_err" + errSuffix + ".bin");
     calc_integrated_error(errVar, setData->varName, errDir + "/l2_rel_sum_err" + errSuffix + ".dat");
 
