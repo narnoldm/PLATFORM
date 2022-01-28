@@ -10,6 +10,7 @@
 #include <vector>
 #include "pMat.hpp"
 #include "misc_func.hpp"
+#include "misc_func_mpi.hpp"
 
 class meta
 {

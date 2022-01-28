@@ -27,7 +27,7 @@ endif()
 target_link_libraries(pMat PUBLIC ${MPI_C_LIBRARIES})
 target_include_directories(pMat PUBLIC ${Eigen_INCLUDE_DIR})
 
-add_library(meta STATIC metadata.cpp misc_func.cpp)
+add_library(meta STATIC metadata.cpp misc_func.cpp misc_func_mpi.cpp)
 target_include_directories(meta PUBLIC ${TECDIR})
 target_link_libraries(meta pMat tecio)
 add_library(param STATIC param.cpp)

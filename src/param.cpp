@@ -52,10 +52,7 @@ bool paramMap::getParamInt(std::string parastr, int &Param)
                 }
         }
         std::cout << "param not found " << parastr << std::endl;
-        if (isMPI && (!rank))
-                throw(-1);
-        if (isMPI == false)
-                throw(-1);
+
         return false;
 }
 bool paramMap::getParamDouble(std::string parastr, double &Param)
@@ -133,10 +130,6 @@ bool paramMap::getParamString(std::string parastr, std::string &Param)
                 }
         }
         std::cout << "param not found " << parastr << std::endl;
-        if (isMPI && (!rank))
-                throw(-1);
-        if (isMPI == false)
-                throw(-1);
 
         return false;
 }
