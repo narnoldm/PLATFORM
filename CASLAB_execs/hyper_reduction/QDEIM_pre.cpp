@@ -416,8 +416,8 @@ int main(int argc, char *argv[]) {
 			destroyPMat(USol_URes, false);
 			destroyPMat(pinvURes_samp, false);
 
-			regressorRes_out = new pMat(nDOF, numModesSol, evenG, false);
-			emplace_zeros('T', projRegressor, regressorRes_out, gP, nCells, nVars);
+            regressorRes_out = new pMat(DOFNeeded, numModesSol, evenG, false);
+			regressorRes_out->transpose(projRegressor);
 			destroyPMat(projRegressor, false);
 
 		// [P^T * USol]^+
@@ -425,8 +425,8 @@ int main(int argc, char *argv[]) {
 
 			pMat* pinvUSol_samp = new pMat(numModesSol, DOFNeeded, evenG, false);
 			calc_regressor(USol, pinvUSol_samp, gP, nCells, nVars);
-			regressorSol_out = new pMat(nDOF, numModesSol, evenG, false);
-			emplace_zeros('T', pinvUSol_samp, regressorSol_out, gP, nCells, nVars);
+            regressorSol_out = new pMat(DOFNeeded, numModesSol, evenG, false);
+			regressorSol_out->transpose(pinvUSol_samp);
 			destroyPMat(pinvUSol_samp, false);
 
 		}
@@ -435,8 +435,8 @@ int main(int argc, char *argv[]) {
 	// [P^T * URes]^+ for output
 	if ((regressorFormat == 0) || (regressorFormat == 2)) {
 
-		regressorRes_out = new pMat(nDOF, numModesRes, evenG, false);
-		emplace_zeros('T', pinvURes_samp, regressorRes_out, gP, nCells, nVars);
+        regressorRes_out = new pMat(DOFNeeded, numModesRes, evenG, false);
+		regressorRes_out->transpose(pinvURes_samp);
 		destroyPMat(pinvURes_samp, false);
 
 	}
@@ -465,7 +465,7 @@ int main(int argc, char *argv[]) {
 		datasetResOut->nSets = numModesRes;
 		datasetResOut->suffix = ".bin";
 		datasetResOut->isInit = true;
-		datasetResOut->nPoints = nDOF;
+		datasetResOut->nPoints = DOFNeeded;
 
 		if (regressorFormat == 0) {
 
@@ -488,7 +488,7 @@ int main(int argc, char *argv[]) {
 			datasetSolOut->nSets = numModesSol;
 			datasetSolOut->suffix = ".bin";
 			datasetSolOut->isInit = true;
-			datasetSolOut->nPoints = nDOF;
+			datasetSolOut->nPoints = DOFNeeded;
 			datasetSolOut->batchWrite(regressorSol_out, "./", "pinv_sol_");
 
 		}
@@ -502,7 +502,7 @@ int main(int argc, char *argv[]) {
 		datasetResOut->nSets = numModesSol;
 		datasetResOut->suffix = ".bin";
 		datasetResOut->isInit = true;
-		datasetResOut->nPoints = nDOF;
+		datasetResOut->nPoints = DOFNeeded;
 		datasetResOut->batchWrite(regressorRes_out, "./", "pinv_rhs_");
 
 	}
