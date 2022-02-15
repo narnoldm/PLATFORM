@@ -862,7 +862,7 @@ int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string ou
                 if (stdout)
                 {
                         cout << "Write Start" << endl;
-                        cout << "M=" << ONE << "mb=" << mb << "N=" << N << "nb=" << nb << endl;
+                        cout << "M=" << ONE << ", mb=" << mb << ", N=" << N << ", nb=" << nb << endl;
                 }
         }
         MPI_File_close(&fH);

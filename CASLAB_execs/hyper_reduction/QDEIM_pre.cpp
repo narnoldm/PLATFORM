@@ -3,7 +3,7 @@
 
 #include "sampling.hpp"
 
-#include <set>
+#include <unordered_set>
 
 using namespace :: std;
 
@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
 
 	t1_start = MPI_Wtime();
 	vector<int> gP; // will contain zero-indexed cell IDs of sampled cells
-	set<int> samplingPoints;  // set version of gP, for automatically rejecting repeated entries
+	unordered_set<int> samplingPoints;  // set version of gP, for automatically rejecting repeated entries
 	int PointsNeeded = max(numModesMax, int(nCells * pSampling));
 	int DOFNeeded = PointsNeeded * nVars;
 
@@ -212,15 +212,12 @@ int main(int argc, char *argv[]) {
 	if ((sampType != 3) && (sampType != 4)) {
 		t1_start = MPI_Wtime();
 
-		qr_sampling(inputFile, "qrSampBinRes", nCells, URes_T, gP, samplingPoints);
+		qr_sampling(inputFile, "qrSampBinRes", "P_res", nCells, URes_T, gP, samplingPoints);
 		if (regressorFormat == 2) {
-			qr_sampling(inputFile, "qrSampBinSol", nCells, USol_T, gP, samplingPoints);
+			qr_sampling(inputFile, "qrSampBinSol", "P_sol", nCells, USol_T, gP, samplingPoints);
 		}
 
 		if (rank == 0) {
-			// copy unique indices from samplingPoints to gP
-			gP.resize(samplingPoints.size(), 0);
-			copy(samplingPoints.begin(), samplingPoints.end(), gP.begin());
 			cout << "Goal is " << PointsNeeded << " points" << endl;
 			cout << "Points after qr: " << samplingPoints.size() << " of " << PointsNeeded << endl;
 		}
@@ -371,15 +368,15 @@ int main(int argc, char *argv[]) {
 
 	// write sampling points to disk
 	if (rank == 0) {
-		gP.resize(samplingPoints.size(), 0);
-		copy(samplingPoints.begin(), samplingPoints.end(), gP.begin());
-
 		cout << "Writing sampling points to disk..." << endl;
 		for_each(gP.begin(), gP.end(), [](int &tt) { tt += 1; }); 	// put in one-indexed format for writing to disk
-		printASCIIVecP0("samplingPoints.txt", gP, gP.size()); 		// writes sampling points to disk
-		writeMat("Pall.bin", gP.size(), 1, gP); 			// also writing as bin file
-		for_each(gP.begin(), gP.end(), [](int &tt) { tt -= 1; }); 	// changing back to zero-indexed cell IDs
+		printASCIIVecP0("samplingPoints_unsorted.txt", gP, gP.size()); 		// writes unsorted sampling points to disk
 
+        // sort gP and output ordered sampling points
+        sort(gP.begin(), gP.end());
+        printASCIIVecP0("samplingPoints.txt", gP, gP.size());
+        writeMat("Pall.bin", gP.size(), 1, gP); 			// also writing as bin file
+		for_each(gP.begin(), gP.end(), [](int &tt) { tt -= 1; }); 	// changing back to zero-indexed cell IDs
 	}
 
 	// communicate to all ranks

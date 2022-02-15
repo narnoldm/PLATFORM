@@ -3,7 +3,7 @@
 using namespace :: std;
 
 // computes sampling points from pivots of QR decomposition of U_T
-void qr_sampling(paramMap inputFile, const string& qrSampFileStr, int nCells, pMat* U_T, vector<int>& gP, set<int>& samplingPoints) {
+void qr_sampling(paramMap inputFile, const string& qrSampFileStr, const string& outFileStr, int nCells, pMat* U_T, vector<int>& gP, unordered_set<int>& samplingPoints) {
 
 	string qrSampBin;
 	if (inputFile.getParamString(qrSampFileStr, qrSampBin, "P.bin")){
@@ -11,6 +11,7 @@ void qr_sampling(paramMap inputFile, const string& qrSampFileStr, int nCells, pM
 	} else {
 		cout << qrSampFileStr << " not specified, computing it now." << endl;
 		vector<int> P;
+        qrSampBin = outFileStr + ".bin";
 		U_T->qr_run(U_T->M, U_T->N, 0, 0, P, "./", qrSampBin, false);  // contents of U_T are DESTROYED during QR decomposition
 	}
 
@@ -19,30 +20,33 @@ void qr_sampling(paramMap inputFile, const string& qrSampFileStr, int nCells, pM
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
 	if (rank == 0) {
-		// gP MAY contain DOFs corresponding to the SAME CELL at this point
-		readMat(qrSampBin, gP);
-		gP.resize(U_T->M);
+		// gP_in MAY contain DOFs corresponding to the SAME CELL at this point
+        vector<int> gP_in(1);
+		readMat(qrSampBin, gP_in);
+		gP_in.resize(U_T->M);
 
 		// sampled QR cells
 		cout << "Extracting QR points..." << endl;
-		for (int i = 0; i < gP.size(); i++) {
-			gP[i]--; //switch to 0 indexing
+		for (int i = 0; i < gP_in.size(); i++) {
+			gP_in[i]--; //switch to 0 indexing
 
 			//switch to zero-indexed cell IDs
-			cout << i << " " << gP[i] << " " << endl;
-			gP[i] = gP[i] % nCells;
-			auto check = samplingPoints.emplace(gP[i]);
+			cout << i << " " << gP_in[i] << " " << endl;
+			gP_in[i] = gP_in[i] % nCells;
+			auto check = samplingPoints.emplace(gP_in[i]);
 			if (!check.second)
 			{
 				cout << "Repeated element" << endl;
-			}
+			} else {
+                gP.push_back(gP_in[i]);
+            }
 		}
 	}
 
 }
 
 // randomly samples cells
-void random_oversampling(int nCells, int PointsNeeded, set<int>& samplingPoints) {
+void random_oversampling(int nCells, int PointsNeeded, unordered_set<int>& samplingPoints) {
 
 	int rank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -86,7 +90,7 @@ void random_oversampling(int nCells, int PointsNeeded, set<int>& samplingPoints)
 
 // eigenvector-based sampling from Peherstorfer et al., 2018 (preprint)
 void eigenvector_oversampling(const vector<pMat*> U_vec, int sampMethod, int nCells, int nVars,
-							  int PointsNeeded, set<int>& samplingPoints, vector<int>& gP, string& timingOutput) {
+							  int PointsNeeded, unordered_set<int>& samplingPoints, vector<int>& gP, string& timingOutput) {
 
 	int rank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -280,7 +284,7 @@ void eigenvector_oversampling_metric(pMat* U, pMat* U_samp, pMat* U_samp_copy, p
 
 // GNAT sampling based on algorithm from Peherstorfer et al., 2018 (preprint)
 void gnat_oversampling_peherstorfer(vector<pMat*> U_vec, int sampMethod, int nCells, int nVars, int PointsNeeded,
-									set<int>& samplingPoints, vector<int>& gP, string& timingOutput) {
+									unordered_set<int>& samplingPoints, vector<int>& gP, string& timingOutput) {
 
 	int rank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -483,7 +487,7 @@ void gnat_oversampling_peherstorfer_metric(pMat* U, pMat* U_samp, pMat* lsSol, i
 
 // GNAT sampling based on algorithm from Carlberg et al., 2017
 void gnat_oversampling_carlberg(vector<pMat*> U_vec, int sampMethod, int nCells, int nVars, int PointsNeeded,
-							    set<int>& samplingPoints, vector<int>& gP, string& timingOutput) {
+							    unordered_set<int>& samplingPoints, vector<int>& gP, string& timingOutput) {
 
 	int rank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
