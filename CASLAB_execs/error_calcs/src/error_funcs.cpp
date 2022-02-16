@@ -12,7 +12,7 @@ void calc_integrated_error(pMat* dataMat, vector<string>& varNames, string outFi
     pMat* dataMatIntP0 = new pMat(dataMat->M, 1, dataMat->pG, 0, 2, 0.0, false);
     double dataMatIntAvg = 0.0;
 
-    dataMatInt->matrix_Product('N', 'N', dataMat->M, 1, dataMat->N, dataMat, 0, 0, onesCol, 0, 0, 1.0, 0.0, 0, 0);
+    dataMatInt->matrix_Product('N', 'N', dataMat->M, 1, dataMat->N, dataMat, 0, 0, onesCol, 0, 0, 1.0 / dataMat->N, 0.0, 0, 0);
     dataMatIntP0->changeContext(dataMatInt, false);
     if (rank == 0) {
         ofstream out;
@@ -38,6 +38,10 @@ void calc_abs_and_l2_error(pMat* dataTruth, pMat* dataComp, tecIO* setData, stri
     pMat* errField = new pMat(setData->nPoints, setData->nSets, dataTruth->pG, false);
     pMat* errVar = new pMat(setData->numVars, setData->nSets, dataTruth->pG, false);
     pMat* norm = new pMat(setData->numVars, setData->nSets, dataTruth->pG, false);
+    
+    pMat* onesRowVars = new pMat(1, setData->numVars, dataTruth->pG, 0, 0, 1.0, false);
+    pMat* errAvg = new pMat(1, setData->nSets, dataTruth->pG, false);
+    pMat* errAvgP0 = new pMat(1, setData->nSets, dataTruth->pG, 0, 2, 0.0, false);
 
     // # absolute error #
     // full field error snapshots [abs(qTruth - qComp)]
@@ -91,6 +95,18 @@ void calc_abs_and_l2_error(pMat* dataTruth, pMat* dataComp, tecIO* setData, stri
         errVar->dataD[i] /= (sqrt(norm->dataD[i]) / setData->nCells);  // need to divide by nCells to negate nCells in numerator
     errVar->write_bin(errDir + "/l2_rel_err" + errSuffix + ".bin");
     calc_integrated_error(errVar, setData->varName, errDir + "/l2_rel_sum_err" + errSuffix + ".dat");
+
+    // print to STDOUT
+    errAvg->matrix_Product('N', 'N', 1, setData->nSets, setData->numVars, onesRowVars, 0, 0, errVar, 0, 0, 1.0 / setData->numVars, 0.0, 0, 0);
+    errAvgP0->changeContext(errAvg);
+    int rank;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (rank == 0) {
+        for (int i = 0; i < errAvgP0->dataD.size(); i++) {
+            cout << "Sample " << (i + 1) << endl;
+            cout << "Average error: " << setprecision(numeric_limits<double>::digits10) << errAvgP0->dataD[i] << endl;
+        }
+    }
 
     destroyPMat(onesRow, false);
     destroyPMat(errField, false);
