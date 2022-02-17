@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
     size_t fomDirPos = setFOM->prefix.find_last_of("/");
     fomDir = setFOM->prefix.substr(0, fomDirPos);
     if (projFOM) {
-        projDir = fomDir + "/k" + to_string(setBasis->nSets);
+        projDir = fomDir + "/projection/k" + to_string(setBasis->nSets);
         if (outProjField || outLatentCode) {
             if (!rank)
                 system(("mkdir " + projDir).c_str());
@@ -134,7 +134,7 @@ int main(int argc, char *argv[]) {
             errSuffix = "_vs_raw" + errSuffix;
         } else {
             errSuffix = "_vs_proj" + errSuffix;
-            errDir += "/k" + to_string(setBasis->nSets);
+            errDir += "/projection/k" + to_string(setBasis->nSets);
         }
     } else {
         errDir = fomDir + "/projection/k" + to_string(setBasis->nSets);

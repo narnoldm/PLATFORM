@@ -254,8 +254,8 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
         nPoints = loadMat->M;
         nSets = loadMat->N;
     }
-    double t1,t2; 
-    t1=MPI_Wtime();
+    double t1, t2;
+    t1 = MPI_Wtime();
     if (loadMat->block == 1)
     {
         assert(loadMat->mb == nPoints);
@@ -303,8 +303,9 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
             MPI_Allreduce(MPI_IN_PLACE, tempR.data(), tempR.size(), MPI_DOUBLE, MPI_SUM, col_comms);
             if ((loadMat->pG->mycol == (j / loadMat->nb) % loadMat->pG->pcol) && (loadMat->pG->myrow == 0))
             {
-                printf("proc %d is writing %d\n", loadMat->pG->rank, j);
-                writeSingle(j + snap0, tempR.data(), dir + "/" + fpref);
+                fileIndex = snap0 + j * snapSkip;
+                printf("proc %d is writing %d\n", loadMat->pG->rank, fileIndex);
+                writeSingle(fileIndex, tempR.data(), dir + "/" + fpref);
             }
         }
         tempR.clear();
@@ -979,7 +980,7 @@ void tecIO::calcNorm(pMat *dataMat)
         for (int i = 0; i < numVars; i++)
         {
             MPI_Allreduce(MPI_IN_PLACE, normFactor.data() + i, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            cout << "Synched norm factor for " << varName[i] << " is : " << normFactor[i] << endl;
+            cout << "Synched norm factor for " << varName[i] << " is : " << setprecision(numeric_limits<double>::digits10) << normFactor[i] << endl;
         }
         if(dataMat->pG->rank == 0)
         {
@@ -1046,7 +1047,7 @@ void tecIO::calcNorm(pMat *dataMat)
                 }
                 normFactor[k] = maxmag;
             }
-            cout << "Synched norm factor for " << varName[k] << " is : " << normFactor[k] << endl;
+            cout << "Synched norm factor for " << varName[k] << " is : " << setprecision(numeric_limits<double>::digits10) << normFactor[k] << endl;
         }
         /*if(dataMat->pG->rank == 0)
         {
