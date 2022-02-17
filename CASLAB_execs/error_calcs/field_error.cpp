@@ -86,6 +86,7 @@ int main(int argc, char *argv[]) {
     // FOM dataset
     tokenparse(fomInputString, "|", token);
     tecIO* setFOM = new tecIO(token);
+    setFOM->activateReorder(setFOM->prefix + to_string(setFOM->snap0) + setFOM->suffix);
 
     // ROM dataset
     tecIO* setROM;
@@ -93,6 +94,7 @@ int main(int argc, char *argv[]) {
         token.clear();
         tokenparse(romInputString, "|", token);
         setROM = new tecIO(token);
+        setROM->activateReorder(setROM->prefix + to_string(setROM->snap0) + setROM->suffix);
 
         // error checking
         assert (setFOM->dim == setROM->dim);
@@ -175,6 +177,9 @@ int main(int argc, char *argv[]) {
             }
             setFOM->normalize(QTruth);
         }
+        
+        if (outProjField)
+            setFOM->batchWrite(QTruth, projDir, "fom_sol_raw_");
 
         // load trial basis
         pMat* basis = new pMat(setBasis->nPoints, setBasis->nSets, evenG, false);
@@ -197,7 +202,7 @@ int main(int argc, char *argv[]) {
             if (errType == 1)
                 setFOM->addAvg(QTruth);
         }
-
+        
         if (errType == 1) {
             QComp = QTruth_proj;
         } else {

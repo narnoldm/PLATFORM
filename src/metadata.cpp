@@ -422,7 +422,7 @@ bool tecIO::readSingle(int fileID, double *point)
         }
         if (reorder)
         {
-            cout << "reording slice" << endl;
+            //cout << "reording slice" << endl;
             std::vector<double> temp(nCells, 0.0);
             for (int j = 0; j < nCells; j++)
             {
@@ -1238,7 +1238,7 @@ void tecIO::readAvg(std::string filename)
         }
         if (reorder)
         {
-            cout << "reording slice" << endl;
+            //cout << "reording slice" << endl;
             std::vector<double> temp(nCells, 0.0);
             for (int j = 0; j < nCells; j++)
             {
