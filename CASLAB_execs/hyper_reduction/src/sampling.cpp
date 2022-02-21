@@ -46,7 +46,7 @@ void qr_sampling(paramMap inputFile, const string& qrSampFileStr, const string& 
 }
 
 // randomly samples cells
-void random_oversampling(int nCells, int PointsNeeded, unordered_set<int>& samplingPoints) {
+void random_oversampling(int nCells, int PointsNeeded, unordered_set<int>& samplingPoints, vector<int>& gP) {
 
 	int rank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -71,7 +71,9 @@ void random_oversampling(int nCells, int PointsNeeded, unordered_set<int>& sampl
 			if (!check.second)
 			{
 				cout << "repeated element " << *it << "\r";
-			}
+			} else {
+                gP.push_back(*it);
+            }
 			if (samplingPoints.size() == PointsNeeded) {
 				cout << endl << "All points found..." << endl;
 				allPoints = true;

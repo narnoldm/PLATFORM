@@ -335,7 +335,7 @@ int main(int argc, char *argv[]) {
 
 		// random oversampling
 		case 1:
-			random_oversampling(nCells, PointsNeeded, samplingPoints);
+			random_oversampling(nCells, PointsNeeded, samplingPoints, gP);
 			break;
 
 		// eigenvector-based oversampling

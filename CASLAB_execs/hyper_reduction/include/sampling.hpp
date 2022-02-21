@@ -15,7 +15,7 @@
 
 void qr_sampling(paramMap inputFile, const std::string& qrSampFileStr, const std::string& outFileStr, int nCells,
                  pMat* U_T, std::vector<int>& gP, std::unordered_set<int>& samplingPoints);
-void random_oversampling(int nCells, int PointsNeeded, std::unordered_set<int>& samplingPoints);
+void random_oversampling(int nCells, int PointsNeeded, std::unordered_set<int>& samplingPoints, std::vector<int>& gP);
 
 void eigenvector_oversampling(std::vector<pMat*> U_vec, int sampMethod, int nCells, int nVars, int PointsNeeded,
                               std::unordered_set<int>& samplingPoints, std::vector<int>& gP, std::string& timingOutput);
