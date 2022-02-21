@@ -32,8 +32,9 @@ public:
     virtual bool writeSingle(int fileID, double *point, std::string fpref);
     virtual void miscProcessing(pMat *Mat);
     bool batchWrite(pMat *loadMat);
-    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int);
-    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int, int, int);
+    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int nModes);
+    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip);
+    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip);
     bool batchWrite(pMat *loadMat, std::string dir, std::string fpref);
     bool batchRead(pMat *loadMat);
     bool batchRead(pMat *loadMat, int ii);
