@@ -176,6 +176,9 @@ int main(int argc, char *argv[]) {
 	unordered_set<int> samplingPoints;  // set version of gP, for automatically rejecting repeated entries
 	int PointsNeeded = max(numModesMax, int(nCells * pSampling));
 	int DOFNeeded = PointsNeeded * nVars;
+    if (rank == 0) {
+        cout << "Goal is " << PointsNeeded << " points" << endl;
+    }
 
 	// type of sampling
 	// 0: QR only, no oversampling (QDEIM)
@@ -206,6 +209,36 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+    // ----- SEED SAMPLES ----- //
+
+    string seedFile;
+    if (inputFile.getParamString("seedFile", seedFile, "") && (rank == 0)) { 
+
+		ifstream input(seedFile);
+        string strIn;
+        int numSeeds, idxIn;
+
+        getline(input, strIn);
+		numSeeds = atoi(strIn.c_str());
+
+		// read and insert seed points
+		cout << "Extracting " << numSeeds << " seed points..." << endl;
+		for (int i = 0; i < numSeeds; i++) {
+
+            getline(input, strIn);
+            idxIn = atoi(strIn.c_str()) - 1;  // switch to 0 indexing
+
+			cout << i << " " << idxIn << " " << endl;
+			auto check = samplingPoints.emplace(idxIn);
+			if (!check.second)
+			{
+				cout << "Repeated element" << endl;
+			} else {
+                gP.push_back(idxIn);
+            }
+		}
+	}
+
 	// ----- QR SAMPLING ----- //
 
 	string qrSampBin_res, qrSampBin_sol;
@@ -218,7 +251,6 @@ int main(int argc, char *argv[]) {
 		}
 
 		if (rank == 0) {
-			cout << "Goal is " << PointsNeeded << " points" << endl;
 			cout << "Points after qr: " << samplingPoints.size() << " of " << PointsNeeded << endl;
 		}
 		MPI_Barrier(MPI_COMM_WORLD);
@@ -303,11 +335,12 @@ int main(int argc, char *argv[]) {
 			}
 
 			cout << endl << "Points after boundaries: " << samplingPoints.size() << " of " << PointsNeeded << endl;
-			assert (PointsNeeded >= samplingPoints.size());
-			cout << "Need " << PointsNeeded - samplingPoints.size() << " more points" << endl;
 		} else {
 			cout << "No boundaries sampled..." << endl;
 		}
+
+        assert (PointsNeeded >= samplingPoints.size());
+        cout << "Need " << PointsNeeded - samplingPoints.size() << " more points" << endl;
 
 	}
 	MPI_Barrier(MPI_COMM_WORLD);

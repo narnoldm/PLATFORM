@@ -31,8 +31,8 @@ void qr_sampling(paramMap inputFile, const string& qrSampFileStr, const string& 
 			gP_in[i]--; //switch to 0 indexing
 
 			//switch to zero-indexed cell IDs
+            gP_in[i] = gP_in[i] % nCells;
 			cout << i << " " << gP_in[i] << " " << endl;
-			gP_in[i] = gP_in[i] % nCells;
 			auto check = samplingPoints.emplace(gP_in[i]);
 			if (!check.second)
 			{
