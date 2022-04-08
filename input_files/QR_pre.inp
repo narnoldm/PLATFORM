@@ -18,6 +18,10 @@ nVars = 9
 
 !!!!! Sampling Inputs !!!!!
 
+! seedFile = ./seedFile.txt
+! qrSampBinRes = ./P_res.bin
+! qrSampBinSol = ./P_sol.bin
+
 ! 0 = no oversampling
 ! 1 = random
 ! 2 = eigenvalue
