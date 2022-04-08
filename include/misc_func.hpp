@@ -12,7 +12,6 @@
 #include <assert.h>
 #include <algorithm>
 #include <cctype>
-#include <mpi.h>
 
 template <class T>
 void printASCIIVecP0(std::string fname, std::vector<T> &Mat, int N);
@@ -25,7 +24,5 @@ void tokenparse(const std::string &input, std::string sep, std::vector<std::stri
 void readMat(std::string filename, std::vector<int> &Mat);
 
 void writeMat(std::string filename, int m, int n, std::vector<int> &Mat);
-
-void aggregateTiming(double t, std::string filename, std::string label);
 
 #endif
