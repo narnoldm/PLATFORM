@@ -12,6 +12,7 @@
 #include "param.hpp"
 #include "processGrid.hpp"
 #include "misc_func.hpp"
+#include "misc_func_mpi.hpp"
 
 void qr_sampling(paramMap inputFile, const std::string& qrSampFileStr, const std::string& outFileStr, int nCells,
                  pMat* U_T, std::vector<int>& gP, std::unordered_set<int>& samplingPoints);
