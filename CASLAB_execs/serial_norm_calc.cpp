@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
     else
     {
         // load average file
-        dataset1->readAvg(avgFile);
+        dataset1->readCentering(avgFile);
 
         vector<int> normFactor_int;
         int nUniqueGroups;
@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
         {
             // get sorted list of unique norm factors
             normFactor_int.resize((dataset1->numVars));
-            std::copy(dataset1->normFactor.begin(), dataset1->normFactor.end(), normFactor_int.begin()); // convert to integers
+            std::copy(dataset1->scalingDivVec.begin(), dataset1->scalingDivVec.end(), normFactor_int.begin()); // convert to integers
             std::sort(normFactor_int.begin(), normFactor_int.end());                                     // sort
             auto last = std::unique(normFactor_int.begin(), normFactor_int.end());                       // get unique elements
             normFactor_int.erase(last, normFactor_int.end());
@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
             {
                 for (int j = 0; j < nUniqueGroups; ++j)
                 {
-                    if (int(dataset1->normFactor[i]) == normFactor_int[j])
+                    if (int(dataset1->scalingDivVec[i]) == normFactor_int[j])
                     {
                         groupRef[j].push_back(i);
                     }
@@ -178,14 +178,14 @@ int main(int argc, char *argv[])
                     // don't calculate magnitude if it's a single variable
                     if (groupRef[j].size() == 1)
                     {
-                        magVal = dataset1->average[groupRef[j][0] * dataset1->nCells + iCell];
+                        magVal = dataset1->centerVec[groupRef[j][0] * dataset1->nCells + iCell];
                     }
                     else
                     {
                         for (int k = 0; k < groupRef[j].size(); ++k)
                         {
                             idx_full = groupRef[j][k] * dataset1->nCells + iCell;
-                            magVal += (dataset1->average[idx_full]) * (dataset1->average[idx_full]);
+                            magVal += (dataset1->centerVec[idx_full]) * (dataset1->centerVec[idx_full]);
                         }
                         magVal = sqrt(magVal);
                     }
@@ -210,8 +210,8 @@ int main(int argc, char *argv[])
                     {
                         scalars[i] = dataAvg[(3 + i) * dataset1->nCells + iCell];
                     }
-                    density = dataset1->average[densityIdx * dataset1->nCells + iCell];
-                    enthalpy = dataset1->average[enthalpyIdx * dataset1->nCells + iCell];
+                    density = dataset1->centerVec[densityIdx * dataset1->nCells + iCell];
+                    enthalpy = dataset1->centerVec[enthalpyIdx * dataset1->nCells + iCell];
 
                     // calculate conserved variables, distribute into vector
                     calcConsVars(pressure, temperature, velMag, scalars, density, enthalpy, consvVals);
@@ -315,7 +315,7 @@ int main(int argc, char *argv[])
 
             for (int j = 0; j < nUniqueGroups; ++j)
             {
-                if (int(dataset1->normFactor[i]) == normFactor_int[j])
+                if (int(dataset1->scalingDivVec[i]) == normFactor_int[j])
                 {
                     cout << dataset1->varName[i] << ": " << val[j] << endl;
                     break;
@@ -435,7 +435,7 @@ void prepConsVarProc(tecIO *dataset, int &pressIdx, int &tempIdx, int &densIdx, 
     {
         if (dataset->varName[i] == "Static_Pressure")
         {
-            normFacs.push_back(dataset->normFactor[i]);
+            normFacs.push_back(dataset->scalingDivVec[i]);
             break;
         }
     }
@@ -445,7 +445,7 @@ void prepConsVarProc(tecIO *dataset, int &pressIdx, int &tempIdx, int &densIdx, 
     {
         if (dataset->varName[i] == "U")
         {
-            normFacs.push_back(dataset->normFactor[i]);
+            normFacs.push_back(dataset->scalingDivVec[i]);
             break;
         }
     }
@@ -453,7 +453,7 @@ void prepConsVarProc(tecIO *dataset, int &pressIdx, int &tempIdx, int &densIdx, 
     {
         if (dataset->varName[i] == "Temperature")
         {
-            normFacs.push_back(dataset->normFactor[i]);
+            normFacs.push_back(dataset->scalingDivVec[i]);
             break;
         }
     }
@@ -468,7 +468,7 @@ void prepConsVarProc(tecIO *dataset, int &pressIdx, int &tempIdx, int &densIdx, 
                 (dataset->varName[i] == "Flamelet_Scalar_Variance") ||
                 (dataset->varName[i] == "Flamelet_Parameter"))
             {
-                normFacs.push_back(dataset->normFactor[i]);
+                normFacs.push_back(dataset->scalingDivVec[i]);
             }
         }
     }

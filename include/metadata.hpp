@@ -49,10 +49,24 @@ public:
     std::vector<std::string> varName;
     std::vector<int> varIndex;
     std::vector<std::string> normID;
-    std::vector<double> normFactor;
+
+    // data centering
+    // x - centerVec
+    bool isCentered = false;
+    bool centeringIsField;
+    std::vector<double> centeringInput;
+    std::vector<double> centerVec;
+
+    // data scaling
+    // (x - scalingSubVec) / scalingDivVec
+    bool isScaled = false;
+    bool scalingIsField;
+    std::vector<double> scalingInput;
+    std::vector<double> scalingSubVec, scalingDivVec;
+
     std::vector<int> idx;
     std::vector<int> cellID;
-    std::vector<double> average;
+
     std::string meshFile;
     bool outBin = false;
     bool fixedMesh = false;
@@ -80,13 +94,17 @@ public:
     void getDimNodes();
     void checkMeshDim(std::string filename);
     void genHash(std::string);
-    void normalize(pMat *dataMat);
-    void unNormalize(pMat *dataMat);
-    void calcNorm(pMat *dataMat);
-    void subAvg(pMat *dataMat);
-    void addAvg(pMat *dataMat);
-    void calcAvg(pMat *dataMat);
-    void readAvg(std::string filename);
+
+    // feature scaling routines
+    void calcCentering(pMat *dataMat, std::string centerMethod);
+    void calcCentering(pMat *dataMat, std::string centerMethod, bool isField);
+    void calcScaling(pMat *dataMat, std::string scaleMethod);
+    void calcScaling(pMat *dataMat, std::string scaleMethod, bool isField);
+    void scaleData(pMat *dataMat);
+    void scaleData(pMat *dataMat, bool unscale);
+    void centerData(pMat *dataMat);
+    void centerData(pMat *dataMat, bool uncenter);
+    void readCentering(std::string filename);
 
     //misc
     void activateGEMSbin(std::string);

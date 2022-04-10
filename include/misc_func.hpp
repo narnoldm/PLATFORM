@@ -25,4 +25,6 @@ void readMat(std::string filename, std::vector<int> &Mat);
 
 void writeMat(std::string filename, int m, int n, std::vector<int> &Mat);
 
+void writeASCIIDoubleVec(std::string filename, std::vector<double> &vec);
+
 #endif

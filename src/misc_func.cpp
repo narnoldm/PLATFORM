@@ -85,3 +85,18 @@ void writeMat(std::string filename, int m, int n, std::vector<int> &Mat)
         fwrite(Mat.data(), sizeof(int), n * m, fid);
         fclose(fid);
 }
+
+void writeASCIIDoubleVec(std::string filename, std::vector<double> &vec)
+{
+        FILE *fid;
+        if ((fid = fopen(filename.c_str(), "w")) == NULL)
+        {
+            printf("error with file open\n");
+        }
+        fprintf(fid, "file= %s\n", filename.c_str());
+        for (int i = 0; i < vec.size(); ++i)
+        {
+            fprintf(fid, "%16.16E\n", vec.data()[i]);
+        }
+        fclose(fid);
+}

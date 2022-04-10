@@ -74,8 +74,10 @@ int main(int argc, char *argv[])
     vector<double> err(set1.nSets, 0.0);
     vector<double> norm(set1.nSets, 0.0);
 
-    set1.readAvg(centering);
-    set1.calcNorm(&q);
+    set1.readCentering(centering);
+    string scaleMethod;
+    input.getParamString("scaleMethod", scaleMethod);
+    set1.calcScaling(&q, scaleMethod);
 
     //set1.activateGEMSbin(hashfile);
     //set1.meshFile=hashfile;
@@ -85,10 +87,10 @@ int main(int argc, char *argv[])
         set1.batchRead(&q, i);
         for (int j = 0; j < 5; j++)
             cout << q.dataD[j] << endl;
-        set1.subAvg(&q);
+        set1.centerData(&q);
         for (int j = 0; j < 5; j++)
             cout << q.dataD[j] << endl;
-        set1.normalize(&q);
+        set1.scaleData(&q);
         for (int j = 0; j < 5; j++)
             cout << q.dataD[j] << endl;
         VTq.matrix_Product('T', 'N', SpaModes.nSets, 1, SpaModes.nPoints, &V, 0, 0, &q, 0, 0, 1.0, 0.0, 0, 0);
@@ -96,8 +98,8 @@ int main(int argc, char *argv[])
             cout << VTq.dataD[j] << endl;
         VVTq.matrix_Product('N', 'N', SpaModes.nPoints, 1, SpaModes.nSets, &V, 0, 0, &VTq, 0, 0, 1.0, 0.0, 0, 0);
         set2.batchRead(&q, i);
-        set1.subAvg(&q);
-        set1.normalize(&q);
+        set1.centerData(&q);
+        set1.scaleData(&q);
         for (int k = 0; k < q.nelements; k++)
         {
             pmVVTq.dataD[k] = std::fabs(q.dataD[k] - VVTq.dataD[k]);

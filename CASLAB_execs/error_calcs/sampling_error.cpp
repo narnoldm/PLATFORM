@@ -29,7 +29,8 @@ int main(int argc, char *argv[]) {
 
 	// ----- INPUT PARAMETERS -----
 
-	string fieldInputString, samplingPointsFile, basisInputString, outDir, centerFile, normFile;
+	string fieldInputString, samplingPointsFile, basisInputString, outDir;
+    string centerFile, centerMethod, scaleFile, scaleMethod;
 	bool center, normalize, outRegField, outAbsErrField;
 
 	inputFile.getParamString("fieldInputString", fieldInputString);  // input token for FOM data series
@@ -43,6 +44,7 @@ int main(int argc, char *argv[]) {
 		// path to data centering profile
 		// if not provided, use mean field
 		inputFile.getParamString("centerFile", centerFile, "");
+        inputFile.getParamString("centerMethod", centerMethod, "");
 	}
 
 	// normalizing field data before regression (after centering, if requested)
@@ -50,7 +52,8 @@ int main(int argc, char *argv[]) {
 	if (normalize) {
 		// path to data normalization profile
 		// if not provided, use normalization constants provided in fomInputString
-		inputFile.getParamString("normFile", normFile, "");
+		inputFile.getParamString("scaleFile", scaleFile, "");
+        inputFile.getParamString("scaleMethod", scaleMethod, "");
 	}
 
 	inputFile.getParamBool("outRegField", outRegField, false);  // output unsteady regressed fields
@@ -96,22 +99,22 @@ int main(int argc, char *argv[]) {
 	// center data, if requested
 	if (center) {
 		if (centerFile == "") {
-			setField->calcAvg(QTruth);
+			setField->calcCentering(QTruth, centerMethod);
 		} else {
-			setField->readAvg(centerFile);
+			setField->readCentering(centerFile);
 		}
-		setField->subAvg(QTruth);
+		setField->centerData(QTruth);
 	}
 
 	// normalized data, if requested
 	if (normalize) {
-		if (normFile == "") {
-			setField->calcNorm(QTruth);
+		if (scaleFile == "") {
+			setField->calcScaling(QTruth, scaleMethod);
 		} else {
 			cout << "Norm file read not implemented yet" << endl;
 			throw(-1);
 		}
-		setField->normalize(QTruth);
+		setField->scaleData(QTruth);
 	}
 
 	// load regression basis
@@ -174,12 +177,12 @@ int main(int argc, char *argv[]) {
 
 	// de-normalize and de-center, if normalization/centering was requested
 	if (normalize) {
-		setField->unNormalize(QTruth);
-		setField->unNormalize(QComp);
+		setField->scaleData(QTruth, true);
+		setField->scaleData(QComp, true);
 	}
 	if (center) {
-		setField->addAvg(QTruth);
-		setField->addAvg(QComp);
+		setField->centerData(QTruth, true);
+		setField->scaleData(QComp, true);
 	}
 
 	// compute SVD of pseudo-inverse of sampled basis

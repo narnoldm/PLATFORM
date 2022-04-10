@@ -1116,6 +1116,8 @@ ostream &operator<<(std::ostream &os, const pMat &p)
         std::cout << "Memory usage(data only) MB = " << p.MBs << std::endl;
         return os;
 }
+
+// retrieve element from pMat, no matter what process owns the element
 double pMat::getElement(int I, int J)
 {
         double item = 0.0;
@@ -1133,12 +1135,12 @@ double pMat::getElement(int I, int J)
                 assert(((m * nb + y) * myRC[0] + l * mb + x) < nelements);
                 temp = dataD[(m * nb + y) * myRC[0] + l * mb + x];
         }
-        MPI_Request request;
-        MPI_Iallreduce(MPI_IN_PLACE, &temp, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD, &request);
-        MPI_Wait(&request, MPI_STATUS_IGNORE);
+        MPI_Allreduce(MPI_IN_PLACE, &temp, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
         return temp;
 }
 
+// retrieve element from pMat, only if the process owns the element
+// otherwise returns zero
 double pMat::getLocalElement(int I, int J)
 {
         double item = 0.0;

@@ -240,8 +240,9 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
     batchWrite(loadMat, dir, fpref, mStart, mEnd, mSkip, snap0, snapSkip);
 }
 
-bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip) {
-    
+bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip)
+{
+
     assert(system(NULL)); //check if system commands work
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -251,69 +252,47 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
     MPI_Barrier(MPI_COMM_WORLD);
     int iP = 0, fileIndex, localC = 0;
 
-    if (!isInit) {
+    if (!isInit)
+    {
         nPoints = loadMat->M;
         nSets = loadMat->N;
     }
 
     double t1, t2;
     t1 = MPI_Wtime();
-    if (loadMat->block == 1)
+    int currentCol = 0;
+    vector<double> tempR;
+    tempR.resize(nPoints, 0);
+    MPI_Comm col_comms;
+    loadMat->commCreate(col_comms, 0);
+    for (int j = mStart; j < mEnd; j = j + mSkip)
     {
-        assert(loadMat->mb == nPoints);
-        for (int i = mStart; i < mEnd; i = i + mSkip)
+        fill(tempR.begin(), tempR.end(), 0.0);
+        if (loadMat->pG->mycol == (j / loadMat->nb) % loadMat->pG->pcol)
         {
-            iP = (int)(i / loadMat->nb);
-            while (iP > (loadMat->pG->pcol - 1))
-            {
-                iP = iP - loadMat->pG->pcol;
-            }
-            if (loadMat->pG->rank == iP)
-            {
-                fileIndex = fStart + (i - mStart) * fSkip;
 
-                cout << "proc " << iP << " is writing file " << fileIndex << "\r";
-                writeSingle(fileIndex, loadMat->dataD.data() + nPoints * localC, dir + "/" + fpref);
-                localC++;
-            }
-        }
-    }
-    else
-    {
-        int currentCol = 0;
-        vector<double> tempR;
-        tempR.resize(nPoints, 0);
-        MPI_Comm col_comms;
-        loadMat->commCreate(col_comms, 0);
-        for (int j = mStart; j < mEnd; j = j + mSkip)
-        {
-            std::fill(tempR.begin(), tempR.end(), 0.0);
-            if (loadMat->pG->mycol == (j / loadMat->nb) % loadMat->pG->pcol)
+            for (int i = 0; i < nPoints; i++)
             {
-
-                for (int i = 0; i < nPoints; i++)
+                int xi = i % loadMat->mb;
+                int li = i / (loadMat->pG->prow * loadMat->mb);
+                if (loadMat->pG->myrow == (i / loadMat->mb) % loadMat->pG->prow)
                 {
-                    int xi = i % loadMat->mb;
-                    int li = i / (loadMat->pG->prow * loadMat->mb);
-                    if (loadMat->pG->myrow == (i / loadMat->mb) % loadMat->pG->prow)
-                    {
-                        tempR[i] = loadMat->dataD[currentCol * loadMat->myRC[0] + xi + li * loadMat->mb];
-                    }
+                    tempR[i] = loadMat->dataD[currentCol * loadMat->myRC[0] + xi + li * loadMat->mb];
                 }
-                currentCol++;
             }
-            MPI_Allreduce(MPI_IN_PLACE, tempR.data(), tempR.size(), MPI_DOUBLE, MPI_SUM, col_comms);
-            if ((loadMat->pG->mycol == (j / loadMat->nb) % loadMat->pG->pcol) && (loadMat->pG->myrow == 0))
-            {
-                fileIndex = fStart + (j - mStart) * fSkip;
-                printf("proc %d is writing %d\n", loadMat->pG->rank, fileIndex);
-                writeSingle(fileIndex, tempR.data(), dir + "/" + fpref);
-            }
+            currentCol++;
         }
-        tempR.clear();
-        cout << endl;
-        MPI_Comm_free(&col_comms);
+        MPI_Allreduce(MPI_IN_PLACE, tempR.data(), tempR.size(), MPI_DOUBLE, MPI_SUM, col_comms);
+        if ((loadMat->pG->mycol == (j / loadMat->nb) % loadMat->pG->pcol) && (loadMat->pG->myrow == 0))
+        {
+            fileIndex = fStart + (j - mStart) * fSkip;
+            printf("proc %d is writing %d\n", loadMat->pG->rank, fileIndex);
+            writeSingle(fileIndex, tempR.data(), dir + "/" + fpref);
+        }
     }
+    tempR.clear();
+    cout << endl;
+    MPI_Comm_free(&col_comms);
     t2 = MPI_Wtime();
     cout << "batch Write took " << t2 - t1 << " secs" << endl;
 }
@@ -705,7 +684,7 @@ void tecIO::addVar(string var, string &norm)
     normID.push_back(norm);
     double temp;
     temp = stod(norm);
-    normFactor.push_back(temp);
+    scalingInput.push_back(temp);
     assert(varName.size() == varIndex.size());
     numVars = varName.size();
     cout << "metadata has registered " << numVars << " variable(s)" << endl;
@@ -845,378 +824,423 @@ void tecIO::genHash(string filename)
     }
 }
 
-void tecIO::normalize(pMat *dataMat)
+// compute centering profile
+// centerMethod = "avg" : centers about the dataset average
+// centerMethod = pathToFile : centers about the profile provided by pathToFile
+void tecIO::calcCentering(pMat *dataMat, string centerMethod)
 {
-    cout << "Normalizing Matrix by Norm Factor" << endl;
-    if (dataMat->block == 1)
+    calcCentering(dataMat, centerMethod, false);
+}
+
+void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField)
+{
+
+    isCentered = true;
+
+    // initialize centering profile
+    int centerSize;
+    if (isField)
     {
-        int numFiles = dataMat->nelements / nPoints;
-        cout << "proc " << dataMat->pG->rank << "has " << numFiles << " Files " << endl;
-        for (int i = 0; i < dataMat->N; i++)
-        {
-            for (int j = 0; j < numVars; j++)
-            {
-                for (int k = 0; k < nCells; k++)
-                {
-                    dataMat->dataD[i * nPoints + j * nCells + k] /= normFactor[j];
-                }
-            }
-        }
+        centerSize = nPoints;
     }
     else
     {
-        int currentCol = 0;
-        for (int j = 0; j < dataMat->N; j++)
-        {
-            if (dataMat->pG->mycol == (j / dataMat->nb) % dataMat->pG->pcol)
-            {
-                for (int i = 0; i < nPoints; i++)
-                {
-                    int xi = i % dataMat->mb;
-                    int li = i / (dataMat->pG->prow * dataMat->mb);
-                    if (dataMat->pG->myrow == (i / dataMat->mb) % dataMat->pG->prow)
-                    {
-                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] /= normFactor[i / nCells];
-                    }
-                }
-                currentCol++;
-            }
-        }
+        centerSize = numVars;
     }
-}
+    cout << "Allocating centering as " << centerSize << " values" << endl;
+    centerVec.resize(centerSize, 0.0);
+    cout << "Centering allocated" << endl;
 
-void tecIO::unNormalize(pMat *dataMat)
-{
-    cout << "UNNormalizing Matrix by Norm Factor" << endl;
-    if (dataMat->block == 1)
+    // load from file
+
+    // otherwise, calculate centering profile
+
+    // check that centering method is valid
+    // update this check when a new method is added
+    if ((centerMethod != "avg") && (centerMethod != "avgmag"))
     {
-        int numFiles = dataMat->nelements / nPoints;
-        cout << "proc " << dataMat->pG->rank << "has " << numFiles << " Files " << endl;
-        for (int i = 0; i < dataMat->N; i++)
+        cout << "Invalid centering method: " << centerMethod << endl;
+    }
+
+    double val, groupVal;
+    vector<double> valVec(nCells);
+    bool skip;
+    vector<int> skipFlags;
+    for (int k = 0; k < numVars; ++k)
+    {
+        if (scalingInput[k] < 0)
         {
-            for (int j = 0; j < numVars; j++)
+            // check if this group has already been evaluated
+            skip = false;
+            for (int g = 0; g < skipFlags.size(); ++g)
             {
-                for (int k = 0; k < nCells; k++)
+                if (scalingInput[k] == skipFlags[g])
                 {
-                    dataMat->dataD[i * nPoints + j * nCells + k] *= normFactor[j];
+                    skip = true;
+                    break;
                 }
             }
-        }
-    }
-    else
-    {
-        int currentCol = 0;
-        for (int j = 0; j < dataMat->N; j++)
-        {
-            if (dataMat->pG->mycol == (j / dataMat->nb) % dataMat->pG->pcol)
+            if (skip)
             {
-                for (int i = 0; i < nPoints; i++)
-                {
-                    int xi = i % dataMat->mb;
-                    int li = i / (dataMat->pG->prow * dataMat->mb);
-                    if (dataMat->pG->myrow == (i / dataMat->mb) % dataMat->pG->prow)
-                    {
-                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] *= normFactor[i / nCells];
-                    }
-                }
-                currentCol++;
+                continue;
             }
-        }
-    }
-}
 
-void tecIO::calcNorm(pMat *dataMat)
-{
-    cout << "calculating norms" << endl;
-    if (dataMat->block == 1)
-    {
-        int numFiles = dataMat->nelements / nPoints;
-        std::vector<double> mag(nCells * numFiles, 0.0);
-        double maxmag = 0.0;
-        double group = 0.0;
-        for (int i = 0; i < numVars; i++)
-        {
-            if (normFactor[i] < 0)
+            fill(valVec.begin(), valVec.end(), 0.0);
+
+            // loop snapshots
+            for (int j = 0; j < nSets; ++j)
             {
-                group = normFactor[i];
-                for (int m = 0; m < (nCells * numFiles); m++)
-                    mag[m] = 0.0;
-                maxmag = 0.0;
-
-                cout << varName[i] << " is in normalization group " << normFactor[i] << endl;
-                for (int j = 0; j < numVars; j++)
+                for (int i = 0; i < nCells; ++i)
                 {
-                    if (normFactor[j] == group)
+                    // get contributions from all fields in group
+                    groupVal = 0.0;
+                    for (int g = 0; g < numVars; ++g)
                     {
-                        for (int f = 0; f < numFiles; f++)
+                        if (scalingInput[g] == scalingInput[k])
                         {
-                            for (int n = 0; n < nCells; n++)
+                            val = dataMat->getLocalElement(g * nCells + i, j);
+                            // gather centering values
+                            // expand as necessary for new methods
+                            if (centerMethod == "avgmag")
                             {
-                                mag[f * nCells + n] += (dataMat->dataD[f * numVars * nCells + j * nCells + n]) * (dataMat->dataD[f * numVars * nCells + j * nCells + n]);
+                                groupVal += pow(val, 2);
+                            }
+                            else if (centerMethod == "avg")
+                            {
+                                groupVal += val;
                             }
                         }
                     }
-                }
-
-                for (int n = 0; n < (nCells * numFiles); n++)
-                {
-                    mag[n] = sqrt(mag[n]);
-                    if (mag[n] > maxmag)
-                        maxmag = mag[n];
-                }
-                for (int j = 0; j < numVars; j++)
-                {
-                    if (normFactor[j] == group)
+                    if (centerMethod == "avgmag")
                     {
-                        normFactor[j] = maxmag;
-                        cout << "Setting norm factor " << j << " to " << maxmag << endl;
+                        groupVal = sqrt(groupVal);
+                    }
+                    valVec[i] += groupVal;
+                }
+            }
+            // only summed local elements, so need to reduce
+            MPI_Allreduce(MPI_IN_PLACE, valVec.data(), nCells, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+            // final calculations for centering method
+            if ((centerMethod == "avgmag") || (centerMethod == "avg"))
+            {
+                if (isField)
+                {
+                    for (int i = 0; i < nCells; ++i)
+                    {
+                        centerVec[k * nCells + i] = valVec[i] / nSets;
                     }
                 }
-            }
-            else
-            {
-                cout << varName[i] << " is using specified normalization of " << normFactor[i] << endl;
-            }
-        }
-        mag.clear();
-        for (int i = 0; i < numVars; i++)
-        {
-            MPI_Allreduce(MPI_IN_PLACE, normFactor.data() + i, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            cout << "Synched norm factor for " << varName[i] << " is : " << setprecision(numeric_limits<double>::digits10) << normFactor[i] << endl;
-        }
-        if(dataMat->pG->rank == 0)
-        {
-                std::vector<double> normVec(numVars * nCells);
-                for (int i = 0; i < numVars; i++)
+                else
                 {
-                        for (int j = 0; j < nCells; j++)
-                        {
-                                normVec[i * nCells + j] = normFactor[i];
-                        }
+                    double avgVal = 0.0;
+                    for (int i = 0; i < nCells; ++i)
+                    {
+                        avgVal += valVec[i];
+                    }
+                    centerVec[k] = avgVal / (nCells * nSets);
                 }
-                writeSingle(snap0, normVec.data(), "norm");
-                printASCIIVecP0("norm.data",normVec,normVec.size());
-                normVec.clear();
-                //delete [] normVec;
+            }
+
+            // distribute to fields in same group instead of recalculating
+            for (int g = 0; g < numVars; g++)
+            {
+                if (g == k)
+                {
+                    continue;
+                }
+                else if (scalingInput[g] == scalingInput[k])
+                {
+                    if (isField)
+                    {
+                        for (int i = 0; i < nCells; ++i)
+                        {
+                            centerVec[g * nCells + i] = centerVec[k * nCells + i];
+                        }
+                    }
+                    else
+                    {
+                        centerVec[g] = centerVec[k];
+                    }
+                    skipFlags.push_back(k);
+                }
+            }
+        }
+
+        if (!isField)
+        {
+            cout << "Centering factor for " << varName[k] << " is: " << setprecision(numeric_limits<double>::digits10) << centerVec[k] << endl;
         }
     }
-    else
+
+    // expand constants to full field for convenience sake
+    if (!isField)
     {
-
-        for (int k = 0; k < numVars; k++)
+        vector<double> centerVals(numVars);
+        copy(centerVec.begin(), centerVec.end(), centerVals.begin());
+        centerVec.resize(nPoints, 0.0);
+        for (int k = 0; k < numVars; ++k) 
         {
-            if (normFactor[k] < 0)
+            for (int i = 0; i < nCells; ++i)
             {
-                double maxmag = 0;
-                for (int j = 0; j < nSets; j++)
-                {
-
-                    vector<double> mag(nCells, 0.0);
-                    std::fill(mag.begin(), mag.end(), 0.0);
-                    for (int i = 0; i < nCells; i++)
-                    {
-                        for (int g = 0; g < numVars; g++)
-                        {
-
-                            if (normFactor[g] == normFactor[k])
-                            {
-
-                                mag[i] += std::pow(dataMat->getLocalElement(g * nCells + i, j), 2);
-                            }
-                        }
-                    }
-                    MPI_Allreduce(MPI_IN_PLACE, mag.data(), nCells, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-                    for (int i = 0; i < nCells; i++)
-                    {
-                        if (mag[i] > maxmag)
-                        {
-                            maxmag = mag[i];
-                        }
-                    }
-                }
-
-                maxmag = sqrt(maxmag);
-                for (int g = 0; g < numVars; g++)
-                {
-                    if (g == k)
-                    {
-                        continue;
-                    }
-                    else if (normFactor[g] == normFactor[k])
-                    {
-                        normFactor[g] = maxmag;
-                    }
-                }
-                normFactor[k] = maxmag;
+                centerVec[k * nCells + i] = centerVals[k];
             }
-            cout << "Synched norm factor for " << varName[k] << " is : " << setprecision(numeric_limits<double>::digits10) << normFactor[k] << endl;
         }
-        /*if(dataMat->pG->rank == 0)
-        {
-                std::vector<double> normVec(numVars * nCells);
-                for (int i = 0; i < numVars; i++)
-                {
-                        for (int j = 0; j < nCells; j++)
-                        {
-                                normVec[i * nCells + j] = normFactor[i];
-                        }
-                }
-                writeSingle(snap0, normVec.data(), "norm");
-                printASCIIVecP0("norm.data",normVec.data(),normVec.size());
-                normVec.clear();
-        }*/
     }
+
+    // write centering field to file
+    cout << "Centering calculated" << endl;
+    if (dataMat->pG->rank == 0)
+    {
+        // TODO: get SZPLT to output correctly, without silly fileID requirement
+        // writeSingle(0, centerVec.data(), "centerProf");
+        writeASCIIDoubleVec("centerProf.dat", centerVec);
+    }
+    cout << "Centering files written" << endl;
+    MPI_Barrier(MPI_COMM_WORLD);
+
 }
 
-void tecIO::subAvg(pMat *dataMat)
+void tecIO::centerData(pMat *dataMat)
 {
-    if (average.size() == 0)
+    centerData(dataMat, false);
+}
+
+void tecIO::centerData(pMat *dataMat, bool uncenter)
+{
+    if (centerVec.size() == 0)
     {
-        cout << "Average isn't setup call calcAvg first" << endl;
+        cout << "Centering isn't setup, call calcCentering first" << endl;
         MPI_Abort(MPI_COMM_WORLD,-1);
     }
 
-    cout << "Subtracting Average" << endl;
-    if (dataMat->block == 1)
+    if (uncenter)
     {
-        int numFiles = dataMat->nelements / nPoints;
-        for (int i = 0; i < dataMat->N; i++)
-        {
-            for (int j = 0; j < nPoints; j++)
-                dataMat->dataD[i * nPoints + j] -= average[j];
-        }
+        cout << "Uncentering" << endl;
     }
     else
     {
-        int currentCol = 0;
-        for (int j = 0; j < dataMat->N; j++)
+        cout << "Centering" << endl;
+    }
+
+    int currentCol = 0;
+    double centeringVal = 0.0;
+    for (int j = 0; j < dataMat->N; j++)
+    {
+        if (dataMat->pG->mycol == (j / dataMat->nb) % dataMat->pG->pcol)
         {
-            if (dataMat->pG->mycol == (j / dataMat->nb) % dataMat->pG->pcol)
+            for (int i = 0; i < nPoints; i++)
             {
-                for (int i = 0; i < nPoints; i++)
+                int xi = i % dataMat->mb;
+                int li = i / (dataMat->pG->prow * dataMat->mb);
+                if (dataMat->pG->myrow == (i / dataMat->mb) % dataMat->pG->prow)
                 {
-                    int xi = i % dataMat->mb;
-                    int li = i / (dataMat->pG->prow * dataMat->mb);
-                    if (dataMat->pG->myrow == (i / dataMat->mb) % dataMat->pG->prow)
+                    // get appropriate centering value
+                    if (scalingIsField)
                     {
-                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] -= average[i];
+                        centeringVal = centerVec[i];
+                    }
+                    else
+                    {
+                        centeringVal = centerVec[i / nCells];
+                    }
+
+                    // center data
+                    if (uncenter)
+                    {
+                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] += centeringVal;
+                    }
+                    else
+                    {
+                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] -= centeringVal;
                     }
                 }
-                currentCol++;
             }
+            currentCol++;
         }
     }
-    cout << "average subtracted" << endl;
-}
 
-void tecIO::addAvg(pMat *dataMat)
-{
-    if (average.size() == 0)
+    if (uncenter)
     {
-        cout << "Average isn't setup call calcAvg first" << endl;
-        MPI_Abort(MPI_COMM_WORLD,-1);
-    }
-
-    cout << "Adding Average" << endl;
-    if (dataMat->block == 1)
-    {
-        int numFiles = dataMat->nelements / nPoints;
-        for (int i = 0; i < dataMat->N; i++)
-        {
-            for (int j = 0; j < nPoints; j++)
-                dataMat->dataD[i * nPoints + j] += average[j];
-        }
+        cout << "Data uncentered" << endl;
     }
     else
     {
-        int currentCol = 0;
-        for (int j = 0; j < dataMat->N; j++)
-        {
-            if (dataMat->pG->mycol == (j / dataMat->nb) % dataMat->pG->pcol)
-            {
-                for (int i = 0; i < nPoints; i++)
-                {
-                    int xi = i % dataMat->mb;
-                    int li = i / (dataMat->pG->prow * dataMat->mb);
-                    if (dataMat->pG->myrow == (i / dataMat->mb) % dataMat->pG->prow)
-                    {
-                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] += average[i];
-                    }
-                }
-                currentCol++;
-            }
-        }
+        cout << "Data centered" << endl;
     }
-    cout << "average added" << endl;
+
 }
 
-void tecIO::calcAvg(pMat *dataMat)
+void tecIO::calcScaling(pMat* dataMat, string scaleMethod)
+{
+    calcScaling(dataMat, scaleMethod, false);
+}
+
+void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
 {
 
-    if (average.size() != nPoints)
-    {
-        cout << "Allocating Average as " << nPoints << " data Points" << endl;
-        average.resize(nPoints, 0.0);
-        cout << "Average Allocated" << endl;
-    }
-    std::fill(average.begin(), average.end(), 0.0);
+    isScaled = true;
 
-    if (dataMat->block == 1)
+    // check if the user has specified ANY scaling factors
+    // if so, all scaling will be by scalar values
+    for (int i = 0; i < numVars; ++i)
     {
-        int numFiles = dataMat->nelements / nPoints;
-        for (int i = 0; i < nPoints; i++)
+        if (scalingInput[i] > 0)
         {
-            for (int j = 0; j < numFiles; j++)
+            if (!isField)
             {
-                average[i] += dataMat->dataD[j * nPoints + i];
+                cout << "WARNING: Passed a scaling factor, all scaling will by by scalars" << endl;
             }
+            isField = false;
+            break;
         }
-        MPI_Allreduce(MPI_IN_PLACE, average.data(), nPoints, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-        for (int i = 0; i < nPoints; i++)
-            average[i] /= nSets;
+    }
 
-        if (dataMat->pG->rank == 0)
-            writeSingle(snap0, average.data(), "average1");
+    // initialize scaling vectors to appropriate size
+    scalingIsField = isField;
+    int scaleVecSize;
+    if (scalingIsField)
+    {
+        scaleVecSize = nPoints;
     }
     else
     {
-        for (int i = 0; i < nPoints; i++)
+        scaleVecSize = numVars;
+    }
+    scalingSubVec.resize(scaleVecSize, 1.0);
+    scalingDivVec.resize(scaleVecSize, 1.0);
+
+    vector<double> mag(nCells);
+    for (int k = 0; k < numVars; k++)
+    {
+        if (scalingInput[k] < 0)
         {
+            double maxmag = 0;
             for (int j = 0; j < nSets; j++)
             {
 
-                average[i] += dataMat->getLocalElement(i, j);
+                fill(mag.begin(), mag.end(), 0.0);
+                for (int i = 0; i < nCells; i++)
+                {
+                    for (int g = 0; g < numVars; g++)
+                    {
+
+                        if (scalingInput[g] == scalingInput[k])
+                        {
+                            mag[i] += pow(dataMat->getLocalElement(g * nCells + i, j), 2);
+                        }
+                    }
+                }
+                MPI_Allreduce(MPI_IN_PLACE, mag.data(), nCells, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+                for (int i = 0; i < nCells; i++)
+                {
+                    if (mag[i] > maxmag)
+                    {
+                        maxmag = mag[i];
+                    }
+                }
             }
+
+            maxmag = sqrt(maxmag);
+            for (int g = 0; g < numVars; g++)
+            {
+                if (g == k)
+                {
+                    continue;
+                }
+                else if (scalingInput[g] == scalingInput[k])
+                {
+                    scalingDivVec[g] = maxmag;
+                }
+            }
+            scalingDivVec[k] = maxmag;
         }
-        MPI_Allreduce(MPI_IN_PLACE, average.data(), nPoints, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-        for (int i = 0; i < nPoints; i++)
+        cout << "Synched norm factor for " << varName[k] << " is : " << setprecision(numeric_limits<double>::digits10) << scalingDivVec[k] << endl;
+    }
+
+    // if (scaleMethod == "minmax")
+    // {
+
+    // }
+    // else if (scaleMethod == "standardize")
+    // {
+
+    // }
+    // else if (scaleMethod == "sphere")
+    // {
+
+    // }
+    // else
+    // {
+    //     cout << "Invalid scaleMethod: " << scaleMethod << endl;
+    //     throw(-1);
+    // }
+
+}
+
+void tecIO::scaleData(pMat *dataMat)
+{
+    scaleData(dataMat, false);
+}
+
+void tecIO::scaleData(pMat *dataMat, bool unscale)
+{
+
+    cout << "Normalizing Matrix by Norm Factor" << endl;
+    int currentCol = 0;
+    int scalingIdx;
+    for (int j = 0; j < dataMat->N; j++)
+    {
+        if (dataMat->pG->mycol == (j / dataMat->nb) % dataMat->pG->pcol)
         {
-            average[i] /= nSets;
+            for (int i = 0; i < nPoints; i++)
+            {
+                int xi = i % dataMat->mb;
+                int li = i / (dataMat->pG->prow * dataMat->mb);
+                if (dataMat->pG->myrow == (i / dataMat->mb) % dataMat->pG->prow)
+                {
+                    // get appropriate index
+                    if (scalingIsField)
+                    {
+                        scalingIdx = i;
+                    }
+                    else
+                    {
+                        scalingIdx = i / nCells;
+                    }
+
+                    // (un)scale data
+                    if (unscale)
+                    {
+                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] *= scalingDivVec[scalingIdx];
+                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] += scalingSubVec[scalingIdx];
+                    }
+                    else
+                    {
+                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] -= scalingSubVec[scalingIdx];
+                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] /= scalingDivVec[scalingIdx];
+                    }
+                }
+            }
+            currentCol++;
         }
-        cout << "average calculated" << endl;
-        if (dataMat->pG->rank == 0)
-            writeSingle(snap0, average.data(), "average0");
-        cout << "average outputed" << endl;
-        MPI_Barrier(MPI_COMM_WORLD);
     }
 }
 
-void tecIO::readAvg(std::string filename)
+void tecIO::readCentering(string filename)
 {
-    if (average.size() != nPoints)
+    if (centerVec.size() != nPoints)
     {
-        cout << "Allocating Average as " << nPoints << " cells" << endl;
-        average.resize(nPoints, 0.0);
-        cout << "Average Allocated" << endl;
+        cout << "Allocating centering as " << nPoints << " cells" << endl;
+        centerVec.resize(nPoints, 0.0);
+        cout << "Centering allocated" << endl;
     }
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    //if (rank == 0)
-    //{
     void *fH;
     tecFileReaderOpen(filename.c_str(), &fH);
     int type;
-    std::vector<float> get;
+    vector<float> get;
     int ii;
     for (int i = 0; i < numVars; i++)
     {
@@ -1224,43 +1248,38 @@ void tecIO::readAvg(std::string filename)
         tecZoneVarGetType(fH, 1, ii, &type);
         if (type == 1)
         {
-            //get= new float[nCells];
             get.resize(nCells);
             tecZoneVarGetFloatValues(fH, 1, ii, 1, nCells, get.data());
             for (int j = 0; j < nCells; j++)
             {
-                average[j + i * nCells] = (double)get[j];
+                centerVec[j + i * nCells] = (double)get[j];
             }
-            //delete [] get;
             get.clear();
         }
         else if (type == 2)
         {
-            tecZoneVarGetDoubleValues(fH, 1, ii, 1, nCells, &(average[i * nCells]));
+            tecZoneVarGetDoubleValues(fH, 1, ii, 1, nCells, &(centerVec[i * nCells]));
         }
         if (reorder)
         {
-            //cout << "reording slice" << endl;
-            std::vector<double> temp(nCells, 0.0);
+            vector<double> temp(nCells, 0.0);
             for (int j = 0; j < nCells; j++)
             {
-                temp[j] = average[i * nCells + j];
+                temp[j] = centerVec[i * nCells + j];
             }
             for (int j = 0; j < nCells; j++)
             {
-                average[i * nCells + j] = temp[idx[j]];
-                //hash[j]=j;
+                centerVec[i * nCells + j] = temp[idx[j]];
             }
             temp.clear();
         }
     }
     tecFileReaderClose(&fH);
-    std::cout << "average loaded from :" << filename << std::endl;
-    //}
-    //printf("%d\n",nPoints);
+    cout << "Centering loaded from :" << filename << endl;
+
     genHash(filename);
     MPI_Barrier(MPI_COMM_WORLD);
-    std::cout << "outputing ascii centering" << std::endl;
+    cout << "Outputing ASCII centering" << endl;
     if (!rank)
     {
         FILE *fid;
@@ -1272,9 +1291,9 @@ void tecIO::readAvg(std::string filename)
         fprintf(fid, "file= %s\n", asciiName.c_str());
         if (reorder)
         {
-            for (int i = 0; i < average.size(); i++)
+            for (int i = 0; i < centerVec.size(); i++)
             {
-                fprintf(fid, "%16.16E\n", average[i]);
+                fprintf(fid, "%16.16E\n", centerVec[i]);
             }
         }
         else
@@ -1283,12 +1302,12 @@ void tecIO::readAvg(std::string filename)
             {
                 for (int j = 0; j < nCells; j++)
                 {
-                    fprintf(fid, "%16.16E\n", average[i * nCells + idx[j]]);
+                    fprintf(fid, "%16.16E\n", centerVec[i * nCells + idx[j]]);
                 }
             }
         }
     }
-    std::cout << "average Broad-casted" << std::endl;
+    cout << "Centering broadcasted" << endl;
 }
 
 void tecIO::activateGEMSbin(string file)
@@ -1304,22 +1323,24 @@ void tecIO::activateReorder(string file)
 }
 
 // check if metadata for two meta objects are the same, EXCEPT for file numbers
-int compareMeta(meta* meta1, meta* meta2) {
+int compareMeta(meta* meta1, meta* meta2)
+{
 
 	// check path members
-	if ( (meta1->prefix == meta2->prefix) && (meta1->suffix == meta2->suffix) ) {
+	if ( (meta1->prefix == meta2->prefix) && (meta1->suffix == meta2->suffix) )
+    {
 
 		if ( (meta1->snap0 == meta2->snap0) && 
 			 (meta1->snapF == meta2->snapF) &&
-			 (meta1->snapSkip == meta2->snapSkip) ) {
-			
+			 (meta1->snapSkip == meta2->snapSkip) )
+        {
 			// objects are identical
 			return(1);
-
-		} else {
+		}
+        else
+        {
 			// objects differ only in the file counts
 			return(2);
-
 		}
 		return(true);
 
