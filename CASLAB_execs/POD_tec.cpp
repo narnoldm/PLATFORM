@@ -48,12 +48,13 @@ int main(int argc, char *argv[])
 
         // read centering inputs
         string centerFile, centerMethod;
-        bool center;
+        bool center, centerIsField;
         inputFile.getParamBool("center", center);
         if (center)
         {
             inputFile.getParamString("centerFile", centerFile, "");
             inputFile.getParamString("centerMethod", centerMethod, "");
+            inputFile.getParamBool("centerIsField", centerIsField, false);
             if ((centerFile == "") && (centerMethod == ""))
             {
                 cout << "Must provide centerFile or centerMethod if center = true" << endl;
@@ -64,14 +65,13 @@ int main(int argc, char *argv[])
                 cout << "Can only set centerFile OR centerMethod if center = true" << endl;
                 throw(-1);
             }
+                
             if (centerFile != "")
             {
-                dataset1->readCentering(centerFile);
+                dataset1->calcCentering(evenMat, centerFile, true);
             }
             else
             {
-                bool centerIsField;
-                inputFile.getParamBool("centerIsField", centerIsField, false);
                 dataset1->calcCentering(evenMat, centerMethod, centerIsField);
             }
             dataset1->centerData(evenMat, false);

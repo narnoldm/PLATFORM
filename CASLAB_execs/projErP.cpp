@@ -30,8 +30,8 @@ int main(int argc, char *argv[])
     string basis;
     input.getParamString("V", basis);
 
-    string centering;
-    input.getParamString("CenterFile", centering);
+    string centerFile;
+    input.getParamString("CenterFile", centerFile);
     string hashfile;
     input.getParamString("HashFile", hashfile);
 
@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
     //vector<double> err(set1.nSets,0.0);
     //vector<double> norm(set1.nSets,0.0);
 
-    set1.readCentering(centering);
+    set1.calcCentering(&q, centerFile);
     string scaleMethod;
     input.getParamString("scaleMethod", scaleMethod);
     set1.calcScaling(&q, scaleMethod);

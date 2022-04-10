@@ -104,7 +104,7 @@ public:
     void scaleData(pMat *dataMat, bool unscale);
     void centerData(pMat *dataMat);
     void centerData(pMat *dataMat, bool uncenter);
-    void readCentering(std::string filename);
+    void readTecToVec(std::string filename, std::vector<double> &vec);
 
     //misc
     void activateGEMSbin(std::string);

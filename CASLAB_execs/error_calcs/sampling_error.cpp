@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
 		if (centerFile == "") {
 			setField->calcCentering(QTruth, centerMethod);
 		} else {
-			setField->readCentering(centerFile);
+			setField->calcCentering(QTruth, centerFile);
 		}
 		setField->centerData(QTruth);
 	}

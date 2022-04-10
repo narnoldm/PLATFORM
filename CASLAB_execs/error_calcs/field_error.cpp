@@ -165,7 +165,7 @@ int main(int argc, char *argv[]) {
             if (centerFile == "") {
                 setFOM->calcCentering(QTruth, centerMethod);
             } else {
-                setFOM->readCentering(centerFile);
+                setFOM->calcCentering(QTruth, centerFile);
             }
             setFOM->centerData(QTruth);
         }

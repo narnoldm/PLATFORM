@@ -835,141 +835,142 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod)
 void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField)
 {
 
-    isCentered = true;
+    isCentered = true;    
 
-    // initialize centering profile
-    int centerSize;
-    if (isField)
-    {
-        centerSize = nPoints;
-    }
-    else
-    {
-        centerSize = numVars;
-    }
-    cout << "Allocating centering as " << centerSize << " values" << endl;
-    centerVec.resize(centerSize, 0.0);
-    cout << "Centering allocated" << endl;
-
-    // load from file
-
-    // otherwise, calculate centering profile
-
-    // check that centering method is valid
     // update this check when a new method is added
     if ((centerMethod != "avg") && (centerMethod != "avgmag"))
     {
-        cout << "Invalid centering method: " << centerMethod << endl;
+        // load from file
+        // TODO: allow reading from small vector
+        // TODO: allow reading from ASCII file
+        isField = true;
+        readTecToVec(centerMethod, centerVec);
     }
-
-    double val, groupVal;
-    vector<double> valVec(nCells);
-    bool skip;
-    vector<int> skipFlags;
-    for (int k = 0; k < numVars; ++k)
+    else
     {
-        if (scalingInput[k] < 0)
+        // otherwise, calculate centering profile
+        int centerSize;
+        if (isField)
         {
-            // check if this group has already been evaluated
-            skip = false;
-            for (int g = 0; g < skipFlags.size(); ++g)
-            {
-                if (scalingInput[k] == skipFlags[g])
-                {
-                    skip = true;
-                    break;
-                }
-            }
-            if (skip)
-            {
-                continue;
-            }
+            centerSize = nPoints;
+        }
+        else
+        {
+            centerSize = numVars;
+        }
+        cout << "Allocating centering as " << centerSize << " values" << endl;
+        centerVec.resize(centerSize, 0.0);
+        cout << "Centering allocated" << endl;
 
-            fill(valVec.begin(), valVec.end(), 0.0);
-
-            // loop snapshots
-            for (int j = 0; j < nSets; ++j)
+        double val, groupVal;
+        vector<double> valVec(nCells);
+        bool skip;
+        vector<int> skipFlags;
+        for (int k = 0; k < numVars; ++k)
+        {
+            if (scalingInput[k] < 0)
             {
-                for (int i = 0; i < nCells; ++i)
+                // check if this group has already been evaluated
+                skip = false;
+                for (int g = 0; g < skipFlags.size(); ++g)
                 {
-                    // get contributions from all fields in group
-                    groupVal = 0.0;
-                    for (int g = 0; g < numVars; ++g)
+                    if (scalingInput[k] == skipFlags[g])
                     {
-                        if (scalingInput[g] == scalingInput[k])
-                        {
-                            val = dataMat->getLocalElement(g * nCells + i, j);
-                            // gather centering values
-                            // expand as necessary for new methods
-                            if (centerMethod == "avgmag")
-                            {
-                                groupVal += pow(val, 2);
-                            }
-                            else if (centerMethod == "avg")
-                            {
-                                groupVal += val;
-                            }
-                        }
-                    }
-                    if (centerMethod == "avgmag")
-                    {
-                        groupVal = sqrt(groupVal);
-                    }
-                    valVec[i] += groupVal;
-                }
-            }
-            // only summed local elements, so need to reduce
-            MPI_Allreduce(MPI_IN_PLACE, valVec.data(), nCells, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
-            // final calculations for centering method
-            if ((centerMethod == "avgmag") || (centerMethod == "avg"))
-            {
-                if (isField)
-                {
-                    for (int i = 0; i < nCells; ++i)
-                    {
-                        centerVec[k * nCells + i] = valVec[i] / nSets;
+                        skip = true;
+                        break;
                     }
                 }
-                else
-                {
-                    double avgVal = 0.0;
-                    for (int i = 0; i < nCells; ++i)
-                    {
-                        avgVal += valVec[i];
-                    }
-                    centerVec[k] = avgVal / (nCells * nSets);
-                }
-            }
-
-            // distribute to fields in same group instead of recalculating
-            for (int g = 0; g < numVars; g++)
-            {
-                if (g == k)
+                if (skip)
                 {
                     continue;
                 }
-                else if (scalingInput[g] == scalingInput[k])
+
+                fill(valVec.begin(), valVec.end(), 0.0);
+
+                // loop snapshots
+                for (int j = 0; j < nSets; ++j)
+                {
+                    for (int i = 0; i < nCells; ++i)
+                    {
+                        // get contributions from all fields in group
+                        groupVal = 0.0;
+                        for (int g = 0; g < numVars; ++g)
+                        {
+                            if (scalingInput[g] == scalingInput[k])
+                            {
+                                val = dataMat->getLocalElement(g * nCells + i, j);
+                                // gather centering values
+                                // expand as necessary for new methods
+                                if (centerMethod == "avgmag")
+                                {
+                                    groupVal += pow(val, 2);
+                                }
+                                else if (centerMethod == "avg")
+                                {
+                                    groupVal += val;
+                                }
+                            }
+                        }
+                        if (centerMethod == "avgmag")
+                        {
+                            groupVal = sqrt(groupVal);
+                        }
+                        valVec[i] += groupVal;
+                    }
+                }
+                // only summed local elements, so need to reduce
+                MPI_Allreduce(MPI_IN_PLACE, valVec.data(), nCells, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+                // final calculations for centering method
+                if ((centerMethod == "avgmag") || (centerMethod == "avg"))
                 {
                     if (isField)
                     {
                         for (int i = 0; i < nCells; ++i)
                         {
-                            centerVec[g * nCells + i] = centerVec[k * nCells + i];
+                            centerVec[k * nCells + i] = valVec[i] / nSets;
                         }
                     }
                     else
                     {
-                        centerVec[g] = centerVec[k];
+                        double avgVal = 0.0;
+                        for (int i = 0; i < nCells; ++i)
+                        {
+                            avgVal += valVec[i];
+                        }
+                        centerVec[k] = avgVal / (nCells * nSets);
                     }
-                    skipFlags.push_back(k);
+                }
+
+                // distribute to fields in same group instead of recalculating
+                for (int g = 0; g < numVars; g++)
+                {
+                    if (g == k)
+                    {
+                        continue;
+                    }
+                    else if (scalingInput[g] == scalingInput[k])
+                    {
+                        if (isField)
+                        {
+                            for (int i = 0; i < nCells; ++i)
+                            {
+                                centerVec[g * nCells + i] = centerVec[k * nCells + i];
+                            }
+                        }
+                        else
+                        {
+                            centerVec[g] = centerVec[k];
+                        }
+                        skipFlags.push_back(k);
+                    }
                 }
             }
-        }
 
-        if (!isField)
-        {
-            cout << "Centering factor for " << varName[k] << " is: " << setprecision(numeric_limits<double>::digits10) << centerVec[k] << endl;
+            if (!isField)
+            {
+                cout << "Centering factor for " << varName[k] << " is: " << setprecision(numeric_limits<double>::digits10) << centerVec[k] << endl;
+            }
         }
     }
 
@@ -1227,12 +1228,12 @@ void tecIO::scaleData(pMat *dataMat, bool unscale)
     }
 }
 
-void tecIO::readCentering(string filename)
+void tecIO::readTecToVec(string filename, vector<double> &vec)
 {
-    if (centerVec.size() != nPoints)
+    if (vec.size() != nPoints)
     {
         cout << "Allocating centering as " << nPoints << " cells" << endl;
-        centerVec.resize(nPoints, 0.0);
+        vec.resize(nPoints, 0.0);
         cout << "Centering allocated" << endl;
     }
     int rank;
@@ -1252,62 +1253,30 @@ void tecIO::readCentering(string filename)
             tecZoneVarGetFloatValues(fH, 1, ii, 1, nCells, get.data());
             for (int j = 0; j < nCells; j++)
             {
-                centerVec[j + i * nCells] = (double)get[j];
+                vec[j + i * nCells] = (double)get[j];
             }
             get.clear();
         }
         else if (type == 2)
         {
-            tecZoneVarGetDoubleValues(fH, 1, ii, 1, nCells, &(centerVec[i * nCells]));
+            tecZoneVarGetDoubleValues(fH, 1, ii, 1, nCells, &(vec[i * nCells]));
         }
         if (reorder)
         {
             vector<double> temp(nCells, 0.0);
             for (int j = 0; j < nCells; j++)
             {
-                temp[j] = centerVec[i * nCells + j];
+                temp[j] = vec[i * nCells + j];
             }
             for (int j = 0; j < nCells; j++)
             {
-                centerVec[i * nCells + j] = temp[idx[j]];
+                vec[i * nCells + j] = temp[idx[j]];
             }
             temp.clear();
         }
     }
     tecFileReaderClose(&fH);
-    cout << "Centering loaded from :" << filename << endl;
-
-    genHash(filename);
-    MPI_Barrier(MPI_COMM_WORLD);
-    cout << "Outputing ASCII centering" << endl;
-    if (!rank)
-    {
-        FILE *fid;
-        string asciiName = "centerProf.dat";
-        if ((fid = fopen(asciiName.c_str(), "w")) == NULL)
-        {
-            printf("error with file open\n");
-        }
-        fprintf(fid, "file= %s\n", asciiName.c_str());
-        if (reorder)
-        {
-            for (int i = 0; i < centerVec.size(); i++)
-            {
-                fprintf(fid, "%16.16E\n", centerVec[i]);
-            }
-        }
-        else
-        {
-            for (int i = 0; i < numVars; i++)
-            {
-                for (int j = 0; j < nCells; j++)
-                {
-                    fprintf(fid, "%16.16E\n", centerVec[i * nCells + idx[j]]);
-                }
-            }
-        }
-    }
-    cout << "Centering broadcasted" << endl;
+    cout << "Centering loaded from: " << filename << endl;
 }
 
 void tecIO::activateGEMSbin(string file)
