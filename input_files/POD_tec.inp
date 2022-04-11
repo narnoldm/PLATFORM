@@ -1,20 +1,34 @@
 stdout_proc = 0
 
-!This way for now need to add array input option
-inputString=input|tecplot|../../forNick/FOM/UnsteadyFieldResults/gemsma_cmb_|.szplt|3001|3100|1|Static_Pressure|-1|Temperature|-1
+! Data input
+inputString=input|tecplot|~/path/to/rundir/UnsteadyFieldResults/gemsma_cmb_|.szplt|3001|3100|1|Static_Pressure|-1|U|-2|V|-3|Temperature|-4
 
+! Centering
+center = false
+centerIsField = true
+centerFile = 
 
-!Averaging
-readAvg=false
-avgFile=""
+! accepts "avg" and "avgmag"
+centerMethod =
 
+! Scaling
+scale = false
+scaleIsField = true
+scaleFile =
 
-!MOS option 
-mosStep=0
+! accepts "minmax", "standardize", and "sphere"
+scaleMethod = 
 
-modeStart=1
-modeEnd=100
+! Method of snapshots option
+! 0: all in one-shot
+! 1: A^T * A calculation
+! 2: eigendecompostiion of A^T * A
+! 3: spatial mode calculations
+mosStep = 1
 
+! Mode output window
+modeStart = 1
+modeEnd = 500
 
 
 
