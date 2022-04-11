@@ -835,7 +835,7 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod)
 void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField)
 {
 
-    isCentered = true;    
+    isCentered = true;
 
     // update this check when a new method is added
     if ((centerMethod != "avg") && (centerMethod != "avgmag"))
@@ -862,7 +862,7 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField)
         centerVec.resize(centerSize, 0.0);
         cout << "Centering allocated" << endl;
 
-        double val, groupVal;
+        double val;
         vector<double> valVec(nCells);
         bool skip;
         vector<int> skipFlags;
@@ -885,60 +885,28 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField)
                     continue;
                 }
 
-                fill(valVec.begin(), valVec.end(), 0.0);
-
-                // loop snapshots
-                for (int j = 0; j < nSets; ++j)
+                if (centerMethod == "avg")
                 {
-                    for (int i = 0; i < nCells; ++i)
-                    {
-                        // get contributions from all fields in group
-                        groupVal = 0.0;
-                        for (int g = 0; g < numVars; ++g)
-                        {
-                            if (scalingInput[g] == scalingInput[k])
-                            {
-                                val = dataMat->getLocalElement(g * nCells + i, j);
-                                // gather centering values
-                                // expand as necessary for new methods
-                                if (centerMethod == "avgmag")
-                                {
-                                    groupVal += pow(val, 2);
-                                }
-                                else if (centerMethod == "avg")
-                                {
-                                    groupVal += val;
-                                }
-                            }
-                        }
-                        if (centerMethod == "avgmag")
-                        {
-                            groupVal = sqrt(groupVal);
-                        }
-                        valVec[i] += groupVal;
-                    }
+                    calcGroupQuant(dataMat, val, valVec, k, "avg", isField);
                 }
-                // only summed local elements, so need to reduce
-                MPI_Allreduce(MPI_IN_PLACE, valVec.data(), nCells, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+                else if (centerMethod == "avgmag")
+                {
+                    calcGroupQuant(dataMat, val, valVec, k, "avgmag", isField);
+                }
 
                 // final calculations for centering method
-                if ((centerMethod == "avgmag") || (centerMethod == "avg"))
+                if ((centerMethod == "avg") || (centerMethod == "avgmag"))
                 {
                     if (isField)
                     {
                         for (int i = 0; i < nCells; ++i)
                         {
-                            centerVec[k * nCells + i] = valVec[i] / nSets;
+                            centerVec[k * nCells + i] = valVec[i];
                         }
                     }
                     else
                     {
-                        double avgVal = 0.0;
-                        for (int i = 0; i < nCells; ++i)
-                        {
-                            avgVal += valVec[i];
-                        }
-                        centerVec[k] = avgVal / (nCells * nSets);
+                        centerVec[k] = val;
                     }
                 }
 
@@ -1097,52 +1065,110 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
         }
     }
 
-    // initialize scaling vectors to appropriate size
-    scalingIsField = isField;
-    int scaleVecSize;
-    if (scalingIsField)
+    // update this check when a new method is added
+    if ((scaleMethod != "minmax") &&
+        (scaleMethod != "standardize") &&
+        (scaleMethod != "sphere"))
     {
-        scaleVecSize = nPoints;
+        // load from file
+        // TODO: allow reading from small vector
+        // TODO: allow reading from ASCII file
+        isField = true;
+        readTecToVec(scaleMethod + "_sub.szplt", scalingSubVec);
+        readTecToVec(scaleMethod + "_div.szplt", scalingDivVec);
     }
     else
     {
-        scaleVecSize = numVars;
-    }
-    scalingSubVec.resize(scaleVecSize, 1.0);
-    scalingDivVec.resize(scaleVecSize, 1.0);
 
-    vector<double> mag(nCells);
-    for (int k = 0; k < numVars; k++)
-    {
-        if (scalingInput[k] < 0)
+        // initialize scaling vectors to appropriate size
+        scalingIsField = isField;
+        int scaleVecSize;
+        if (scalingIsField)
         {
-            double maxmag = 0;
-            for (int j = 0; j < nSets; j++)
+            scaleVecSize = nPoints;
+        }
+        else
+        {
+            scaleVecSize = numVars;
+        }
+        cout << "Allocating scaling as " << scaleVecSize << " values" << endl;
+        scalingSubVec.resize(scaleVecSize, 0.0);
+        scalingDivVec.resize(scaleVecSize, 1.0);
+        cout << "Scaling allocated" << endl;
+
+        double val1, val2;
+        vector<double> valVec1(nCells);
+        vector<double> valVec2(nCells);
+        bool skip;
+        vector<int> skipFlags;
+        for (int k = 0; k < numVars; ++k)
+        {
+            if (scalingInput[k] < 0)
             {
-
-                fill(mag.begin(), mag.end(), 0.0);
-                for (int i = 0; i < nCells; i++)
+                // check if this group has already been evaluated
+                skip = false;
+                for (int g = 0; g < skipFlags.size(); ++g)
                 {
-                    for (int g = 0; g < numVars; g++)
+                    if (scalingInput[k] == skipFlags[g])
                     {
+                        skip = true;
+                        break;
+                    }
+                }
+                if (skip)
+                {
+                    continue;
+                }
 
-                        if (scalingInput[g] == scalingInput[k])
+                if (scaleMethod == "minmax")
+                {
+                    calcGroupQuant(dataMat, val1, valVec1, k, "min", isField);
+                    calcGroupQuant(dataMat, val2, valVec2, k, "max", isField);
+                }
+                // else if (scaleMethod == "standardize")
+                // {
+
+                // }
+
+                // final calculations for centering method
+                if (isField)
+                {
+                    if (scaleMethod == "minmax")
+                    {
+                        for (int i = 0; i < nCells; ++i)
                         {
-                            mag[i] += pow(dataMat->getLocalElement(g * nCells + i, j), 2);
+                            scalingSubVec[k * nCells + i] = valVec1[i];
+                            scalingDivVec[k * nCells + i] = valVec2[i] - valVec1[i];
                         }
                     }
                 }
-                MPI_Allreduce(MPI_IN_PLACE, mag.data(), nCells, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-                for (int i = 0; i < nCells; i++)
+                else
                 {
-                    if (mag[i] > maxmag)
+                    if (scaleMethod == "minmax")
                     {
-                        maxmag = mag[i];
+                        scalingSubVec[k] = val1;
+                        scalingDivVec[k] = val2 - val1;
                     }
+                    // else if (scaleMethod == "standardize")
+                    // {
+
+                    // }
                 }
+
+            }
+            else
+            {
+                scalingSubVec[k] = 0.0;
+                scalingDivVec[k] = scalingInput[k];
             }
 
-            maxmag = sqrt(maxmag);
+            if (!isField)
+            {
+                cout << "Subtractive scaling factor for " << varName[k] << " is: " << setprecision(numeric_limits<double>::digits10) << scalingSubVec[k] << endl;
+                cout << "Divisive scaling factor for " << varName[k] << " is: " << setprecision(numeric_limits<double>::digits10) << scalingDivVec[k] << endl;
+            }
+
+            // distribute to fields in same group instead of recalculating
             for (int g = 0; g < numVars; g++)
             {
                 if (g == k)
@@ -1151,31 +1177,70 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
                 }
                 else if (scalingInput[g] == scalingInput[k])
                 {
-                    scalingDivVec[g] = maxmag;
+                    if (isField)
+                    {
+                        for (int i = 0; i < nCells; ++i)
+                        {
+                            scalingSubVec[g * nCells + i] = scalingSubVec[k * nCells + i];
+                            scalingDivVec[g * nCells + i] = scalingDivVec[k * nCells + i];
+                        }
+                    }
+                    else
+                    {
+                        scalingSubVec[g] = scalingSubVec[k];
+                        scalingDivVec[g] = scalingDivVec[k];
+                    }
+                    skipFlags.push_back(k);
                 }
             }
-            scalingDivVec[k] = maxmag;
+
         }
-        cout << "Synched norm factor for " << varName[k] << " is : " << setprecision(numeric_limits<double>::digits10) << scalingDivVec[k] << endl;
     }
 
-    // if (scaleMethod == "minmax")
-    // {
+    // expand constants to full field for convenience sake
+    if (!isField)
+    {
+        vector<double> subVals(numVars);
+        vector<double> divVals(numVars);
+        copy(scalingSubVec.begin(), scalingSubVec.end(), subVals.begin());
+        copy(scalingDivVec.begin(), scalingDivVec.end(), divVals.begin());
+        scalingSubVec.resize(nPoints, 0.0);
+        scalingDivVec.resize(nPoints, 0.0);
+        for (int k = 0; k < numVars; ++k) 
+        {
+            for (int i = 0; i < nCells; ++i)
+            {
+                scalingSubVec[k * nCells + i] = subVals[k];
+                scalingDivVec[k * nCells + i] = divVals[k];
+            }
+        }
+    }
 
-    // }
-    // else if (scaleMethod == "standardize")
-    // {
+    // prevent divisive factors close to zero
+    // really only happens when min and max are same, implying field is uniform
+    for (int k = 0; k < numVars; ++k) 
+    {
+        for (int i = 0; i < nCells; ++i)
+        {
+            if (abs(scalingDivVec[k * nCells + i]) < 1e-15)
+            {
+                scalingSubVec[k * nCells + i] = 0.0;
+                scalingDivVec[k * nCells + i] = 1.0;
+            }
+        }
+    }
 
-    // }
-    // else if (scaleMethod == "sphere")
-    // {
-
-    // }
-    // else
-    // {
-    //     cout << "Invalid scaleMethod: " << scaleMethod << endl;
-    //     throw(-1);
-    // }
+    // write scaling fields to file
+    cout << "Scaling calculated" << endl;
+    if (dataMat->pG->rank == 0)
+    {
+        // TODO: get SZPLT to output correctly, without silly fileID requirement
+        // writeSingle(0, centerVec.data(), "centerProf");
+        writeASCIIDoubleVec("scalingSubProf.dat", scalingSubVec);
+        writeASCIIDoubleVec("scalingDivProf.dat", scalingDivVec);
+    }
+    cout << "Scaling files written" << endl;
+    MPI_Barrier(MPI_COMM_WORLD);
 
 }
 
@@ -1228,6 +1293,156 @@ void tecIO::scaleData(pMat *dataMat, bool unscale)
     }
 }
 
+// compute cell-wise quantity across all snapshots
+// methodName: accepts "avg", "avgmag", "min", "max", "std", "l2"
+void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec, int varIdx, string methodName, bool outField)
+{
+    double val, groupVal;
+    vector<double> valVec(nCells);
+
+    // prefill aggregate vector
+    if (methodName == "min") {
+        fill(valVec.begin(), valVec.end(), HUGE_VAL);
+    }
+    else if (methodName == "max")
+    {
+        fill(valVec.begin(), valVec.end(), -HUGE_VAL);
+    }
+    else
+    {
+        fill(valVec.begin(), valVec.end(), 0.0);
+    }
+
+    // loop snapshots
+    for (int j = 0; j < nSets; ++j)
+    {
+        for (int i = 0; i < nCells; ++i)
+        {
+            if (methodName == "min")
+            {
+                groupVal = HUGE_VAL; 
+            }
+            else if (methodName == "max")
+            {
+                groupVal = -HUGE_VAL;
+            }
+            else
+            {
+                groupVal = 0.0;
+            }
+
+            // get contributions from all fields in group
+            for (int g = 0; g < numVars; ++g)
+            {
+                if (scalingInput[g] == scalingInput[varIdx])
+                {
+                    // gather scaling values
+                    // expand as necessary for new methods
+                    if (methodName == "min")
+                    {
+                        val = dataMat->getLocalElement(g * nCells + i, j, HUGE_VAL);
+                        if (val != HUGE_VAL)
+                        {
+                            groupVal = min(val, groupVal);
+                        }
+                    }
+                    else if (methodName == "max")
+                    {
+                        val = dataMat->getLocalElement(g * nCells + i, j, -HUGE_VAL);
+                        if (val != -HUGE_VAL)
+                        {
+                            groupVal = max(val, groupVal);
+                        }
+                    }
+                    else if (methodName == "avg")
+                    {
+                        val = dataMat->getLocalElement(g * nCells + i, j);
+                        groupVal += val;
+                    }
+                    else if (methodName == "avgmag")
+                    {
+                        // MUST use global getElement, proc may not own all variables in group
+                        val = dataMat->getElement(g * nCells + i, j);
+                        groupVal += pow(val, 2);
+                    }
+                }
+            }
+            if (methodName == "min")
+            {
+                valVec[i] = min(valVec[i], groupVal);
+            }
+            else if (methodName == "max")
+            {
+                valVec[i] = max(valVec[i], groupVal);
+            }
+            else if (methodName == "avg")
+            {
+                valVec[i] += groupVal;
+            }
+            else if (methodName == "avgmag")
+            {
+                valVec[i] += sqrt(groupVal);
+            }
+        }
+    }
+
+    // only collected local elements, so need to reduce
+    if (methodName == "min")
+    {
+        MPI_Allreduce(valVec.data(), outVec.data(), nCells, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+    }
+    else if (methodName == "max")
+    {
+        MPI_Allreduce(valVec.data(), outVec.data(), nCells, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    }
+    else if (methodName == "avg")
+    {
+        MPI_Allreduce(valVec.data(), outVec.data(), nCells, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+        for (int i = 0; i < nCells; ++i)
+        {
+            outVec[i] /= nSets;
+        }
+    }
+    else if (methodName == "avgmag")
+    {
+        // don't need to reduce because this used global getElement
+        for (int i = 0; i < nCells; ++i)
+        {
+            outVec[i] = valVec[i] / nSets;
+        }
+    }
+
+    if (!outField)
+    {
+        if (methodName == "min")
+        {
+            outVal = HUGE_VAL;
+            for (int i = 0; i < nCells; ++i)
+            {
+                outVal = min(outVal, outVec[i]);
+            }
+        }
+        else if (methodName == "max")
+        {
+            outVal = -HUGE_VAL;
+            for (int i = 0; i < nCells; ++i)
+            {
+                outVal = max(outVal, outVec[i]);
+            }
+        }
+        else if ((methodName == "avg") || (methodName == "avgmag"))
+        {
+            outVal = 0.0;
+            for (int i = 0; i < nCells; ++i)
+            {
+                outVal += outVec[i];
+            }
+            outVal /= nCells;
+        }
+    }
+
+}
+
 void tecIO::readTecToVec(string filename, vector<double> &vec)
 {
     if (vec.size() != nPoints)
@@ -1278,6 +1493,8 @@ void tecIO::readTecToVec(string filename, vector<double> &vec)
     tecFileReaderClose(&fH);
     cout << "Centering loaded from: " << filename << endl;
 }
+
+
 
 void tecIO::activateGEMSbin(string file)
 {

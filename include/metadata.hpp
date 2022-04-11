@@ -96,6 +96,7 @@ public:
     void genHash(std::string);
 
     // feature scaling routines
+    void calcGroupQuant(pMat *dataMat, double &outVal, std::vector<double> &outVec, int varIdx, std::string methodName, bool aggCells);
     void calcCentering(pMat *dataMat, std::string centerMethod);
     void calcCentering(pMat *dataMat, std::string centerMethod, bool isField);
     void calcScaling(pMat *dataMat, std::string scaleMethod);

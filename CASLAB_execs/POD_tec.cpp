@@ -77,38 +77,40 @@ int main(int argc, char *argv[])
             dataset1->centerData(evenMat, false);
         }
 
+        // read scaling inputs
+        string scaleFile, scaleMethod;
+        bool scale, scaleIsField;
+        inputFile.getParamBool("scale", scale);
+        if (scale)
+        {
+            inputFile.getParamString("scaleFile", scaleFile, "");
+            inputFile.getParamString("scaleMethod", scaleMethod, "");
+            inputFile.getParamBool("scaleIsField", scaleIsField, false);
+            if ((scaleFile == "") && (scaleMethod == ""))
+            {
+                cout << "Must provide centerFile or centerMethod if center = true" << endl;
+                throw(-1);
+            }
+            if ((scaleFile != "") && (scaleMethod != ""))
+            {
+                cout << "Can only set centerFile OR centerMethod if center = true" << endl;
+                throw(-1);
+            }
+            if (scaleFile != "")
+            {
+                dataset1->calcScaling(evenMat, scaleFile, true);
+            }
+            else
+            {
+                dataset1->calcScaling(evenMat, scaleMethod, scaleIsField);
+            }
+            dataset1->scaleData(evenMat, false);
+        }
+
         MPI_Barrier(MPI_COMM_WORLD);
         int ierr;
         MPI_Abort(MPI_COMM_WORLD, ierr);
 
-        // read scaling inputs
-        string scaleFile, scaleMethod;
-        bool scale;
-        inputFile.getParamBool("scale", scale);
-        // if (scale)
-        // {
-        //     inputFile.getParamString("scaleFile", scaleFile, "");
-        //     inputFile.getParamString("scaleMethod", scaleMethod, "");
-        //     if ((scaleFile == "") && (scaleMethod == ""))
-        //     {
-        //         cout << "Must provide centerFile or centerMethod if center = true" << endl;
-        //         throw(-1);
-        //     }
-        //     if ((scaleFile != "") && (scaleMethod != ""))
-        //     {
-        //         cout << "Can only set centerFile OR centerMethod if center = true" << endl;
-        //         throw(-1);
-        //     }
-        //     if (scaleFile != "")
-        //     {
-        //         dataset1->readScaling(scaleFile);
-        //     }
-        //     else
-        //     {
-        //         dataset1->calcScaling(evenMat, scaleMethod);
-        //     }
-        //     dataset1->scaleData(evenMat, false);
-        // }
     }
 
     pMat *U, *VT;

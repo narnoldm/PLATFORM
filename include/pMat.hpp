@@ -119,6 +119,7 @@ public:
 	int dSum(int, int, double &);
     double getElement(int, int);
 	double getLocalElement(int I, int J);
+    double getLocalElement(int I, int J, double temp);
 	void setElement(int I, int J, double val);
 
 	// Other

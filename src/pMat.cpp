@@ -1129,7 +1129,7 @@ double pMat::getElement(int I, int J)
 
         x = I % mb;
         y = J % nb;
-        double temp = 0;
+        double temp = 0.0;
         if ((pG->myrow == (I / mb) % pG->prow) && (pG->mycol == (J / nb) % pG->pcol))
         {
                 assert(((m * nb + y) * myRC[0] + l * mb + x) < nelements);
@@ -1140,8 +1140,13 @@ double pMat::getElement(int I, int J)
 }
 
 // retrieve element from pMat, only if the process owns the element
-// otherwise returns zero
+// otherwise returns input value of temp (zero by default)
 double pMat::getLocalElement(int I, int J)
+{
+    return getLocalElement(I, J, 0.0);
+}
+
+double pMat::getLocalElement(int I, int J, double temp)
 {
         double item = 0.0;
         int l, m;
@@ -1152,7 +1157,6 @@ double pMat::getLocalElement(int I, int J)
 
         x = I % mb;
         y = J % nb;
-        double temp = 0;
         if ((pG->myrow == (I / mb) % pG->prow) && (pG->mycol == (J / nb) % pG->pcol))
         {
                 assert(((m * nb + y) * myRC[0] + l * mb + x) < nelements);
