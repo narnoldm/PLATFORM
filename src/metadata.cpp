@@ -1056,6 +1056,10 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
         MPI_Barrier(MPI_COMM_WORLD);
         MPI_Abort(MPI_COMM_WORLD, -1);
     }
+    if ((scaleMethod == "standardize") && (!isField))
+    {
+        cout << "WARNING: scalar standardization doesn't really make sense." << endl;
+    }
 
     // check if the user has specified ANY scaling factors
     // if so, all scaling will be by scalar values
@@ -1103,6 +1107,13 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
         scalingDivVec.resize(scaleVecSize, 1.0);
         cout << "Scaling allocated" << endl;
 
+        // need a copy of data for standardization
+        pMat* dataMatCopy;
+        if (scaleMethod == "standardize")
+        {
+            dataMatCopy = new pMat(nPoints, nSets, dataMat->pG, 0, 0, 0.0, false);
+        }
+
         double val1, val2;
         vector<double> valVec1(nCells);
         vector<double> valVec2(nCells);
@@ -1132,17 +1143,69 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
                     calcGroupQuant(dataMat, val1, valVec1, k, "min", isField);
                     calcGroupQuant(dataMat, val2, valVec2, k, "max", isField);
                 }
-                // else if (scaleMethod == "standardize")
-                // {
+                else if (scaleMethod == "standardize")
+                {
+                    // requires a few extra steps
 
-                // }
+                    // calculate average
+                    calcGroupQuant(dataMat, val1, valVec1, k, "avg", isField);
+                    pMat* avgVecP0 = new pMat(nCells, 1, dataMat->pG, 0, 2, 0.0, false);
+                    pMat* avgVec = new pMat(nCells, 1, dataMat->pG, 0, 0, 0.0, false);
+                    int rank;
+                    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+                    if (!rank)
+                    {
+                        for (int i = 0; i < nCells; ++i)
+                        {
+                            if (isField)
+                            {
+                                avgVecP0->dataD[i] = valVec1[i];
+                            }
+                            else
+                            {
+                                avgVecP0->dataD[i] = val1;
+                            }
+                        }
+                    }
+                    avgVec->changeContext(avgVecP0, false);
+
+                    // subtract average
+                    // TODO: the repeated changeContext and squaring of all elements is CRAZY inefficient
+                    dataMatCopy->changeContext(dataMat, false);
+                    for (int j = 0; j < nSets; ++j)
+                    {
+                        for (int g = 0; g < numVars; ++g)
+                        {
+                            if (scalingInput[k] == scalingInput[g])
+                            {
+                                dataMatCopy->matrix_Sum('N', nCells, 1, avgVec, 0, 0, g * nCells, j, -1.0, 1.0);
+                            }
+                        }
+                    }
+
+                    // TODO: this is subtly incorrect for grouped variables
+                    // This computes the variance as sum((x1 - mu)^2 + (x2 - mu)^2) / N
+                    // Should be sum((x1 + x2 - 2 * mu)^2) / N
+                    // Not sure how this could be done efficiently
+
+                    // square elements
+                    for (int i = 0; i < dataMatCopy->dataD.size(); ++i)
+                    {
+                        dataMatCopy->dataD[i] = pow(dataMatCopy->dataD[i], 2);
+                    }
+                    MPI_Barrier(MPI_COMM_WORLD);
+
+                    // compute variance
+                    calcGroupQuant(dataMatCopy, val2, valVec2, k, "avg", isField);
+
+                }
                 else if (scaleMethod == "sphere")
                 {
                     val1 = 0.0;
                     calcGroupQuant(dataMat, val2, valVec2, k, "l2", isField);
                 }
 
-                // final calculations for centering method
+                // final calculations for scaling method
                 if (isField)
                 {
                     if (scaleMethod == "minmax")
@@ -1153,6 +1216,14 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
                             scalingDivVec[k * nCells + i] = valVec2[i] - valVec1[i];
                         }
                     }
+                    else if (scaleMethod == "standardize")
+                    {
+                        for (int i = 0; i < nCells; ++i)
+                        {
+                            scalingSubVec[k * nCells + i] = valVec1[i];
+                            scalingDivVec[k * nCells + i] = sqrt(valVec2[i]);
+                        }
+                    }
                 }
                 else
                 {
@@ -1161,10 +1232,11 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
                         scalingSubVec[k] = val1;
                         scalingDivVec[k] = val2 - val1;
                     }
-                    // else if (scaleMethod == "standardize")
-                    // {
-
-                    // }
+                    else if (scaleMethod == "standardize")
+                    {
+                        scalingSubVec[k] = val1;
+                        scalingDivVec[k] = sqrt(val2);
+                    }
                     else if (scaleMethod == "sphere")
                     {
                         scalingSubVec[k] = val1;
@@ -1178,6 +1250,9 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
                 scalingSubVec[k] = 0.0;
                 scalingDivVec[k] = scalingInput[k];
             }
+
+            // MPI_Barrier(MPI_COMM_WORLD);
+            // MPI_Abort(MPI_COMM_WORLD, -1);
 
             if (!isField)
             {
@@ -1210,7 +1285,10 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
                     skipFlags.push_back(k);
                 }
             }
-
+        }
+        if (scaleMethod == "standardize")
+        {
+            destroyPMat(dataMatCopy);
         }
     }
 
