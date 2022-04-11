@@ -1050,6 +1050,13 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
 
     isScaled = true;
 
+    if ((scaleMethod == "sphere") && (isField))
+    {
+        cout << "If choosing scaleMethod = sphere, you must set scaleIsField = false" << endl;
+        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+
     // check if the user has specified ANY scaling factors
     // if so, all scaling will be by scalar values
     for (int i = 0; i < numVars; ++i)
@@ -1129,6 +1136,11 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
                 // {
 
                 // }
+                else if (scaleMethod == "sphere")
+                {
+                    val1 = 0.0;
+                    calcGroupQuant(dataMat, val2, valVec2, k, "l2", isField);
+                }
 
                 // final calculations for centering method
                 if (isField)
@@ -1153,6 +1165,11 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
                     // {
 
                     // }
+                    else if (scaleMethod == "sphere")
+                    {
+                        scalingSubVec[k] = val1;
+                        scalingDivVec[k] = val2;
+                    }
                 }
 
             }
@@ -1294,7 +1311,7 @@ void tecIO::scaleData(pMat *dataMat, bool unscale)
 }
 
 // compute cell-wise quantity across all snapshots
-// methodName: accepts "avg", "avgmag", "min", "max", "std", "l2"
+// methodName: accepts "avg", "avgmag", "min", "max", "l2"
 void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec, int varIdx, string methodName, bool outField)
 {
     double val, groupVal;
@@ -1359,7 +1376,7 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
                         val = dataMat->getLocalElement(g * nCells + i, j);
                         groupVal += val;
                     }
-                    else if (methodName == "avgmag")
+                    else if ((methodName == "avgmag") || (methodName == "l2"))
                     {
                         // MUST use global getElement, proc may not own all variables in group
                         val = dataMat->getElement(g * nCells + i, j);
@@ -1375,7 +1392,7 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
             {
                 valVec[i] = max(valVec[i], groupVal);
             }
-            else if (methodName == "avg")
+            else if ((methodName == "avg") || (methodName == "l2"))
             {
                 valVec[i] += groupVal;
             }
@@ -1403,7 +1420,7 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
             outVec[i] /= nSets;
         }
     }
-    else if (methodName == "avgmag")
+    else if ((methodName == "avgmag") || (methodName == "l2"))
     {
         // don't need to reduce because this used global getElement
         for (int i = 0; i < nCells; ++i)
@@ -1439,6 +1456,16 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
             }
             outVal /= nCells;
         }
+        else if (methodName == "l2")
+        {
+            outVal = 0.0;
+            for (int i = 0; i < nCells; ++i)
+            {
+                outVal += outVec[i];
+            }
+            outVal /= nCells;
+            outVal = sqrt(outVal);
+        }
     }
 
 }
@@ -1447,9 +1474,9 @@ void tecIO::readTecToVec(string filename, vector<double> &vec)
 {
     if (vec.size() != nPoints)
     {
-        cout << "Allocating centering as " << nPoints << " cells" << endl;
+        cout << "Allocating vector as " << nPoints << " cells" << endl;
         vec.resize(nPoints, 0.0);
-        cout << "Centering allocated" << endl;
+        cout << "Vector allocated" << endl;
     }
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -1491,7 +1518,7 @@ void tecIO::readTecToVec(string filename, vector<double> &vec)
         }
     }
     tecFileReaderClose(&fH);
-    cout << "Centering loaded from: " << filename << endl;
+    cout << "Vector loaded from: " << filename << endl;
 }
 
 

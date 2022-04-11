@@ -108,8 +108,7 @@ int main(int argc, char *argv[])
         }
 
         MPI_Barrier(MPI_COMM_WORLD);
-        int ierr;
-        MPI_Abort(MPI_COMM_WORLD, ierr);
+        MPI_Abort(MPI_COMM_WORLD, -1);
 
     }
 
