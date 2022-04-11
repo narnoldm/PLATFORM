@@ -942,6 +942,9 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField)
         }
     }
 
+    // update global param
+    centeringIsField = isField;
+
     // expand constants to full field for convenience sake
     if (!isField)
     {
@@ -993,7 +996,6 @@ void tecIO::centerData(pMat *dataMat, bool uncenter)
     }
 
     int currentCol = 0;
-    double centeringVal = 0.0;
     for (int j = 0; j < dataMat->N; j++)
     {
         if (dataMat->pG->mycol == (j / dataMat->nb) % dataMat->pG->pcol)
@@ -1004,24 +1006,14 @@ void tecIO::centerData(pMat *dataMat, bool uncenter)
                 int li = i / (dataMat->pG->prow * dataMat->mb);
                 if (dataMat->pG->myrow == (i / dataMat->mb) % dataMat->pG->prow)
                 {
-                    // get appropriate centering value
-                    if (scalingIsField)
-                    {
-                        centeringVal = centerVec[i];
-                    }
-                    else
-                    {
-                        centeringVal = centerVec[i / nCells];
-                    }
-
                     // center data
                     if (uncenter)
                     {
-                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] += centeringVal;
+                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] += centerVec[i];
                     }
                     else
                     {
-                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] -= centeringVal;
+                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] -= centerVec[i];
                     }
                 }
             }
@@ -1092,9 +1084,8 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
     {
 
         // initialize scaling vectors to appropriate size
-        scalingIsField = isField;
         int scaleVecSize;
-        if (scalingIsField)
+        if (isField)
         {
             scaleVecSize = nPoints;
         }
@@ -1251,9 +1242,6 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
                 scalingDivVec[k] = scalingInput[k];
             }
 
-            // MPI_Barrier(MPI_COMM_WORLD);
-            // MPI_Abort(MPI_COMM_WORLD, -1);
-
             if (!isField)
             {
                 cout << "Subtractive scaling factor for " << varName[k] << " is: " << setprecision(numeric_limits<double>::digits10) << scalingSubVec[k] << endl;
@@ -1291,6 +1279,9 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
             destroyPMat(dataMatCopy);
         }
     }
+
+    // update global param
+    scalingIsField = isField;
 
     // expand constants to full field for convenience sake
     if (!isField)
@@ -1334,8 +1325,26 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
         writeASCIIDoubleVec("scalingSubProf.dat", scalingSubVec);
         writeASCIIDoubleVec("scalingDivProf.dat", scalingDivVec);
     }
+
+    // if also centering, combine into single profile (useful for GEMS)
+    if (isCentered)
+    {
+        cout << "Writing combined subtractive scaling factors" << endl;
+        scalingSubVecFull.resize(nPoints);
+        for (int i = 0; i < nPoints; ++i)
+        {
+            scalingSubVecFull[i] = centerVec[i] + scalingSubVec[i];
+        }
+        if (dataMat->pG->rank == 0)
+        {
+            writeASCIIDoubleVec("scalingSubProfFull.dat", scalingSubVecFull);
+        }
+    }
+
     cout << "Scaling files written" << endl;
     MPI_Barrier(MPI_COMM_WORLD);
+
+    
 
 }
 
@@ -1347,9 +1356,8 @@ void tecIO::scaleData(pMat *dataMat)
 void tecIO::scaleData(pMat *dataMat, bool unscale)
 {
 
-    cout << "Normalizing Matrix by Norm Factor" << endl;
+    cout << "Scaling matrix by scaling factor" << endl;
     int currentCol = 0;
-    int scalingIdx;
     for (int j = 0; j < dataMat->N; j++)
     {
         if (dataMat->pG->mycol == (j / dataMat->nb) % dataMat->pG->pcol)
@@ -1360,26 +1368,16 @@ void tecIO::scaleData(pMat *dataMat, bool unscale)
                 int li = i / (dataMat->pG->prow * dataMat->mb);
                 if (dataMat->pG->myrow == (i / dataMat->mb) % dataMat->pG->prow)
                 {
-                    // get appropriate index
-                    if (scalingIsField)
-                    {
-                        scalingIdx = i;
-                    }
-                    else
-                    {
-                        scalingIdx = i / nCells;
-                    }
-
                     // (un)scale data
                     if (unscale)
                     {
-                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] *= scalingDivVec[scalingIdx];
-                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] += scalingSubVec[scalingIdx];
+                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] *= scalingDivVec[i];
+                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] += scalingSubVec[i];
                     }
                     else
                     {
-                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] -= scalingSubVec[scalingIdx];
-                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] /= scalingDivVec[scalingIdx];
+                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] -= scalingSubVec[i];
+                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] /= scalingDivVec[i];
                     }
                 }
             }
@@ -1406,6 +1404,10 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
     else
     {
         fill(valVec.begin(), valVec.end(), 0.0);
+        if (methodName == "l2")
+        {
+            outVal = -HUGE_VAL;
+        }
     }
 
     // loop snapshots
@@ -1470,7 +1472,7 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
             {
                 valVec[i] = max(valVec[i], groupVal);
             }
-            else if ((methodName == "avg") || (methodName == "l2"))
+            else if (methodName == "avg")
             {
                 valVec[i] += groupVal;
             }
@@ -1478,7 +1480,24 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
             {
                 valVec[i] += sqrt(groupVal);
             }
+            else if (methodName == "l2")
+            {
+                valVec[i] = groupVal;
+            }
         }
+
+        // compute l2 norm for this snapshot, take max
+        if (methodName == "l2")
+        {
+            val = 0.0;
+            for (int i = 0; i < nCells; ++i)
+            {
+                val += valVec[i];
+            }
+            val = sqrt(val);
+            outVal = max(outVal, val);
+        }
+
     }
 
     // only collected local elements, so need to reduce
@@ -1498,12 +1517,20 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
             outVec[i] /= nSets;
         }
     }
-    else if ((methodName == "avgmag") || (methodName == "l2"))
+    else if (methodName == "avgmag")
     {
         // don't need to reduce because this used global getElement
         for (int i = 0; i < nCells; ++i)
         {
             outVec[i] = valVec[i] / nSets;
+        }
+    }
+    else if (methodName == "l2")
+    {
+        // don't need to reduce because this used global getElement
+        for (int i = 0; i < nCells; ++i)
+        {
+            outVec[i] = outVal;
         }
     }
 
@@ -1533,16 +1560,6 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
                 outVal += outVec[i];
             }
             outVal /= nCells;
-        }
-        else if (methodName == "l2")
-        {
-            outVal = 0.0;
-            for (int i = 0; i < nCells; ++i)
-            {
-                outVal += outVec[i];
-            }
-            outVal /= nCells;
-            outVal = sqrt(outVal);
         }
     }
 

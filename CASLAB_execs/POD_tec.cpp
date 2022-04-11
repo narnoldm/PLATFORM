@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
                 cout << "Can only set centerFile OR centerMethod if center = true" << endl;
                 throw(-1);
             }
-                
+
             if (centerFile != "")
             {
                 dataset1->calcCentering(evenMat, centerFile, true);
@@ -106,9 +106,6 @@ int main(int argc, char *argv[])
             }
             dataset1->scaleData(evenMat, false);
         }
-
-        MPI_Barrier(MPI_COMM_WORLD);
-        MPI_Abort(MPI_COMM_WORLD, -1);
 
     }
 

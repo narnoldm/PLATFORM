@@ -62,7 +62,7 @@ public:
     bool isScaled = false;
     bool scalingIsField;
     std::vector<double> scalingInput;
-    std::vector<double> scalingSubVec, scalingDivVec;
+    std::vector<double> scalingSubVec, scalingDivVec, scalingSubVecFull;
 
     std::vector<int> idx;
     std::vector<int> cellID;
