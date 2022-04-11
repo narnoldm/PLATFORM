@@ -1413,6 +1413,12 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
     // loop snapshots
     for (int j = 0; j < nSets; ++j)
     {
+
+        if (methodName == "l2")
+        {
+            fill(outVec.begin(), outVec.end(), 0.0);
+        }
+
         for (int i = 0; i < nCells; ++i)
         {
             if (methodName == "min")
@@ -1456,10 +1462,15 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
                         val = dataMat->getLocalElement(g * nCells + i, j);
                         groupVal += val;
                     }
-                    else if ((methodName == "avgmag") || (methodName == "l2"))
+                    else if (methodName == "avgmag")
                     {
                         // MUST use global getElement, proc may not own all variables in group
                         val = dataMat->getElement(g * nCells + i, j);
+                        groupVal += pow(val, 2);
+                    }
+                    else if (methodName == "l2")
+                    {
+                        val = dataMat->getLocalElement(g * nCells + i, j);
                         groupVal += pow(val, 2);
                     }
                 }
@@ -1489,10 +1500,11 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
         // compute l2 norm for this snapshot, take max
         if (methodName == "l2")
         {
+            MPI_Allreduce(valVec.data(), outVec.data(), nCells, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
             val = 0.0;
             for (int i = 0; i < nCells; ++i)
             {
-                val += valVec[i];
+                val += outVec[i];
             }
             val = sqrt(val);
             outVal = max(outVal, val);
@@ -1527,7 +1539,7 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
     }
     else if (methodName == "l2")
     {
-        // don't need to reduce because this used global getElement
+        // already reduced
         for (int i = 0; i < nCells; ++i)
         {
             outVec[i] = outVal;
