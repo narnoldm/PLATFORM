@@ -87,6 +87,7 @@ public:
     virtual void miscProcessing(pMat *Mat);
 
     // I/O
+    void vecToCellIDOrder(std::vector<double> &vecIn, std::vector<double> &vecOut);
     void readDATToVec(std::string filename, std::vector<double> &vec);
     void readSZPLTToVec(std::string filename, std::vector<double> &vec);
     virtual bool readSingle(int fileID, double *point);

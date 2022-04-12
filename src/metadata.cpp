@@ -820,6 +820,7 @@ void tecIO::genHash(string filename)
         for (int i = 0; i < nCells; i++)
         {
             cellID[i] = i;
+            idx[i] = i;
         }
     }
 }
@@ -836,15 +837,16 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField)
 {
 
     isCentered = true;
+    genHash(prefix + to_string(snap0) + suffix);
 
     // update this check when a new method is added
     if ((centerMethod != "avg") && (centerMethod != "avgmag"))
     {
+
         // load from file
         // TODO: allow reading from small vector
         // TODO: allow reading from ASCII file
         isField = true;
-        // readSZPLTToVec(centerMethod, centerVec);
         if (centerMethod.substr(centerMethod.size()-6, 6) == ".szplt")
         {
             readSZPLTToVec(centerMethod, centerVec);
@@ -984,7 +986,10 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField)
     {
         // TODO: get SZPLT to output correctly, without silly fileID requirement
         // writeSingle(0, centerVec.data(), "centerProf");
-        writeASCIIDoubleVec("centerProf.dat", centerVec);
+        // convert to cell_id order and write
+        vector<double> vecOut(nPoints, 0.0);
+        vecToCellIDOrder(centerVec, vecOut);
+        writeASCIIDoubleVec("centerProf.dat", vecOut);
     }
     cout << "Centering files written" << endl;
     MPI_Barrier(MPI_COMM_WORLD);
@@ -1381,9 +1386,6 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
 
     cout << "Scaling files written" << endl;
     MPI_Barrier(MPI_COMM_WORLD);
-
-    
-
 }
 
 void tecIO::scaleData(pMat *dataMat)
@@ -1633,31 +1635,45 @@ void tecIO::readDATToVec(std::string filename, std::vector<double> &vec)
         MPI_Abort(MPI_COMM_WORLD, -1);
     }
 
+    // assumed to be in cell_id order, need hash
+    genHash(prefix + to_string(snap0) + suffix);
+
     // header
     string header;
     inFile >> header;
 
     // read doubles from file
     int count = 0;
-    int dofIdx;
+    int varNum;
     double num;
+    //vector<double> temp;
+    //if (reorder)
+    //{
+    //    temp.resize(nCells, 0.0);
+    //}
     while (inFile >> num)
     {
-        if (reorder)
-        {
-            dofIdx = count % nCells;
-            vec[idx[dofIdx]] = num;
-        }
-        else
-        {
-            vec[count] = num;
-        }
+        
+        varNum = count / nCells;
+        vec[varNum * nCells + cellID[count % nCells]] = num;
+        //if (reorder)
+        //{
+        //    temp[count % nCells] = num;
+        //    if ((count % nCells) == (nCells - 1))
+        //    {
+        //        for (int i = 0; i < nCells; ++i)
+        //        {
+        //            vec[varNum * nCells + i] = temp[idx[i]];
+        //        }
+        //    }
+        //}
         count++;
     }
 }
 
 void tecIO::readSZPLTToVec(string filename, vector<double> &vec)
 {
+
     if (vec.size() != nPoints)
     {
         cout << "Allocating vector as " << nPoints << " cells" << endl;
@@ -1707,7 +1723,26 @@ void tecIO::readSZPLTToVec(string filename, vector<double> &vec)
     cout << "Vector loaded from: " << filename << endl;
 }
 
+void tecIO::vecToCellIDOrder(vector<double> &vecIn, vector<double> &vecOut)
+{
+    genHash(prefix + to_string(snap0) + suffix);
 
+    //for (int j = 0; j < 
+    //vector<double> temp(nCells, 0.0);
+    for (int i = 0; i < numVars; ++i)
+    {
+        for (int j = 0; j < nCells; ++j)
+        {
+            //temp[j] = vecIn[j * nCells + i];
+            vecOut[i * nCells + j] = vecIn[i * nCells + idx[j]];
+        }
+        //for (int j = 0; j < nCells; ++j)
+        //{
+        //    vecOut[j * nCells + i] = temp[idx[j]];
+        //}
+    }
+    
+}
 
 void tecIO::activateGEMSbin(string file)
 {
