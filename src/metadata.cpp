@@ -953,6 +953,10 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField)
             {
                 cout << "Centering factor for " << varName[k] << " is: " << setprecision(numeric_limits<double>::digits10) << centerVec[k] << endl;
             }
+            else
+            {
+                cout << "Centering field calculation for " << varName[k] << " complete" << endl;
+            }
         }
     }
 
@@ -1276,6 +1280,10 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
             {
                 cout << "Subtractive scaling factor for " << varName[k] << " is: " << setprecision(numeric_limits<double>::digits10) << scalingSubVec[k] << endl;
                 cout << "Divisive scaling factor for " << varName[k] << " is: " << setprecision(numeric_limits<double>::digits10) << scalingDivVec[k] << endl;
+            }
+            else
+            {
+                cout << "Scaling field calculation for " << varName[k] << " complete" << endl;
             }
 
             // distribute to fields in same group instead of recalculating
