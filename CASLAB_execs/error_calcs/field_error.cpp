@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
 
     string fomInputString, romInputString, basisInputString;
     string centerFile, centerMethod, scaleFile, scaleMethod;
-    bool center, normalize, outProjField, outLatentCode, outAbsErrField;
+    bool center, scale, outProjField, outLatentCode, outAbsErrField;
     int errType;
 
     // 1: compute error between FOM and projected FOM solution
@@ -62,8 +62,8 @@ int main(int argc, char *argv[]) {
         }
 
         // normalizing FOM data before projection (after centering, if requested)
-        inputFile.getParamBool("normalize", normalize);
-        if (normalize) {
+        inputFile.getParamBool("scale", scale);
+        if (scale) {
             // path to data normalization profile
             // if not provided, use normalization constants provided in fomInputString
             inputFile.getParamString("scaleFile", scaleFile, "");
@@ -170,8 +170,8 @@ int main(int argc, char *argv[]) {
             setFOM->centerData(QTruth);
         }
 
-        // normalized data, if requested
-        if (normalize) {
+        // scale data, if requested
+        if (scale) {
             if (scaleFile == "") {
                 setFOM->calcScaling(QTruth, scaleMethod);
             } else {
@@ -194,8 +194,8 @@ int main(int argc, char *argv[]) {
         latentCode->matrix_Product('T', 'N', basis->N, QTruth->N, basis->M, basis, 0, 0, QTruth, 0, 0, 1.0, 0.0, 0, 0);
         QTruth_proj->matrix_Product('N', 'N', basis->M, latentCode->N, basis->N, basis, 0, 0, latentCode, 0, 0, 1.0, 0.0, 0, 0);
 
-        // de-normalize and de-center, if normalization/centering was requested
-        if (normalize) {
+        // de-scale and de-center, if normalization/centering was requested
+        if (scale) {
             setFOM->scaleData(QTruth_proj, true);
             if (errType == 1)
                 setFOM->scaleData(QTruth, true);
