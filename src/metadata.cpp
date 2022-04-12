@@ -1633,17 +1633,27 @@ void tecIO::readDATToVec(std::string filename, std::vector<double> &vec)
         MPI_Abort(MPI_COMM_WORLD, -1);
     }
 
-    // read doubles from file
-    int count = 0;
-    double num;
+    // header
     string header;
     inFile >> header;
+
+    // read doubles from file
+    int count = 0;
+    int dofIdx;
+    double num;
     while (inFile >> num)
     {
-        vec[count] = num;
+        if (reorder)
+        {
+            dofIdx = count % nCells;
+            vec[idx[dofIdx]] = num;
+        }
+        else
+        {
+            vec[count] = num;
+        }
         count++;
     }
-
 }
 
 void tecIO::readSZPLTToVec(string filename, vector<double> &vec)

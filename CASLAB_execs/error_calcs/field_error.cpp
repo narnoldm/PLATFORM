@@ -175,8 +175,7 @@ int main(int argc, char *argv[]) {
             if (scaleFile == "") {
                 setFOM->calcScaling(QTruth, scaleMethod);
             } else {
-                cout << "Norm file read not implemented yet" << endl;
-                throw(-1);
+                setFOM->calcScaling(QTruth, scaleFile);
             }
             setFOM->scaleData(QTruth);
         }
