@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
     else
     {
         // load average file
-        dataset1->readTecToVec(avgFile, dataset1->centerVec);
+        dataset1->readSZPLTToVec(avgFile, dataset1->centerVec);
 
         vector<int> normFactor_int;
         int nUniqueGroups;

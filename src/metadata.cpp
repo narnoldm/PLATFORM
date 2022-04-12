@@ -844,7 +844,21 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField)
         // TODO: allow reading from small vector
         // TODO: allow reading from ASCII file
         isField = true;
-        readTecToVec(centerMethod, centerVec);
+        // readSZPLTToVec(centerMethod, centerVec);
+        if (centerMethod.substr(centerMethod.size()-6, 6) == ".szplt")
+        {
+            readSZPLTToVec(centerMethod, centerVec);
+        }
+        else if (centerMethod.substr(centerMethod.size()-4, 4) == ".dat")
+        {
+            readDATToVec(centerMethod, centerVec);
+        }
+        else
+        {
+            cout << "Invalid centering file: " << centerMethod << endl;
+            MPI_Barrier(MPI_COMM_WORLD);
+            MPI_Abort(MPI_COMM_WORLD, -1);
+        }
     }
     else
     {
@@ -1077,8 +1091,24 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
         // TODO: allow reading from small vector
         // TODO: allow reading from ASCII file
         isField = true;
-        readTecToVec(scaleMethod + "_sub.szplt", scalingSubVec);
-        readTecToVec(scaleMethod + "_div.szplt", scalingDivVec);
+        ifstream szlFile((scaleMethod + "SubProf.szplt").c_str());
+        ifstream datFile((scaleMethod + "SubProf.dat").c_str());
+        if (szlFile.good())
+        {
+            readSZPLTToVec(scaleMethod + "SubProf.szplt", scalingSubVec);
+            readSZPLTToVec(scaleMethod + "DivProf.szplt", scalingDivVec);
+        }
+        else if (datFile.good())
+        {
+            readDATToVec(scaleMethod + "SubProf.dat", scalingSubVec);
+            readDATToVec(scaleMethod + "DivProf.dat", scalingDivVec);
+        }
+        else
+        {
+            cout << "Could not find scaling files with prefix  " << scaleMethod << endl;
+            MPI_Barrier(MPI_COMM_WORLD);
+            MPI_Abort(MPI_COMM_WORLD, -1);
+        }
     }
     else
     {
@@ -1577,7 +1607,38 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
 
 }
 
-void tecIO::readTecToVec(string filename, vector<double> &vec)
+void tecIO::readDATToVec(std::string filename, std::vector<double> &vec)
+{
+    if (vec.size() != nPoints)
+    {
+        cout << "Allocating vector as " << nPoints << " cells" << endl;
+        vec.resize(nPoints, 0.0);
+        cout << "Vector allocated" << endl;
+    }
+
+    // open file, check it exists
+    ifstream inFile;
+    inFile.open(filename);
+    if (!inFile)
+    {
+        cout << "Failed to open file at " << filename << endl;
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+
+    // read doubles from file
+    int count = 0;
+    double num;
+    string header;
+    inFile >> header;
+    while (inFile >> num)
+    {
+        vec[count] = num;
+        count++;
+    }
+
+}
+
+void tecIO::readSZPLTToVec(string filename, vector<double> &vec)
 {
     if (vec.size() != nPoints)
     {

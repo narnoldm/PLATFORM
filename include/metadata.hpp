@@ -84,11 +84,15 @@ public:
     ~tecIO();
     virtual void checkSize();
     virtual void checkExists();
-    virtual bool readSingle(int fileID, double *point);
-    virtual bool writeSingle(int fileID, double *point, std::string fpref);
     virtual void miscProcessing(pMat *Mat);
 
+    // I/O
+    void readDATToVec(std::string filename, std::vector<double> &vec);
+    void readSZPLTToVec(std::string filename, std::vector<double> &vec);
+    virtual bool readSingle(int fileID, double *point);
+    virtual bool writeSingle(int fileID, double *point, std::string fpref);
     bool writeSingleFile(std::string filename, std::vector<std::string> &fvars, double *point, std::string meshfile);
+
     void addVar(std::string var, std::string &norm);
     int getVariableIndex(std::string var, std::string file);
     void getDimNodes();
@@ -105,7 +109,6 @@ public:
     void scaleData(pMat *dataMat, bool unscale);
     void centerData(pMat *dataMat);
     void centerData(pMat *dataMat, bool uncenter);
-    void readTecToVec(std::string filename, std::vector<double> &vec);
 
     //misc
     void activateGEMSbin(std::string);

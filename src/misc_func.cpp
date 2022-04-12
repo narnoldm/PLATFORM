@@ -104,7 +104,7 @@ void writeASCIIDoubleVec(std::string filename, std::vector<double> &vec)
     {
         printf("error with file open\n");
     }
-    fprintf(fid, "file= %s\n", filename.c_str());
+    fprintf(fid, "file=%s\n", filename.c_str());
     for (int i = 0; i < vec.size(); ++i)
     {
         fprintf(fid, "%16.16E\n", vec.data()[i]);
