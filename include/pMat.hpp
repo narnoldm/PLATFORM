@@ -88,6 +88,7 @@ public:
 	int matrix_Product_sym(char uplo, char trans, int n, int k, double alpha, pMat *A, int ia, int ja, double beta, int ic, int jc);
 	int matrix_vec_product(char trans, int m, int n, double alpha, pMat *A, int ia, int ja, pMat *B, int ib, int jb,
 						   double beta, int ic, int jc);
+    int scale_col_row(double alpha, int idx, bool scaleRows);
 
 	// SVD
 	int svd_run(int, int, int, int, pMat *&, pMat *&, std::vector<double> &);

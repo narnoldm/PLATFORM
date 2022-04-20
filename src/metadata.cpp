@@ -1058,10 +1058,15 @@ void tecIO::centerData(pMat *dataMat, bool uncenter)
 
 void tecIO::calcScaling(pMat* dataMat, string scaleMethod)
 {
-    calcScaling(dataMat, scaleMethod, false);
+    calcScaling(dataMat, scaleMethod, false, true);
 }
 
-void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
+void tecIO::calcScaling(pMat* dataMat, string scaleMethod, bool writeToDisk)
+{
+    calcScaling(dataMat, scaleMethod, false, writeToDisk);
+}
+
+void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool writeToDisk)
 {
 
     isScaled = true;
@@ -1363,33 +1368,37 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
 
     // write scaling fields to file
     cout << "Scaling calculated" << endl;
-    if (dataMat->pG->rank == 0)
+    if (writeToDisk)
     {
-        // TODO: get SZPLT to output correctly, without silly fileID requirement
-        // writeSingle(0, centerVec.data(), "centerProf");
-        vector<double> vecOut(nPoints, 0.0);
-        vecToCellIDOrder(scalingSubVec, vecOut);
-        writeASCIIDoubleVec("scalingSubProf.dat", vecOut);
-        vecToCellIDOrder(scalingDivVec, vecOut);
-        writeASCIIDoubleVec("scalingDivProf.dat", vecOut); 
-    }
-
-    // if also centering, combine into single profile (useful for GEMS)
-    if (isCentered)
-    {
-        cout << "Writing combined subtractive scaling factors" << endl;
-        scalingSubVecFull.resize(nPoints);
-        for (int i = 0; i < nPoints; ++i)
-        {
-            scalingSubVecFull[i] = centerVec[i] + scalingSubVec[i];
-        }
         if (dataMat->pG->rank == 0)
         {
-            writeASCIIDoubleVec("scalingSubProfFull.dat", scalingSubVecFull);
+            // TODO: get SZPLT to output correctly, without silly fileID requirement
+            // writeSingle(0, centerVec.data(), "centerProf");
+            vector<double> vecOut(nPoints, 0.0);
+            vecToCellIDOrder(scalingSubVec, vecOut);
+            writeASCIIDoubleVec("scalingSubProf.dat", vecOut);
+            vecToCellIDOrder(scalingDivVec, vecOut);
+            writeASCIIDoubleVec("scalingDivProf.dat", vecOut);
         }
+
+        // if also centering, combine into single profile (useful for GEMS)
+        if (isCentered)
+        {
+            cout << "Writing combined subtractive scaling factors" << endl;
+            scalingSubVecFull.resize(nPoints);
+            for (int i = 0; i < nPoints; ++i)
+            {
+                scalingSubVecFull[i] = centerVec[i] + scalingSubVec[i];
+            }
+            if (dataMat->pG->rank == 0)
+            {
+                writeASCIIDoubleVec("scalingSubProfFull.dat", scalingSubVecFull);
+            }
+        }
+
+        cout << "Scaling files written" << endl;
     }
 
-    cout << "Scaling files written" << endl;
     MPI_Barrier(MPI_COMM_WORLD);
 }
 

@@ -7,7 +7,8 @@
 
 using namespace :: std;
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
 	MPI_Init(&argc, &argv);
 	int rank, size;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank); //Basic MPI intialization
@@ -30,7 +31,8 @@ int main(int argc, char *argv[]) {
 
 	int debug_proc = 0;
 	inputFile.getParamInt("stdout_proc", debug_proc);
-	if (rank != debug_proc) {
+	if (rank != debug_proc)
+    {
 		cout.rdbuf(sink.rdbuf());
 	}
 
@@ -60,13 +62,25 @@ int main(int argc, char *argv[]) {
 
 	int numModesMax;
 
+    // field dimensions
+    int nCells, nVars, nDOF;
+	inputFile.getParamInt("nCells", nCells);
+	inputFile.getParamInt("nVars", nVars);
+	nDOF = nCells * nVars;
+
+    PGrid* evenG;
+	evenG = new PGrid(rank, size, 0);
+
 	// repeat input reads for solution data if performing preprocessing for Galerkin ROM
 	bool inputMatch = false;
 	bool modesDiff = false;
 	int numModesSol = 0;
 	string firstFileSnaps;
 	meta *datasetSol;
-	if (regressorFormat > 0) {
+    tecIO *solScaling;
+    tecIO *resScaling;
+	if (regressorFormat > 0)
+    {
 
 		string inputSol;
 		inputFile.getParamString("solInputString", inputSol); 	// PDP-demarcated input for solution data/basis
@@ -76,7 +90,8 @@ int main(int argc, char *argv[]) {
 		tokenparse(inputSol, "|", tokenSol);
 
 		// if input are identical, bases will just be copied from solution basis to RHS basis
-		if (inputSol == inputRes) {
+		if (inputSol == inputRes)
+        {
 			cout << "Solution and RHS input strings were identical..." << endl;
 			inputMatch = true;
 		}
@@ -87,32 +102,80 @@ int main(int argc, char *argv[]) {
 		numModesSol = datasetSol->nSets;
 
 		int metaCheck = compareMeta(datasetSol, datasetRes);
-		if (metaCheck == 2) {
+		if (metaCheck == 2)
+        {
 			modesDiff = true;
 			cout << "Solution and RHS bases have same datasets, but different mode counts..." << endl;
 		}
 
 		numModesMax = max(numModesSol, numModesRes); // determines which basis has more modes, only relevant if bases come from same dataset
 
-	} else {
+        // read scaling data
+        // TODO: this is SO JANK
+        string scaleFile, scaleInput;
+        bool scaleIsField;
+        vector<string> token;
 
+        // solution scaling
+        scaleIsField = false;
+        inputFile.getParamString("solScaleFile", scaleFile, "");
+        inputFile.getParamString("solScaleInput", scaleInput, "");
+        if (scaleFile != "")
+        {
+            scaleIsField = true;
+        }
+        else if (scaleInput != "")
+        {
+            scaleFile = "sphere";  // actual method is irrelevant, just has to be a valid method
+        }
+        else
+        {
+            cout << "Must provide either solScaleFile or solScaleInput is regressorFormat > 0" << endl;
+            MPI_Abort(MPI_COMM_WORLD, -1);
+        }
+        tokenparse(scaleInput, "|", token);
+        solScaling = new tecIO(token);
+        solScaling->calcScaling(NULL, scaleFile, scaleIsField, false);
+
+        // residual/RHS scaling
+        scaleIsField = false;
+        inputFile.getParamString("resScaleFile", scaleFile, "");
+        inputFile.getParamString("resScaleInput", scaleInput, "");
+        if (scaleFile != "")
+        {
+            scaleIsField = true;
+        }
+        else if (scaleInput != "")
+        {
+            scaleFile = "sphere";  // actual method is irrelevant, just has to be a valid method
+        }
+        else
+        {
+            cout << "Must provide either resScaleFile or resScaleInput is regressorFormat > 0" << endl;
+            MPI_Abort(MPI_COMM_WORLD, -1);
+        }
+        tokenparse(scaleInput, "|", token);
+        resScaling = new tecIO(token);
+        resScaling->calcScaling(NULL, scaleFile, scaleIsField, false);
+
+        // pre-compute P^-1 * G
+        for (int i = 0; i < nDOF; ++i)
+        {
+            resScaling->scalingDivVec[i] = resScaling->scalingDivVec[i] / solScaling->scalingDivVec[i];
+        }
+
+	}
+    else
+    {
 		numModesMax = numModesRes;
-
 	}
 
 	// percentage of total cells to be sampled
 	double pSampling;
 	inputFile.getParamDouble("pSampling", pSampling);
 
-	PGrid* evenG;
-	evenG = new PGrid(rank, size, 0);
 	pMat *USol, *USol_T;
 	pMat *URes, *URes_T;
-
-	int nCells, nVars, nDOF;
-	inputFile.getParamInt("nCells", nCells);
-	inputFile.getParamInt("nVars", nVars);
-	nDOF = nCells * nVars;
 
 	// ##### SETTING UP RHS/RESIDUAL BASIS ##### //
 	cout << "Loading RHS/residual basis..." << endl;
@@ -432,13 +495,30 @@ int main(int argc, char *argv[]) {
 
 	pMat *regressorRes_out, *regressorSol_out, *USol_URes;
 
-	if (regressorFormat > 0) {
+	if (regressorFormat > 0)
+    {
 
-		// USol^T * URes
+        // [P^T * USol]^+
+		if (regressorFormat == 2)
+        {
+			pMat* pinvUSol_samp = new pMat(numModesSol, DOFNeeded, evenG, false);
+			calc_regressor(USol, pinvUSol_samp, gP, nCells, nVars);
+            regressorSol_out = new pMat(DOFNeeded, numModesSol, evenG, false);
+			regressorSol_out->transpose(pinvUSol_samp);
+			destroyPMat(pinvUSol_samp, false);
+		}
+
+        // compute P^-1 *G * URes
+        for (int i = 0; i < nDOF; ++i)
+        {
+            URes->scale_col_row(resScaling->scalingDivVec[i], i, true);
+        }
+
+        // USol^T * P^-1 * G * URes
 		USol_URes = new pMat(numModesSol, numModesRes, evenG, false);
 		USol_URes->matrix_Product('T', 'N', numModesSol, numModesRes, nDOF, USol, 0, 0, URes, 0, 0, 1.0, 0.0, 0, 0);
 
-		// USol^T * URes * [P^T * URes]^+
+		// USol^T * P^-1 * G * URes * [P^T * URes]^+
 		if (regressorFormat == 1) {
 
 			pMat* projRegressor = new pMat(USol_URes->M, pinvURes_samp->N, evenG, false);
@@ -449,17 +529,8 @@ int main(int argc, char *argv[]) {
             regressorRes_out = new pMat(DOFNeeded, numModesSol, evenG, false);
 			regressorRes_out->transpose(projRegressor);
 			destroyPMat(projRegressor, false);
+        }
 
-		// [P^T * USol]^+
-		} else if (regressorFormat == 2) {
-
-			pMat* pinvUSol_samp = new pMat(numModesSol, DOFNeeded, evenG, false);
-			calc_regressor(USol, pinvUSol_samp, gP, nCells, nVars);
-            regressorSol_out = new pMat(DOFNeeded, numModesSol, evenG, false);
-			regressorSol_out->transpose(pinvUSol_samp);
-			destroyPMat(pinvUSol_samp, false);
-
-		}
 	}
 
 	// [P^T * URes]^+ for output

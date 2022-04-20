@@ -456,6 +456,32 @@ int pMat::matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int
         return 0;
 }
 
+// scales row or column of matrix by factor alpha
+// idx indicates the row or column index (zero-indexed)
+// if scaleRow == true, scales row, otherwise scales column
+int pMat::scale_col_row(double alpha, int idx, bool scaleRow)
+{
+    int inc, len;
+    int ix, jx;
+    if (scaleRow)
+    {
+        len = N;
+        inc = M;
+        ix = idx + 1;
+        jx = 1;
+    }
+    else
+    {
+        len = M;
+        inc = 1;
+        ix = 1;
+        jx = idx + 1;
+    }
+
+    pdscal_(&len, &alpha, dataD.data(), &ix, &jx, desc, &inc);
+
+}
+
 int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S)
 {
         svd_run(M, N, ia, ja, U, VT, S, true);

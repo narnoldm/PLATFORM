@@ -105,7 +105,8 @@ public:
     void calcCentering(pMat *dataMat, std::string centerMethod);
     void calcCentering(pMat *dataMat, std::string centerMethod, bool isField);
     void calcScaling(pMat *dataMat, std::string scaleMethod);
-    void calcScaling(pMat *dataMat, std::string scaleMethod, bool isField);
+    void calcScaling(pMat *dataMat, std::string scaleMethod, bool writeToDisk);
+    void calcScaling(pMat *dataMat, std::string scaleMethod, bool isField, bool writeToDisk);
     void scaleData(pMat *dataMat);
     void scaleData(pMat *dataMat, bool unscale);
     void centerData(pMat *dataMat);
