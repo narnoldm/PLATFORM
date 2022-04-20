@@ -70,7 +70,7 @@ void random_oversampling(int nCells, int PointsNeeded, unordered_set<int>& sampl
 			auto check = samplingPoints.emplace(*it);
 			if (!check.second)
 			{
-				cout << "repeated element " << *it << "\r";
+				cout << "repeated element " << *it << endl;
 			} else {
                 gP.push_back(*it);
             }
@@ -163,7 +163,7 @@ void eigenvector_oversampling(const vector<pMat*> U_vec, int sampMethod, int nCe
 	for (int i = 0; i < (PointsNeeded - numInitPoints); ++i) {
 
 		if ( (i % outFreq) == 0)
-			cout << (double)i / (PointsNeeded - numInitPoints) * 100 << " percent GappyPOD+E points sampled \r";
+			cout << (double)i / (PointsNeeded - numInitPoints) * 100 << " percent GappyPOD+E points sampled \r" << flush;
 
 		numCurrentDOFs = numCurrentPoints * nVars;
 
@@ -368,7 +368,7 @@ void gnat_oversampling_peherstorfer(vector<pMat*> U_vec, int sampMethod, int nCe
 	for (int i = 0; i < (PointsNeeded - numInitPoints); ++i) {
 
 		if ( (i % outFreq) == 0)
-			cout << (double)i / (PointsNeeded - numInitPoints) * 100 << " percent GappyPOD+D points sampled \r";
+			cout << (double)i / (PointsNeeded - numInitPoints) * 100 << " percent GappyPOD+D points sampled \r" << flush;
 
 		tD_start = MPI_Wtime();
 		// if sampling by cell, compute sum for each cell
@@ -583,7 +583,7 @@ void gnat_oversampling_carlberg(vector<pMat*> U_vec, int sampMethod, int nCells,
 	// greedy loop
 	for (int i = 0; i < nit; ++i) {
 
-		cout << (double)i / nit * 100 << " percent GNAT points sampled \r";
+		cout << (double)i / nit * 100 << " percent GNAT points sampled \r" << flush;
 
 		tD_start = MPI_Wtime();
 		// if sampling by cell, compute sum for each cell

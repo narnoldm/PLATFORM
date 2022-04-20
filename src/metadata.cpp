@@ -179,6 +179,7 @@ bool meta::batchRead(pMat *loadMat, int ii)
             readSingle(fileIndex, loadMat->dataD.data() + nPoints * localC);
             localC++;
         }
+        cout << endl;
         miscProcessing(loadMat);
         cout << "waiting for other processes read" << endl;
         MPI_Barrier(MPI_COMM_WORLD);
@@ -1064,6 +1065,7 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
 {
 
     isScaled = true;
+    genHash(prefix + to_string(snap0) + suffix);
 
     if ((scaleMethod == "sphere") && (isField))
     {
@@ -1365,8 +1367,11 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
     {
         // TODO: get SZPLT to output correctly, without silly fileID requirement
         // writeSingle(0, centerVec.data(), "centerProf");
-        writeASCIIDoubleVec("scalingSubProf.dat", scalingSubVec);
-        writeASCIIDoubleVec("scalingDivProf.dat", scalingDivVec);
+        vector<double> vecOut(nPoints, 0.0);
+        vecToCellIDOrder(scalingSubVec, vecOut);
+        writeASCIIDoubleVec("scalingSubProf.dat", vecOut);
+        vecToCellIDOrder(scalingDivVec, vecOut);
+        writeASCIIDoubleVec("scalingDivProf.dat", vecOut); 
     }
 
     // if also centering, combine into single profile (useful for GEMS)
@@ -1646,27 +1651,17 @@ void tecIO::readDATToVec(std::string filename, std::vector<double> &vec)
     int count = 0;
     int varNum;
     double num;
-    //vector<double> temp;
-    //if (reorder)
-    //{
-    //    temp.resize(nCells, 0.0);
-    //}
     while (inFile >> num)
     {
-        
         varNum = count / nCells;
-        vec[varNum * nCells + cellID[count % nCells]] = num;
-        //if (reorder)
-        //{
-        //    temp[count % nCells] = num;
-        //    if ((count % nCells) == (nCells - 1))
-        //    {
-        //        for (int i = 0; i < nCells; ++i)
-        //        {
-        //            vec[varNum * nCells + i] = temp[idx[i]];
-        //        }
-        //    }
-        //}
+        if (reorder)
+        {
+            vec[varNum * nCells + (count % nCells)] = num;
+        }
+        else
+        {
+            vec[varNum * nCells + idx[count % nCells]] = num;
+        }
         count++;
     }
 }
@@ -1727,19 +1722,12 @@ void tecIO::vecToCellIDOrder(vector<double> &vecIn, vector<double> &vecOut)
 {
     genHash(prefix + to_string(snap0) + suffix);
 
-    //for (int j = 0; j < 
-    //vector<double> temp(nCells, 0.0);
     for (int i = 0; i < numVars; ++i)
     {
         for (int j = 0; j < nCells; ++j)
         {
-            //temp[j] = vecIn[j * nCells + i];
             vecOut[i * nCells + j] = vecIn[i * nCells + idx[j]];
         }
-        //for (int j = 0; j < nCells; ++j)
-        //{
-        //    vecOut[j * nCells + i] = temp[idx[j]];
-        //}
     }
     
 }
