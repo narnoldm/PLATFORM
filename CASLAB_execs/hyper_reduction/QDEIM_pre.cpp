@@ -79,6 +79,7 @@ int main(int argc, char *argv[])
     meta *datasetSol;
     tecIO *solScaling;
     tecIO *resScaling;
+    tecIO *rhsScaling;
     if (regressorFormat > 0)
     {
 
@@ -116,7 +117,7 @@ int main(int argc, char *argv[])
         bool scaleIsField;
         vector<string> token;
 
-        // solution scaling
+        // solution scaling (P matrix)
         scaleIsField = false;
         inputFile.getParamString("solScaleFile", scaleFile, "");
         inputFile.getParamString("solScaleInput", scaleInput, "");
@@ -137,7 +138,7 @@ int main(int argc, char *argv[])
         solScaling = new tecIO(token);
         solScaling->calcScaling(NULL, scaleFile, scaleIsField, false);
 
-        // residual/RHS scaling
+        // residual scaling (R matrix)
         scaleIsField = false;
         inputFile.getParamString("resScaleFile", scaleFile, "");
         inputFile.getParamString("resScaleInput", scaleInput, "");
@@ -158,10 +159,52 @@ int main(int argc, char *argv[])
         resScaling = new tecIO(token);
         resScaling->calcScaling(NULL, scaleFile, scaleIsField, false);
 
-        // pre-compute P^-1 * G
+        // RHS scaling
+        if (regressorFormat == 2)
+        {
+            scaleIsField = false;
+            inputFile.getParamString("rhsScaleFile", scaleFile, "");
+            inputFile.getParamString("rhsScaleInput", scaleInput, "");
+            if (scaleFile != "")
+            {
+                scaleIsField = true;
+            }
+            else if (scaleInput != "")
+            {
+                scaleFile = "sphere";  // actual method is irrelevant, just has to be a valid method
+            }
+            else
+            {
+                cout << "Must provide either rhsScaleFile or rhsScaleInput is regressorFormat > 0" << endl;
+                MPI_Abort(MPI_COMM_WORLD, -1);
+            }
+            tokenparse(scaleInput, "|", token);
+            rhsScaling = new tecIO(token);
+            rhsScaling->calcScaling(NULL, scaleFile, scaleIsField, false);
+        }
+
+        // pre-compute R^-1 * P and R^-1 * G
         for (int i = 0; i < nDOF; ++i)
         {
-            resScaling->scalingDivVec[i] = resScaling->scalingDivVec[i] / solScaling->scalingDivVec[i];
+            solScaling->scalingDivVec[i] = solScaling->scalingDivVec[i] / resScaling->scalingDivVec[i];
+            if (regressorFormat == 2)
+            {
+                rhsScaling->scalingDivVec[i] = rhsScaling->scalingDivVec[i] / resScaling->scalingDivVec[i];
+            }
+        }
+
+        cout << "Solution inner product scaling factors:" << endl;
+        for (int i = 0; i < nVars; ++i)
+        {
+            cout << (i + 1) << ": " << solScaling->scalingDivVec[i * nCells] << endl;
+        }
+        if (regressorFormat == 2)
+        {
+            cout << "RHS inner product scaling factors:" << endl;
+            for (int i = 0; i < nVars; ++i)
+            {
+                cout << (i + 1) << ": " << rhsScaling->scalingDivVec[i * nCells] << endl;
+            }
         }
 
     }
@@ -529,7 +572,8 @@ int main(int argc, char *argv[])
     pMat* pinvURes_samp = new pMat(numModesRes, DOFNeeded, evenG, false);
     calc_regressor(URes, pinvURes_samp, gP, nCells, nVars);
 
-    pMat *regressorRes_out, *regressorSol_out, *USol_URes;
+    pMat *regressorRes_out, *regressorSol_out;
+    pMat *USolT_USol, *UResT_URes, *USolT_URes;
 
     if (regressorFormat > 0)
     {
@@ -543,27 +587,43 @@ int main(int argc, char *argv[])
             destroyPMat(pinvUSol_samp, false);
         }
 
-        // compute P^-1 *G * URes
+        // compute R^-1 * G * URes
         for (int i = 0; i < nDOF; ++i)
         {
-            URes->scale_col_row(resScaling->scalingDivVec[i], i, true);
+            URes->scale_col_row(rhsScaling->scalingDivVec[i], i, true);
         }
 
-        // USol^T * P^-1 * G * URes
-        USol_URes = new pMat(numModesSol, numModesRes, evenG, false);
-        USol_URes->matrix_Product('T', 'N', numModesSol, numModesRes, nDOF, USol, 0, 0, URes, 0, 0, 1.0, 0.0, 0, 0);
+        // compute R^1 * P * USol
+        for (int i = 0; i < nDOF; ++i)
+        {
+            USol->scale_col_row(solScaling->scalingDivVec[i], i, true);
+        }
 
-        // USol^T * P^-1 * G * URes * [P^T * URes]^+
+        // USol^T * P * R^-2 * G * URes
+        USolT_URes = new pMat(numModesSol, numModesRes, evenG, false);
+        USolT_URes->matrix_Product('T', 'N', numModesSol, numModesRes, nDOF, USol, 0, 0, URes, 0, 0, 1.0, 0.0, 0, 0);
+
+        // USol^T * P * R^-2 * G * URes * [P^T * URes]^+
         if (regressorFormat == 1)
         {
-            pMat* projRegressor = new pMat(USol_URes->M, pinvURes_samp->N, evenG, false);
-            projRegressor->matrix_Product('N', 'N', projRegressor->M, projRegressor->N, pinvURes_samp->M, USol_URes, 0, 0, pinvURes_samp, 0, 0, 1.0, 0.0, 0, 0);
-            destroyPMat(USol_URes, false);
+            pMat* projRegressor = new pMat(USolT_URes->M, pinvURes_samp->N, evenG, false);
+            projRegressor->matrix_Product('N', 'N', projRegressor->M, projRegressor->N, pinvURes_samp->M, USolT_URes, 0, 0, pinvURes_samp, 0, 0, 1.0, 0.0, 0, 0);
+            destroyPMat(USolT_URes, false);
             destroyPMat(pinvURes_samp, false);
 
             regressorRes_out = new pMat(DOFNeeded, numModesSol, evenG, false);
             regressorRes_out->transpose(projRegressor);
             destroyPMat(projRegressor, false);
+        }
+        else if (regressorFormat == 2)
+        {
+            // USol^T * P * R^-2 * P * USol
+            USolT_USol = new pMat(numModesSol, numModesSol, evenG, false);
+            USolT_USol->matrix_Product('T', 'N', numModesSol, numModesSol, nDOF, USol, 0, 0, USol, 0, 0, 1.0, 0.0, 0, 0);
+
+            // URes^T * G * R^-2 * G * URes
+            UResT_URes = new pMat(numModesRes, numModesRes, evenG, false);
+            UResT_URes->matrix_Product('T', 'N', numModesRes, numModesRes, nDOF, URes, 0, 0, URes, 0, 0, 1.0, 0.0, 0, 0);
         }
 
     }
@@ -612,8 +672,14 @@ int main(int argc, char *argv[])
             // this represents the RHS regressor
             datasetResOut->batchWrite(regressorRes_out, "./", "pinv_rhs_");
 
-            // write USol^T * URes
-            USol_URes->write_bin("USolT_URes.bin");
+            // write USol^T * P * R^-2 * G * URes
+            USolT_URes->write_bin("USolT_URes.bin");
+
+            // write USol^T * P * R^-2 * P * USol
+            USolT_USol->write_bin("USolT_USol.bin");
+
+            // write URes^T * G * R^-2 * G * URes
+            UResT_URes->write_bin("UResT_URes.bin");
 
             // write [P^T * USol]^+
             meta* datasetSolOut = new meta();
@@ -654,7 +720,7 @@ int main(int argc, char *argv[])
     if (regressorFormat == 2)
     {
         destroyPMat(regressorSol_out, false);
-        destroyPMat(USol_URes, false);
+        destroyPMat(USolT_URes, false);
     }
 
     cout.rdbuf(strm_buffer);

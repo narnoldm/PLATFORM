@@ -836,6 +836,11 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod)
 
 void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField)
 {
+    calcCentering(dataMat, centerMethod, isField, true);
+}
+
+void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool writeToDisk)
+{
 
     isCentered = true;
     genHash(prefix + to_string(snap0) + suffix);
@@ -983,16 +988,19 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField)
 
     // write centering field to file
     cout << "Centering calculated" << endl;
-    if (dataMat->pG->rank == 0)
+    if (writeToDisk)
     {
-        // TODO: get SZPLT to output correctly, without silly fileID requirement
-        // writeSingle(0, centerVec.data(), "centerProf");
-        // convert to cell_id order and write
-        vector<double> vecOut(nPoints, 0.0);
-        vecToCellIDOrder(centerVec, vecOut);
-        writeASCIIDoubleVec("centerProf.dat", vecOut);
+        if (dataMat->pG->rank == 0)
+        {
+            // TODO: get SZPLT to output correctly, without silly fileID requirement
+            // writeSingle(0, centerVec.data(), "centerProf");
+            // convert to cell_id order and write
+            vector<double> vecOut(nPoints, 0.0);
+            vecToCellIDOrder(centerVec, vecOut);
+            writeASCIIDoubleVec("centerProf.dat", vecOut);
+        }
+        cout << "Centering files written" << endl;
     }
-    cout << "Centering files written" << endl;
     MPI_Barrier(MPI_COMM_WORLD);
 
 }
@@ -1058,12 +1066,12 @@ void tecIO::centerData(pMat *dataMat, bool uncenter)
 
 void tecIO::calcScaling(pMat* dataMat, string scaleMethod)
 {
-    calcScaling(dataMat, scaleMethod, false, true);
+    calcScaling(dataMat, scaleMethod, false);
 }
 
-void tecIO::calcScaling(pMat* dataMat, string scaleMethod, bool writeToDisk)
+void tecIO::calcScaling(pMat* dataMat, string scaleMethod, bool isField)
 {
-    calcScaling(dataMat, scaleMethod, false, writeToDisk);
+    calcScaling(dataMat, scaleMethod, isField, true);
 }
 
 void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool writeToDisk)
