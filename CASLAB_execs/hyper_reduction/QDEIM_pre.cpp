@@ -572,19 +572,16 @@ int main(int argc, char *argv[])
     pMat* pinvURes_samp = new pMat(numModesRes, DOFNeeded, evenG, false);
     calc_regressor(URes, pinvURes_samp, gP, nCells, nVars);
 
-    pMat *regressorRes_out, *regressorSol_out;
     pMat *USolT_USol, *UResT_URes, *USolT_URes;
+    pMat* pinvUSol_samp;
 
     if (regressorFormat > 0)
     {
         // [P^T * USol]^+
         if (regressorFormat == 2)
         {
-            pMat* pinvUSol_samp = new pMat(numModesSol, DOFNeeded, evenG, false);
+            pinvUSol_samp = new pMat(numModesSol, DOFNeeded, evenG, false);
             calc_regressor(USol, pinvUSol_samp, gP, nCells, nVars);
-            regressorSol_out = new pMat(DOFNeeded, numModesSol, evenG, false);
-            regressorSol_out->transpose(pinvUSol_samp);
-            destroyPMat(pinvUSol_samp, false);
         }
 
         // compute R^-1 * G * URes
@@ -609,11 +606,6 @@ int main(int argc, char *argv[])
             pMat* projRegressor = new pMat(USolT_URes->M, pinvURes_samp->N, evenG, false);
             projRegressor->matrix_Product('N', 'N', projRegressor->M, projRegressor->N, pinvURes_samp->M, USolT_URes, 0, 0, pinvURes_samp, 0, 0, 1.0, 0.0, 0, 0);
             destroyPMat(USolT_URes, false);
-            destroyPMat(pinvURes_samp, false);
-
-            regressorRes_out = new pMat(DOFNeeded, numModesSol, evenG, false);
-            regressorRes_out->transpose(projRegressor);
-            destroyPMat(projRegressor, false);
         }
         else if (regressorFormat == 2)
         {
@@ -626,14 +618,6 @@ int main(int argc, char *argv[])
             UResT_URes->matrix_Product('T', 'N', numModesRes, numModesRes, nDOF, URes, 0, 0, URes, 0, 0, 1.0, 0.0, 0, 0);
         }
 
-    }
-
-    // [P^T * URes]^+ for output
-    if ((regressorFormat == 0) || (regressorFormat == 2))
-    {
-        regressorRes_out = new pMat(DOFNeeded, numModesRes, evenG, false);
-        regressorRes_out->transpose(pinvURes_samp);
-        destroyPMat(pinvURes_samp, false);
     }
 
     t1_end = MPI_Wtime();
@@ -655,22 +639,23 @@ int main(int argc, char *argv[])
     {
         // write [P^T * URes]^+
         datasetResOut->snap0 = 1;
-        datasetResOut->snapF = numModesRes;
+        datasetResOut->snapF = DOFNeeded;
         datasetResOut->snapSkip = 1;
-        datasetResOut->nSets = numModesRes;
+        datasetResOut->nSets = DOFNeeded;
         datasetResOut->suffix = ".bin";
         datasetResOut->isInit = true;
-        datasetResOut->nPoints = DOFNeeded;
+        datasetResOut->nPoints = numModesRes;
 
         if (regressorFormat == 0)
         {
             // this represents the full residual regressor
-            datasetResOut->batchWrite(regressorRes_out, "./", "pinv_res_");
+            datasetResOut->batchWrite(pinvURes_samp, "./", "pinv_res_", 0, numModesRes, 1, 1, 1, 1);
         }
         else
         {
             // this represents the RHS regressor
-            datasetResOut->batchWrite(regressorRes_out, "./", "pinv_rhs_");
+            pinvURes_samp->write_bin("pinv_rhs_full.bin");
+            datasetResOut->batchWrite(pinvURes_samp, "./", "pinv_rhs_", 0, numModesRes, 1, 1, 1, 1);
 
             // write USol^T * P * R^-2 * G * URes
             USolT_URes->write_bin("USolT_URes.bin");
@@ -684,26 +669,26 @@ int main(int argc, char *argv[])
             // write [P^T * USol]^+
             meta* datasetSolOut = new meta();
             datasetSolOut->snap0 = 1;
-            datasetSolOut->snapF = numModesSol;
+            datasetSolOut->snapF = DOFNeeded;
             datasetSolOut->snapSkip = 1;
-            datasetSolOut->nSets = numModesSol;
+            datasetSolOut->nSets = DOFNeeded;
             datasetSolOut->suffix = ".bin";
             datasetSolOut->isInit = true;
-            datasetSolOut->nPoints = DOFNeeded;
-            datasetSolOut->batchWrite(regressorSol_out, "./", "pinv_sol_");
+            datasetSolOut->nPoints = numModesSol;
+            datasetSolOut->batchWrite(pinvUSol_samp, "./", "pinv_sol_", 0, numModesSol, 1, 1, 1, 1);
         }
     }
     else
     {
         // write USol^T * URes * [P^T * URes]^+
         datasetResOut->snap0 = 1;
-        datasetResOut->snapF = numModesSol;
+        datasetResOut->snapF = DOFNeeded;
         datasetResOut->snapSkip = 1;
-        datasetResOut->nSets = numModesSol;
+        datasetResOut->nSets = DOFNeeded;
         datasetResOut->suffix = ".bin";
         datasetResOut->isInit = true;
-        datasetResOut->nPoints = DOFNeeded;
-        datasetResOut->batchWrite(regressorRes_out, "./", "pinv_rhs_");
+        datasetResOut->nPoints = numModesSol;
+        datasetResOut->batchWrite(pinvURes_samp, "./", "pinv_rhs_", 0, numModesSol, 1, 1, 1, 1);
     }
 
     t1_end = MPI_Wtime();
@@ -716,11 +701,13 @@ int main(int argc, char *argv[])
 
     // cleanup
     MPI_Barrier(MPI_COMM_WORLD);
-    destroyPMat(regressorRes_out, false);
+    destroyPMat(pinvURes_samp, false);
     if (regressorFormat == 2)
     {
-        destroyPMat(regressorSol_out, false);
+        destroyPMat(pinvUSol_samp, false);
         destroyPMat(USolT_URes, false);
+        destroyPMat(USolT_USol, false);
+        destroyPMat(UResT_URes, false);
     }
 
     cout.rdbuf(strm_buffer);

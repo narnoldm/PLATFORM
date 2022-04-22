@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
         string firstFile = dataset1->prefix + std::to_string(dataset1->snap0) + dataset1->suffix;
 
         Uout->activateGEMSbin(firstFile.c_str());
-        Uout->batchWrite(U, "Spatial_Modes", "Spatial_Mode_", 0, modeEnd - modeStart + 1, 1, modeStart, 1);
+        Uout->batchWrite(U, "Spatial_Modes", "Spatial_Mode_", 0, modeEnd - modeStart + 1, 1, modeStart, 1, 0);
     }
 
     cout.rdbuf(strm_buffer);

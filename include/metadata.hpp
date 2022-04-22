@@ -31,12 +31,14 @@ public:
     virtual void checkExists();
     virtual bool readSingle(int fileID, double *point);
     virtual bool writeSingle(int fileID, double *point, std::string fpref);
+    virtual bool writeSingle(int fileID, double *point, std::string fpref, int points);
     virtual void miscProcessing(pMat *Mat);
     bool batchWrite(pMat *loadMat);
     bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int nModes);
     bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip);
     bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip);
     bool batchWrite(pMat *loadMat, std::string dir, std::string fpref);
+    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip, int dim);
     bool batchRead(pMat *loadMat);
     bool batchRead(pMat *loadMat, int ii);
 };

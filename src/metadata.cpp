@@ -211,15 +211,19 @@ bool meta::batchRead(pMat *loadMat, int ii)
 
 bool meta::writeSingle(int fileID, double *point, string fpref)
 {
+    writeSingle(fileID, point, fpref, nPoints);
+}
+
+bool meta::writeSingle(int fileID, double *point, string fpref, int points)
+{
     cout << "meta write single" << endl;
     FILE *fid;
     fid = fopen((fpref + to_string(fileID) + suffix).c_str(), "wb");
 
     const int ONE = 1;
-    int points = nPoints;
     fwrite(&points, sizeof(int), 1, fid);
     fwrite(&ONE, sizeof(int), 1, fid);
-    fwrite(point, sizeof(double), nPoints, fid);
+    fwrite(point, sizeof(double), points, fid);
     fclose(fid);
     return true;
 }
@@ -238,10 +242,19 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int nModes)
 }
 bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int mEnd, int mSkip)
 {
-    batchWrite(loadMat, dir, fpref, mStart, mEnd, mSkip, snap0, snapSkip);
+    batchWrite(loadMat, dir, fpref, mStart, mEnd, mSkip, snap0, snapSkip, 0);
 }
 
-bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip)
+// Write columns or rows of loadMat to individual binary files
+// dir: directory to write data to
+// fpref: output file prefix
+// mStart: starting row/column index of loadMat submatrix to be written (zero-indexed)
+// mEnd: ending row/column index of loadMat submatrix to be written (zero-indexed)
+// mSkip: row/column index increment of loadMat submatrix to be written
+// fStart: starting index of output file names
+// fSkip: index increment of output file names
+// writeCols: if true, write columns of loadMat, otherwise write rows
+bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip, int dim)
 {
 
     assert(system(NULL)); //check if system commands work
@@ -261,34 +274,81 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
 
     double t1, t2;
     t1 = MPI_Wtime();
-    int currentCol = 0;
+    int vecLength = 0;
+    int currentIdx = 0;
+    int procRowOrCol, procRowOrColOpp;
     vector<double> tempR;
-    tempR.resize(nPoints, 0);
     MPI_Comm col_comms;
-    loadMat->commCreate(col_comms, 0);
+    if (dim == 0)
+    {
+        vecLength = nPoints;
+        loadMat->commCreate(col_comms, 0);
+        procRowOrCol = loadMat->pG->mycol;
+        procRowOrColOpp = loadMat->pG->myrow;
+    }
+    else
+    {
+        vecLength = nSets;
+        loadMat->commCreate(col_comms, 1);
+        procRowOrCol = loadMat->pG->myrow;
+        procRowOrColOpp = loadMat->pG->mycol;
+    }
+    tempR.resize(vecLength, 0);
+
+    int rowColCheck;
     for (int j = mStart; j < mEnd; j = j + mSkip)
     {
         fill(tempR.begin(), tempR.end(), 0.0);
-        if (loadMat->pG->mycol == (j / loadMat->nb) % loadMat->pG->pcol)
-        {
 
-            for (int i = 0; i < nPoints; i++)
+        // check whether process owns a piece of this column (row)
+        if (dim == 0)
+        {
+            rowColCheck = (j / loadMat->nb) % loadMat->pG->pcol; // process column index
+        }
+        else
+        {
+            rowColCheck = (j / loadMat->mb) % loadMat->pG->prow;  // process row index
+        }
+        if (procRowOrCol == rowColCheck)
+        {
+            if (dim == 0)
             {
-                int xi = i % loadMat->mb;
-                int li = i / (loadMat->pG->prow * loadMat->mb);
-                if (loadMat->pG->myrow == (i / loadMat->mb) % loadMat->pG->prow)
+                for (int i = 0; i < nPoints; i++)
                 {
-                    tempR[i] = loadMat->dataD[currentCol * loadMat->myRC[0] + xi + li * loadMat->mb];
+                    int xi = i % loadMat->mb;
+                    int li = i / (loadMat->pG->prow * loadMat->mb);
+
+                    if (loadMat->pG->myrow == (i / loadMat->mb) % loadMat->pG->prow)
+                    {
+                        tempR[i] = loadMat->dataD[currentIdx * loadMat->myRC[0] + li * loadMat->mb + xi];
+                    }
                 }
             }
-            currentCol++;
+            else
+            {
+                for (int i = 0; i < nSets; i++)
+                {
+                    int xi = currentIdx % loadMat->mb;  // local block row index
+                    int li = currentIdx / (loadMat->pG->prow * loadMat->mb); // subblock row index
+                    int mi = i / (loadMat->pG->pcol * loadMat->nb); // subblock column index
+                    int localcol = mi * loadMat->nb + i % loadMat->nb; // local data column index
+
+                    if (loadMat->pG->mycol == (i / loadMat->nb) % loadMat->pG->pcol)  // process column index
+                    {
+                        tempR[i] = loadMat->dataD[localcol * loadMat->myRC[0] + li * loadMat->mb + xi];
+                    }
+                }
+            }
+            currentIdx++;
         }
         MPI_Allreduce(MPI_IN_PLACE, tempR.data(), tempR.size(), MPI_DOUBLE, MPI_SUM, col_comms);
-        if ((loadMat->pG->mycol == (j / loadMat->nb) % loadMat->pG->pcol) && (loadMat->pG->myrow == 0))
+        // if process owns a piece of vector and is the first process in the process row/column
+        // cout << j << " " << procRowOrCol << " " << rowColCheck << " " << procRowOrColOpp << endl;
+        if ((procRowOrCol == rowColCheck) && (procRowOrColOpp == 0))
         {
             fileIndex = fStart + (j - mStart) * fSkip;
             printf("proc %d is writing %d\n", loadMat->pG->rank, fileIndex);
-            writeSingle(fileIndex, tempR.data(), dir + "/" + fpref);
+            writeSingle(fileIndex, tempR.data(), dir + "/" + fpref, vecLength);
         }
     }
     tempR.clear();
