@@ -94,6 +94,7 @@ public:
     void readSZPLTToVec(std::string filename, std::vector<double> &vec);
     virtual bool readSingle(int fileID, double *point);
     virtual bool writeSingle(int fileID, double *point, std::string fpref);
+    virtual bool writeSingle(int fileID, double *point, std::string fpref, int points);
     bool writeSingleFile(std::string filename, std::vector<std::string> &fvars, double *point, std::string meshfile);
 
     void addVar(std::string var, std::string &norm);

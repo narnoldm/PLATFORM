@@ -483,6 +483,11 @@ bool tecIO::readSingle(int fileID, double *point)
 
 bool tecIO::writeSingle(int fileID, double *point, string fpref)
 {
+    writeSingle(fileID, point, fpref, nPoints);
+}
+
+bool tecIO::writeSingle(int fileID, double *point, string fpref, int points)
+{
     void *infH = NULL;
     void *outfH = NULL;
     if (fixedMesh)
@@ -605,7 +610,7 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref)
         fid = fopen((fpref + to_string(fileID) + ".bin").c_str(), "wb");
 
         int ONE = 1;
-        fwrite(&nPoints, sizeof(int), 1, fid);
+        fwrite(&points, sizeof(int), 1, fid);
         fwrite(&ONE, sizeof(int), 1, fid);
         for (int i = 0; i < numVars; i++)
         {
