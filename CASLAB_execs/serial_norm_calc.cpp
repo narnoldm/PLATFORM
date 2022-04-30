@@ -29,9 +29,13 @@ int main(int argc, char *argv[])
     bool calcConsv = 0;
     string avgFile = "";
     bool readAvg = false;
+    bool subAvg = true;
     inputFile.getParamBool("readAvg", readAvg);
-    if (readAvg)
+    if (readAvg) {
+        // TODO: subAvg = False should not require an avgFile, need to disentangle average calculation
+        inputFile.getParamBool("subAvg", subAvg);
         inputFile.getParamString("avgFile", avgFile);
+    }
 
     inputFile.getParamBool("calcConsv", calcConsv);
 
@@ -149,73 +153,79 @@ int main(int argc, char *argv[])
         cout << "number unique groups: " << nUniqueGroups << endl;
 
         int dataSizeGroup = dataset1->nCells * nUniqueGroups;
+        double pressure, velMag, temperature, density, enthalpy;
         vector<double> dataAvg(dataSizeGroup);
         vector<double> dataSnap(dataSizeGroup);
+        vector<double> scalars(scalarIdxs.size());
+        vector<double> consvVals(nUniqueGroups);
+        vector<double> dataAvg_consv(dataSizeGroup);
         vector<double> sum_consv;
         sum.resize(dataSizeGroup);
 
         // compute magnitude data for average file
         int idx_full, idx_group;
         double magVal;
-        cout << "Calculating magnitudes for average file..." << endl;
-        for (int j = 0; j < nUniqueGroups; ++j)
-        {
-
-            // compute magnitude for each group
-            for (int iCell = 0; iCell < dataset1->nCells; ++iCell)
+        if (subAvg) {
+            cout << "Calculating magnitudes for average file..." << endl;
+            for (int j = 0; j < nUniqueGroups; ++j)
             {
 
-                magVal = 0;
-                // don't calculate magnitude if it's a single variable
-                if (groupRef[j].size() == 1)
+                // compute magnitude for each group
+                for (int iCell = 0; iCell < dataset1->nCells; ++iCell)
                 {
-                    magVal = dataset1->average[groupRef[j][0] * dataset1->nCells + iCell];
-                }
-                else
-                {
-                    for (int k = 0; k < groupRef[j].size(); ++k)
+
+                    magVal = 0;
+                    // don't calculate magnitude if it's a single variable
+                    if (groupRef[j].size() == 1)
                     {
-                        idx_full = groupRef[j][k] * dataset1->nCells + iCell;
-                        magVal += (dataset1->average[idx_full]) * (dataset1->average[idx_full]);
+                        magVal = dataset1->average[groupRef[j][0] * dataset1->nCells + iCell];
                     }
-                    magVal = sqrt(magVal);
+                    else
+                    {
+                        for (int k = 0; k < groupRef[j].size(); ++k)
+                        {
+                            idx_full = groupRef[j][k] * dataset1->nCells + iCell;
+                            magVal += (dataset1->average[idx_full]) * (dataset1->average[idx_full]);
+                        }
+                        magVal = sqrt(magVal);
+                    }
+                    dataAvg[j * dataset1->nCells + iCell] = magVal;
                 }
-                dataAvg[j * dataset1->nCells + iCell] = magVal;
             }
-        }
 
-        // compute conserved variables for average
-        // probably takes a speed-hit from non-contiguous memory reads, but no two ways about it,
-        //          need to get all primitive vars and dens/enth from a given cell
-        // TODO: shunt this off to a function to make it less confusing/cluttered
-        double pressure, velMag, temperature, density, enthalpy;
-        vector<double> scalars;
-        vector<double> consvVals;
-        vector<double> dataAvg_consv;
-        if (calcConsv)
-        {
-            scalars.resize(scalarIdxs.size());
-            consvVals.resize(nUniqueGroups);
-            dataAvg_consv.resize(dataSizeGroup);
-            for (int iCell = 0; iCell < dataset1->nCells; ++iCell)
+            // compute conserved variables for average
+            // probably takes a speed-hit from non-contiguous memory reads, but no two ways about it,
+            //          need to get all primitive vars and dens/enth from a given cell
+            // TODO: shunt this off to a function to make it less confusing/cluttered
+            if (calcConsv)
             {
-                // collect data necessary to compute conservative variables
-                pressure = dataAvg[iCell];
-                velMag = dataAvg[dataset1->nCells + iCell];
-                temperature = dataAvg[2 * dataset1->nCells + iCell];
-                for (int i = 0; i < scalarIdxs.size(); ++i)
+                
+                for (int iCell = 0; iCell < dataset1->nCells; ++iCell)
                 {
-                    scalars[i] = dataAvg[(3 + i) * dataset1->nCells + iCell];
-                }
-                density = dataset1->average[densityIdx * dataset1->nCells + iCell];
-                enthalpy = dataset1->average[enthalpyIdx * dataset1->nCells + iCell];
+                    // collect data necessary to compute conservative variables
+                    pressure = dataAvg[iCell];
+                    velMag = dataAvg[dataset1->nCells + iCell];
+                    temperature = dataAvg[2 * dataset1->nCells + iCell];
+                    for (int i = 0; i < scalarIdxs.size(); ++i)
+                    {
+                        scalars[i] = dataAvg[(3 + i) * dataset1->nCells + iCell];
+                    }
+                    density = dataset1->average[densityIdx * dataset1->nCells + iCell];
+                    enthalpy = dataset1->average[enthalpyIdx * dataset1->nCells + iCell];
 
-                // calculate conserved variables, distribute into vector
-                calcConsVars(pressure, temperature, velMag, scalars, density, enthalpy, consvVals);
-                for (int i = 0; i < nUniqueGroups; ++i)
-                {
-                    dataAvg_consv[i * dataset1->nCells + iCell] = consvVals[i];
+                    // calculate conserved variables, distribute into vector
+                    calcConsVars(pressure, temperature, velMag, scalars, density, enthalpy, consvVals);
+                    for (int i = 0; i < nUniqueGroups; ++i)
+                    {
+                        dataAvg_consv[i * dataset1->nCells + iCell] = consvVals[i];
+                    }
                 }
+            }
+        } else {
+            cout << "Averages set to zero..." << endl;
+            for (int i = 0; i < dataAvg.size(); ++i) {
+                dataAvg[i] = 0.0;
+                dataAvg_consv[i] = 0.0;
             }
         }
 

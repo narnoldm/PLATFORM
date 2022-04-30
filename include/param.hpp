@@ -26,9 +26,13 @@ public:
 	paramMap(std::string file);
 	paramMap(std::string file, int r);
 	bool getParamInt(std::string key, int &Param);
+	bool getParamInt(std::string key, int &Param, const int defaultVal);
 	bool getParamDouble(std::string key, double &Param);
+	bool getParamDouble(std::string key, double &Param, const double defaultVal);
 	bool getParamString(std::string key, std::string &Param);
+	bool getParamString(std::string key, std::string &Param, const std::string defaultVal);
 	bool getParamBool(std::string key, bool &Param);
+	bool getParamBool(std::string key, bool &Param, const bool defaultVal);
 
 	template <class T>
 	bool parseSep(const std::string &input, std::string sep, std::vector<T> &tokens);

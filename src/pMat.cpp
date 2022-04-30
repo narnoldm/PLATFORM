@@ -798,10 +798,14 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
 
 int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv)
 {
-        qr_run(m, n, ia, ja, ipiv, "./", true);
+    qr_run(m, n, ia, ja, ipiv, "./", "P.bin", true);
 }
 
-int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string outdir, bool stdout)
+int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string outdir, bool stdout) {
+	qr_run(m, n, ia, ja, ipiv, outdir, "P.bin", stdout);
+}
+
+int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string outdir, string outfile, bool stdout)
 {
         if (stdout)
                 cout << "QR initializing" << endl;
@@ -849,7 +853,7 @@ int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string ou
         MPI_Barrier(MPI_COMM_WORLD);
         int ONE = 1;
         MPI_File fH;
-        std::string pivot_name = outdir + "/P.bin";
+        std::string pivot_name = outdir + "/" + outfile;
         MPI_File_open(MPI_COMM_WORLD, pivot_name.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fH);
         if (printRank)
         {
@@ -858,7 +862,7 @@ int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string ou
                 if (stdout)
                 {
                         cout << "Write Start" << endl;
-                        cout << "M=" << ONE << "mb=" << mb << "N=" << N << "nb=" << nb << endl;
+                        cout << "M=" << ONE << ", mb=" << mb << ", N=" << N << ", nb=" << nb << endl;
                 }
         }
         MPI_File_close(&fH);
@@ -968,6 +972,41 @@ int pMat::dMax(int dim, int rc, double &val, int &index)
 		index--; // return to C indexing
 
 }
+
+// Computes global argmax of one-dimensional pMat
+int pMat::argmax_vec() {
+
+		// only valid for "vectors" (one-dimensiona pMat)
+		int vecType;
+		if (N == 1) {
+			vecType = 0; // column vector
+		} else if (M == 1) {
+			vecType = 1; // row vector
+		} else {
+			cout << "pMat::argmax_vec only accepts one-dimensiona pMats" << endl;
+			cout << "This pMat has dimensions (" << M << ", " << N << ")" << endl;
+			throw(-1);
+		}
+
+		double maxLocal = 0.0;
+		double maxGlobal = 0.0;
+		int argMaxLocal = -1;
+		int argMaxGlobal = -1;
+
+		this->dMax(vecType, 0, maxLocal, argMaxLocal);
+
+		// Allreduce(MPI_MAX) the maximum value
+		MPI_Allreduce(&maxLocal, &maxGlobal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
+		// if rank doesn't own the max, set argMaxLocal = -1 so that MPI_MAX can determine the correct argMaxGlobal
+		if (maxLocal != maxGlobal) {
+			argMaxLocal = -1;
+		}
+		MPI_Allreduce(&argMaxLocal, &argMaxGlobal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+
+		return argMaxGlobal;
+}
+
 int pMat::dSum(int dim, int rc, double &val)
 {
 
@@ -1024,8 +1063,6 @@ int pMat::leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int
 	// get LWORK and WORK
 	pdgels_(&trans, &m, &n, &nrhs, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, WORK.data(), &LWORK, &info);
 
-	// cout << "WORK = " << WORK[0] << ", LWORK = " << LWORK << ", info = " << info << endl;
-
 	if (info < 0) {
 		cout << "Error in least-squares solve setup in argument: " << -info << endl;
 		throw(-1);
@@ -1034,14 +1071,12 @@ int pMat::leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int
 	// set up real run
 	LWORK = WORK[0];
 	WORK.resize(LWORK);
-	// cout << "WORK Allocated: " << LWORK / (1e6) * 8 << " MB per processor" << endl;
 
 	// least squares solve
 	double t1, t2;
 	t1 = MPI_Wtime();
 	pdgels_(&trans, &m, &n, &nrhs, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, WORK.data(), &LWORK, &info);
 	t2 = MPI_Wtime();
-	// cout << "Least-squares solve complete in " << t2 - t1 << " seconds" << endl;
 	WORK.resize(0);
 
 	return 1;

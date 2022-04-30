@@ -237,6 +237,11 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int nModes)
 }
 bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int mEnd, int mSkip)
 {
+    batchWrite(loadMat, dir, fpref, mStart, mEnd, mSkip, snap0, snapSkip);
+}
+
+bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip) {
+    
     assert(system(NULL)); //check if system commands work
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -246,16 +251,13 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
     MPI_Barrier(MPI_COMM_WORLD);
     int iP = 0, fileIndex, localC = 0;
 
-    if (isInit)
-        fileIndex = snap0;
-    else
-    {
-        fileIndex = 1;
+    if (!isInit) {
         nPoints = loadMat->M;
         nSets = loadMat->N;
     }
-    double t1,t2; 
-    t1=MPI_Wtime();
+
+    double t1, t2;
+    t1 = MPI_Wtime();
     if (loadMat->block == 1)
     {
         assert(loadMat->mb == nPoints);
@@ -268,7 +270,7 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
             }
             if (loadMat->pG->rank == iP)
             {
-                fileIndex = snap0 + i * snapSkip;
+                fileIndex = fStart + (i - mStart) * fSkip;
 
                 cout << "proc " << iP << " is writing file " << fileIndex << "\r";
                 writeSingle(fileIndex, loadMat->dataD.data() + nPoints * localC, dir + "/" + fpref);
@@ -303,16 +305,17 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
             MPI_Allreduce(MPI_IN_PLACE, tempR.data(), tempR.size(), MPI_DOUBLE, MPI_SUM, col_comms);
             if ((loadMat->pG->mycol == (j / loadMat->nb) % loadMat->pG->pcol) && (loadMat->pG->myrow == 0))
             {
-                printf("proc %d is writing %d\n", loadMat->pG->rank, j);
-                writeSingle(j + snap0, tempR.data(), dir + "/" + fpref);
+                fileIndex = fStart + (j - mStart) * fSkip;
+                printf("proc %d is writing %d\n", loadMat->pG->rank, fileIndex);
+                writeSingle(fileIndex, tempR.data(), dir + "/" + fpref);
             }
         }
         tempR.clear();
         cout << endl;
         MPI_Comm_free(&col_comms);
     }
-    t2=MPI_Wtime();
-    cout<<"batch Write took "<<t2-t1<<" secs"<<endl;
+    t2 = MPI_Wtime();
+    cout << "batch Write took " << t2 - t1 << " secs" << endl;
 }
 
 void meta::miscProcessing(pMat *Mat)
@@ -421,7 +424,7 @@ bool tecIO::readSingle(int fileID, double *point)
         }
         if (reorder)
         {
-            cout << "reording slice" << endl;
+            //cout << "reording slice" << endl;
             std::vector<double> temp(nCells, 0.0);
             for (int j = 0; j < nCells; j++)
             {
@@ -759,7 +762,6 @@ void tecIO::getDimNodes()
         }
         else
         {
-            cout << "hi" << endl;
             checkMeshDim((prefix + std::to_string(snap0) + suffix));
         }
     }
@@ -980,7 +982,7 @@ void tecIO::calcNorm(pMat *dataMat)
         for (int i = 0; i < numVars; i++)
         {
             MPI_Allreduce(MPI_IN_PLACE, normFactor.data() + i, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            cout << "Synched norm factor for " << varName[i] << " is : " << normFactor[i] << endl;
+            cout << "Synched norm factor for " << varName[i] << " is : " << setprecision(numeric_limits<double>::digits10) << normFactor[i] << endl;
         }
         if(dataMat->pG->rank == 0)
         {
@@ -1047,7 +1049,7 @@ void tecIO::calcNorm(pMat *dataMat)
                 }
                 normFactor[k] = maxmag;
             }
-            cout << "Synched norm factor for " << varName[k] << " is : " << normFactor[k] << endl;
+            cout << "Synched norm factor for " << varName[k] << " is : " << setprecision(numeric_limits<double>::digits10) << normFactor[k] << endl;
         }
         /*if(dataMat->pG->rank == 0)
         {
@@ -1104,7 +1106,7 @@ void tecIO::subAvg(pMat *dataMat)
             }
         }
     }
-    cout << "average subtraceted" << endl;
+    cout << "average subtracted" << endl;
 }
 
 void tecIO::addAvg(pMat *dataMat)
@@ -1145,7 +1147,7 @@ void tecIO::addAvg(pMat *dataMat)
             }
         }
     }
-    cout << "average subtraceted" << endl;
+    cout << "average added" << endl;
 }
 
 void tecIO::calcAvg(pMat *dataMat)
@@ -1238,7 +1240,7 @@ void tecIO::readAvg(std::string filename)
         }
         if (reorder)
         {
-            cout << "reording slice" << endl;
+            //cout << "reording slice" << endl;
             std::vector<double> temp(nCells, 0.0);
             for (int j = 0; j < nCells; j++)
             {
