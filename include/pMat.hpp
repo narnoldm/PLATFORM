@@ -57,43 +57,40 @@ public:
 	PGrid *pG;
 
 	pMat();
-	/// Will create copy pMat object of pointed one
+	// Will create copy pMat object of pointed one
 	pMat(pMat *);
 	pMat(int, int, PGrid *);
 	pMat(int, int, PGrid *, bool);
-	/// Creates pMat of dimension M,N on context pG with contant value
+	// Creates pMat of dimension M,N on context pG with contant value
 	pMat(int, int, PGrid *, int, int, double);
 	pMat(int, int, PGrid *, int, int, double, bool);
-	/// Creates pMat of dimension M,N on context pG with contant value with cycles
+	// Creates pMat of dimension M,N on context pG with contant value with cycles
 	pMat(int, int, PGrid *, int, int, int, double);
 	pMat(int, int, PGrid *, int, int, int, double, bool);
 	~pMat();
 
-	/// core setup routine called by different contructors
+	// core setup routine called by different contructors
 	void setupMat(int, int, int, int, int, double, bool);
-	/// Will swtich type
+	// Will switch type
 	void switchType(int);
 
-	/// Will print out entire matrix (DO NOT USE unless debugging)
+	// Will print out entire matrix (DO NOT USE unless debugging)
 	void printMat();
-	double getElement(int, int);
-	double getLocalElement(int I, int J);
-	void setElement(int I, int J, double val);
 
-	//I/O
+	// I/O
 	int write_bin(std::string);
 	int read_bin(std::string);
 	bool check_bin_size(std::string, int &, int &);
 
-	//PBLAS
+	// PBLAS
 	int matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia, int ja, pMat *B, int ib, int jb, double alpha, double beta, int ic, int jc);
 	int matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int jb, double alpha, double beta);
 	int matrix_Product_sym(char uplo, char trans, int n, int k, double alpha, pMat *A, int ia, int ja, double beta, int ic, int jc);
 	int matrix_vec_product(char trans, int m, int n, double alpha, pMat *A, int ia, int ja, pMat *B, int ib, int jb,
 						   double beta, int ic, int jc);
+    int scale_col_row(double alpha, int idx, bool scaleRows);
 
-	//Scalapack
-
+	// SVD
 	int svd_run(int, int, int, int, pMat *&, pMat *&, std::vector<double> &);
 	int svd_run(int, int, int, int, pMat *&, pMat *&, std::vector<double> &, bool);
 
@@ -111,7 +108,7 @@ public:
 	// Least-squares 
 	int leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int ja, int ib, int jb); 
 
-	//Utilities
+	// Utilities
 	int transpose(pMat *);
 	int transpose(pMat *, int, int, int, int);
 	int changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb, bool stdout);
@@ -121,12 +118,16 @@ public:
 	int dMax(int, int, double &, int &);
 	int argmax_vec();
 	int dSum(int, int, double &);
+    double getElement(int, int);
+	double getLocalElement(int I, int J);
+    double getLocalElement(int I, int J, double temp);
+	void setElement(int I, int J, double val);
 
-	//Other
+	// Other
 	int outerProductSum(pMat *U, char, pMat *VT, char, std::vector<double> &S, int inv);
 	void pinv(pMat *A);
 	int commCreate(MPI_Comm &col_com, int dim);
-	
+
 };
 
 void destroyPMat(pMat *);

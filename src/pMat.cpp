@@ -456,6 +456,32 @@ int pMat::matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int
         return 0;
 }
 
+// scales row or column of matrix by factor alpha
+// idx indicates the row or column index (zero-indexed)
+// if scaleRow == true, scales row, otherwise scales column
+int pMat::scale_col_row(double alpha, int idx, bool scaleRow)
+{
+    int inc, len;
+    int ix, jx;
+    if (scaleRow)
+    {
+        len = N;
+        inc = M;
+        ix = idx + 1;
+        jx = 1;
+    }
+    else
+    {
+        len = M;
+        inc = 1;
+        ix = 1;
+        jx = idx + 1;
+    }
+
+    pdscal_(&len, &alpha, dataD.data(), &ix, &jx, desc, &inc);
+
+}
+
 int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S)
 {
         svd_run(M, N, ia, ja, U, VT, S, true);
@@ -1116,6 +1142,8 @@ ostream &operator<<(std::ostream &os, const pMat &p)
         std::cout << "Memory usage(data only) MB = " << p.MBs << std::endl;
         return os;
 }
+
+// retrieve element from pMat, no matter what process owns the element
 double pMat::getElement(int I, int J)
 {
         double item = 0.0;
@@ -1127,19 +1155,24 @@ double pMat::getElement(int I, int J)
 
         x = I % mb;
         y = J % nb;
-        double temp = 0;
+        double temp = 0.0;
         if ((pG->myrow == (I / mb) % pG->prow) && (pG->mycol == (J / nb) % pG->pcol))
         {
                 assert(((m * nb + y) * myRC[0] + l * mb + x) < nelements);
                 temp = dataD[(m * nb + y) * myRC[0] + l * mb + x];
         }
-        MPI_Request request;
-        MPI_Iallreduce(MPI_IN_PLACE, &temp, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD, &request);
-        MPI_Wait(&request, MPI_STATUS_IGNORE);
+        MPI_Allreduce(MPI_IN_PLACE, &temp, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
         return temp;
 }
 
+// retrieve element from pMat, only if the process owns the element
+// otherwise returns input value of temp (zero by default)
 double pMat::getLocalElement(int I, int J)
+{
+    return getLocalElement(I, J, 0.0);
+}
+
+double pMat::getLocalElement(int I, int J, double temp)
 {
         double item = 0.0;
         int l, m;
@@ -1150,7 +1183,6 @@ double pMat::getLocalElement(int I, int J)
 
         x = I % mb;
         y = J % nb;
-        double temp = 0;
         if ((pG->myrow == (I / mb) % pG->prow) && (pG->mycol == (J / nb) % pG->pcol))
         {
                 assert(((m * nb + y) * myRC[0] + l * mb + x) < nelements);

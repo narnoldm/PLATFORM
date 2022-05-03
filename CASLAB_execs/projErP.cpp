@@ -30,8 +30,8 @@ int main(int argc, char *argv[])
     string basis;
     input.getParamString("V", basis);
 
-    string centering;
-    input.getParamString("CenterFile", centering);
+    string centerFile;
+    input.getParamString("CenterFile", centerFile);
     string hashfile;
     input.getParamString("HashFile", hashfile);
 
@@ -86,15 +86,17 @@ int main(int argc, char *argv[])
     //vector<double> err(set1.nSets,0.0);
     //vector<double> norm(set1.nSets,0.0);
 
-    set1.readAvg(centering);
-    set1.calcNorm(&q);
+    set1.calcCentering(&q, centerFile);
+    string scaleMethod;
+    input.getParamString("scaleMethod", scaleMethod);
+    set1.calcScaling(&q, scaleMethod);
 
     set1.batchRead(&q);
-    set1.subAvg(&q);
+    set1.centerData(&q);
     if (outPert == 1)
         set1.batchWrite(&q, "Pert", "Pert_");
 
-    set1.normalize(&q);
+    set1.scaleData(&q);
 
     cout << "computing VTq" << endl;
     VTq.matrix_Product('T', 'N', SpaModes.nSets, set1.nSets, SpaModes.nPoints, &V, 0, 0, &q, 0, 0, 1.0, 0.0, 0, 0);
@@ -104,18 +106,18 @@ int main(int argc, char *argv[])
 
     if (comp >= 2)
     {
-        set1.unNormalize(&VVTq);
+        set1.scaleData(&VVTq, true);
         if (comp >= 3)
-            set1.addAvg(&VVTq);
+            set1.centerData(&VVTq, true);
     }
 
     set2.batchRead(&q);
     if (comp < 3)
     {
-        set1.subAvg(&q);
+        set1.centerData(&q);
         if (comp < 2)
         {
-            set1.normalize(&q);
+            set1.scaleData(&q);
         }
     }
     for (int k = 0; k < q.nelements; k++)

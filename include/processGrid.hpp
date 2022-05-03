@@ -24,11 +24,11 @@ public:
 	int myrow;
 	/// local process col identifier
 	int mycol;
-	/// global number of rows
+	/// global number of process rows
 	int prow;
-	/// global number of columns
+	/// global number of process columns
 	int pcol;
-	/// dimesnions of process grid
+	/// dimensions of process grid
 	int pdims[2];
 	/// rank to be allowed to std out
 	bool printRank;

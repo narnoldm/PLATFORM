@@ -26,16 +26,6 @@ int main(int argc, char *argv[])
     inputFile.getParamInt("modeStart", modeStart);
     inputFile.getParamInt("modeEnd", modeEnd);
 
-    string avgFile = "";
-    bool subAvg = true;
-    bool readAvg = false;
-    inputFile.getParamBool("subAvg", subAvg);
-    if (subAvg) {
-        inputFile.getParamBool("readAvg", readAvg);
-        if (readAvg)
-            inputFile.getParamString("avgFile", avgFile);
-    }
-
     string input = "";
     inputFile.getParamString("inputString", input);
     cout << "input string is: " << input << endl;
@@ -49,28 +39,74 @@ int main(int argc, char *argv[])
 
     tecIO *dataset1;
     dataset1 = new tecIO(token);
-    string outdir = "out2";
-    string outfile = "U";
 
     if ((mosStep == 0) || (mosStep == 1) || (mosStep == 3))
     {
+
         evenMat = new pMat(dataset1->nPoints, dataset1->nSets, evenG, 0, 0, 0.0);
         dataset1->batchRead(evenMat);
 
-        if (subAvg) {
-            if (readAvg) {
-                dataset1->readAvg(avgFile);
-            } else {
-                dataset1->calcAvg(evenMat);
+        // read centering inputs
+        string centerFile, centerMethod;
+        bool center, centerIsField;
+        inputFile.getParamBool("center", center);
+        if (center)
+        {
+            inputFile.getParamString("centerFile", centerFile, "");
+            inputFile.getParamString("centerMethod", centerMethod, "");
+            inputFile.getParamBool("centerIsField", centerIsField, false);
+            if ((centerFile == "") && (centerMethod == ""))
+            {
+                cout << "Must provide centerFile or centerMethod if center = true" << endl;
+                throw(-1);
             }
-            dataset1->subAvg(evenMat);
+            if ((centerFile != "") && (centerMethod != ""))
+            {
+                cout << "Can only set centerFile OR centerMethod if center = true" << endl;
+                throw(-1);
+            }
+
+            if (centerFile != "")
+            {
+                dataset1->calcCentering(evenMat, centerFile, true);
+            }
+            else
+            {
+                dataset1->calcCentering(evenMat, centerMethod, centerIsField);
+            }
+            dataset1->centerData(evenMat, false);
         }
-        dataset1->calcNorm(evenMat);
-        dataset1->normalize(evenMat);
-        //evenMat->write_bin("A.bin");
-    }
-    else
-    {
+
+        // read scaling inputs
+        string scaleFile, scaleMethod;
+        bool scale, scaleIsField;
+        inputFile.getParamBool("scale", scale);
+        if (scale)
+        {
+            inputFile.getParamString("scaleFile", scaleFile, "");
+            inputFile.getParamString("scaleMethod", scaleMethod, "");
+            inputFile.getParamBool("scaleIsField", scaleIsField, false);
+            if ((scaleFile == "") && (scaleMethod == ""))
+            {
+                cout << "Must provide centerFile or centerMethod if center = true" << endl;
+                throw(-1);
+            }
+            if ((scaleFile != "") && (scaleMethod != ""))
+            {
+                cout << "Can only set centerFile OR centerMethod if center = true" << endl;
+                throw(-1);
+            }
+            if (scaleFile != "")
+            {
+                dataset1->calcScaling(evenMat, scaleFile, true);
+            }
+            else
+            {
+                dataset1->calcScaling(evenMat, scaleMethod, scaleIsField);
+            }
+            dataset1->scaleData(evenMat, false);
+        }
+
     }
 
     pMat *U, *VT;
@@ -140,7 +176,7 @@ int main(int argc, char *argv[])
         string firstFile = dataset1->prefix + std::to_string(dataset1->snap0) + dataset1->suffix;
 
         Uout->activateGEMSbin(firstFile.c_str());
-        Uout->batchWrite(U, "Spatial_Modes", "Spatial_Mode_", 0, modeEnd - modeStart + 1, 1, modeStart, 1);
+        Uout->batchWrite(U, "Spatial_Modes", "Spatial_Mode_", 0, modeEnd - modeStart + 1, 1, modeStart, 1, 0);
     }
 
     cout.rdbuf(strm_buffer);

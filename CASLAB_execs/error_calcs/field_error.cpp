@@ -27,8 +27,9 @@ int main(int argc, char *argv[]) {
 
     // ----- INPUT PARAMETERS -----
 
-    string fomInputString, romInputString, basisInputString, centerFile, normFile;
-    bool center, normalize, outProjField, outLatentCode, outAbsErrField;
+    string fomInputString, romInputString, basisInputString;
+    string centerFile, centerMethod, scaleFile, scaleMethod;
+    bool center, scale, outProjField, outLatentCode, outAbsErrField;
     int errType;
 
     // 1: compute error between FOM and projected FOM solution
@@ -57,14 +58,16 @@ int main(int argc, char *argv[]) {
             // path to data centering profile
             // if not provided, use mean field
             inputFile.getParamString("centerFile", centerFile, "");
+            inputFile.getParamString("centerMethod", centerMethod, "");
         }
 
         // normalizing FOM data before projection (after centering, if requested)
-        inputFile.getParamBool("normalize", normalize);
-        if (normalize) {
+        inputFile.getParamBool("scale", scale);
+        if (scale) {
             // path to data normalization profile
             // if not provided, use normalization constants provided in fomInputString
-            inputFile.getParamString("normFile", normFile, "");
+            inputFile.getParamString("scaleFile", scaleFile, "");
+            inputFile.getParamString("scaleMethod", scaleMethod, "");
         }
 
         inputFile.getParamBool("outProjField", outProjField, false);  // output unsteady projected FOM solutions
@@ -160,22 +163,21 @@ int main(int argc, char *argv[]) {
         // center data, if requested
         if (center) {
             if (centerFile == "") {
-                setFOM->calcAvg(QTruth);
+                setFOM->calcCentering(QTruth, centerMethod);
             } else {
-                setFOM->readAvg(centerFile);
+                setFOM->calcCentering(QTruth, centerFile);
             }
-            setFOM->subAvg(QTruth);
+            setFOM->centerData(QTruth);
         }
 
-        // normalized data, if requested
-        if (normalize) {
-            if (normFile == "") {
-                setFOM->calcNorm(QTruth);
+        // scale data, if requested
+        if (scale) {
+            if (scaleFile == "") {
+                setFOM->calcScaling(QTruth, scaleMethod);
             } else {
-                cout << "Norm file read not implemented yet" << endl;
-                throw(-1);
+                setFOM->calcScaling(QTruth, scaleFile);
             }
-            setFOM->normalize(QTruth);
+            setFOM->scaleData(QTruth);
         }
         
         if (outProjField)
@@ -191,16 +193,16 @@ int main(int argc, char *argv[]) {
         latentCode->matrix_Product('T', 'N', basis->N, QTruth->N, basis->M, basis, 0, 0, QTruth, 0, 0, 1.0, 0.0, 0, 0);
         QTruth_proj->matrix_Product('N', 'N', basis->M, latentCode->N, basis->N, basis, 0, 0, latentCode, 0, 0, 1.0, 0.0, 0, 0);
 
-        // de-normalize and de-center, if normalization/centering was requested
-        if (normalize) {
-            setFOM->unNormalize(QTruth_proj);
+        // de-scale and de-center, if normalization/centering was requested
+        if (scale) {
+            setFOM->scaleData(QTruth_proj, true);
             if (errType == 1)
-                setFOM->unNormalize(QTruth);
+                setFOM->scaleData(QTruth, true);
         }
         if (center) {
-            setFOM->addAvg(QTruth_proj);
+            setFOM->centerData(QTruth_proj, true);
             if (errType == 1)
-                setFOM->addAvg(QTruth);
+                setFOM->centerData(QTruth, true);
         }
         
         if (errType == 1) {
