@@ -584,6 +584,7 @@ int main(int argc, char *argv[])
             calc_regressor(USol, pinvUSol_samp, gP, nCells, nVars);
         }
 
+        // NOTE: rhsScaling and solScaling already computed R^-1 * G and R^-1 * P
         // compute R^-1 * G * URes
         for (int i = 0; i < nDOF; ++i)
         {
@@ -632,6 +633,18 @@ int main(int argc, char *argv[])
     // ##### OUTPUT ##### //
     t1_start = MPI_Wtime();
 
+    // tranpose for output
+    pMat* pinvURes_samp_T = new pMat(DOFNeeded, numModesRes, evenG, false);
+    pinvURes_samp_T->transpose(pinvURes_samp);
+    destroyPMat(pinvURes_samp);
+    pMat* pinvUSol_samp_T;
+    if (regressorFormat == 2)
+    {
+        pinvUSol_samp_T = new pMat(DOFNeeded, numModesSol, evenG, false);
+        pinvUSol_samp_T->transpose(pinvUSol_samp);
+        destroyPMat(pinvUSol_samp);
+    }
+
     // write gappy POD regressors to disk
 
     meta* datasetResOut = new meta();
@@ -639,23 +652,22 @@ int main(int argc, char *argv[])
     {
         // write [P^T * URes]^+
         datasetResOut->snap0 = 1;
-        datasetResOut->snapF = DOFNeeded;
+        datasetResOut->snapF = numModesRes;
         datasetResOut->snapSkip = 1;
-        datasetResOut->nSets = DOFNeeded;
+        datasetResOut->nSets = numModesRes;
         datasetResOut->suffix = ".bin";
         datasetResOut->isInit = true;
-        datasetResOut->nPoints = numModesRes;
+        datasetResOut->nPoints = DOFNeeded;
 
         if (regressorFormat == 0)
         {
             // this represents the full residual regressor
-            datasetResOut->batchWrite(pinvURes_samp, "./", "pinv_res_", 0, numModesRes, 1, 1, 1, 1);
+            datasetResOut->batchWrite(pinvURes_samp_T, "./", "pinv_res_");
         }
         else
         {
             // this represents the RHS regressor
-            pinvURes_samp->write_bin("pinv_rhs_full.bin");
-            datasetResOut->batchWrite(pinvURes_samp, "./", "pinv_rhs_", 0, numModesRes, 1, 1, 1, 1);
+            datasetResOut->batchWrite(pinvURes_samp_T, "./", "pinv_rhs_");            
 
             // write USol^T * P * R^-2 * G * URes
             USolT_URes->write_bin("USolT_URes.bin");
@@ -669,26 +681,26 @@ int main(int argc, char *argv[])
             // write [P^T * USol]^+
             meta* datasetSolOut = new meta();
             datasetSolOut->snap0 = 1;
-            datasetSolOut->snapF = DOFNeeded;
+            datasetSolOut->snapF = numModesSol;
             datasetSolOut->snapSkip = 1;
-            datasetSolOut->nSets = DOFNeeded;
+            datasetSolOut->nSets = numModesSol;
             datasetSolOut->suffix = ".bin";
             datasetSolOut->isInit = true;
-            datasetSolOut->nPoints = numModesSol;
-            datasetSolOut->batchWrite(pinvUSol_samp, "./", "pinv_sol_", 0, numModesSol, 1, 1, 1, 1);
+            datasetSolOut->nPoints = DOFNeeded;
+            datasetSolOut->batchWrite(pinvUSol_samp_T, "./", "pinv_sol_");
         }
     }
     else
     {
         // write USol^T * URes * [P^T * URes]^+
         datasetResOut->snap0 = 1;
-        datasetResOut->snapF = DOFNeeded;
+        datasetResOut->snapF = numModesSol;
         datasetResOut->snapSkip = 1;
-        datasetResOut->nSets = DOFNeeded;
+        datasetResOut->nSets = numModesSol;
         datasetResOut->suffix = ".bin";
         datasetResOut->isInit = true;
-        datasetResOut->nPoints = numModesSol;
-        datasetResOut->batchWrite(pinvURes_samp, "./", "pinv_rhs_", 0, numModesSol, 1, 1, 1, 1);
+        datasetResOut->nPoints = DOFNeeded;
+        datasetResOut->batchWrite(pinvURes_samp_T, "./", "pinv_rhs_");
     }
 
     t1_end = MPI_Wtime();
@@ -701,10 +713,10 @@ int main(int argc, char *argv[])
 
     // cleanup
     MPI_Barrier(MPI_COMM_WORLD);
-    destroyPMat(pinvURes_samp, false);
+    destroyPMat(pinvURes_samp_T, false);
     if (regressorFormat == 2)
     {
-        destroyPMat(pinvUSol_samp, false);
+        destroyPMat(pinvUSol_samp_T, false);
         destroyPMat(USolT_URes, false);
         destroyPMat(USolT_USol, false);
         destroyPMat(UResT_URes, false);

@@ -249,11 +249,11 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
 // dir: directory to write data to
 // fpref: output file prefix
 // mStart: starting row/column index of loadMat submatrix to be written (zero-indexed)
-// mEnd: ending row/column index of loadMat submatrix to be written (zero-indexed)
+// mEnd: ending row/column index of loadMat submatrix to be written (exclusive, zero-indexed)
 // mSkip: row/column index increment of loadMat submatrix to be written
 // fStart: starting index of output file names
 // fSkip: index increment of output file names
-// writeCols: if true, write columns of loadMat, otherwise write rows
+// dim: if 0, write columns of loadMat, otherwise write rows
 bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip, int dim)
 {
 
@@ -288,6 +288,10 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
     }
     else
     {
+        // TODO: fix this
+        cout << "ROW WRITE NOT FIXED" << endl;
+        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Abort(MPI_COMM_WORLD, -1);
         vecLength = nSets;
         loadMat->commCreate(col_comms, 1);
         procRowOrCol = loadMat->pG->myrow;
