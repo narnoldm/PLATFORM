@@ -1,4 +1,16 @@
-
+//H**********************************************************************
+// FILENAME :        metadata.hpp    
+//
+// DESCRIPTION :
+//       Header file for metadata file information headers
+//       Contains Meta class and associated methods
+//
+// Univeristy of Michigan Ann Arbor 
+// Computational AeroSciences Laboratory
+// AUTHOR :    Nicholas Arnold-Medabalimi        
+// DATE :      6/17/2022
+//
+//H*/
 
 #ifndef METADATA_H
 #define METADATA_H
@@ -12,35 +24,43 @@
 #include "misc_func.hpp"
 #include "misc_func_mpi.hpp"
 
+
+
+
+///
+/// Meta contains the information about how the data files should
+/// be organized in the parallel matrix. Overloads of the metaclass
+/// are used to support extra file types.
+///
 class meta
 {
 public:
-    int snap0, snapF, snapSkip;
-    bool isInit = false;
-    long nPoints, nSets;
-    std::string prefix, suffix;
-    std::vector<std::string> token;
+    int snap0, snapF, snapSkip; ///< The indexing of the filenames snap0 through snapF with a skip of snapSkip
+    bool isInit = false; ///< Flag to indicate if the meta data has been initialized
+    long nPoints, nSets; ///< The number of points and number of files (nSets)
+    std::string prefix, suffix; ///< The prefix and suffix of the filenames
+    std::vector<std::string> token; ///< The input token used to initalize meta
 
-    meta();
-    meta(std::vector<std::string> &iToken);
-    meta(int t0, int tf, int ts, std::string &iPrefix, std::string &iSuffix);
-    virtual ~meta();
-    virtual void init(int t0, int tf, int ts, std::string &iPrefix, std::string &iSuffix);
+    meta(); ///< Default constructor
+    meta(std::vector<std::string> &iToken);///< Constructor that takes in the input token
+    meta(int t0, int tf, int ts, std::string &iPrefix, std::string &iSuffix);///< Constructor of decoupled token
+    virtual ~meta();///< Destructor
+    virtual void init(int t0, int tf, int ts, std::string &iPrefix, std::string &iSuffix);///< Initialize meta
 
-    virtual void checkSize();
-    virtual void checkExists();
-    virtual bool readSingle(int fileID, double *point);
-    virtual bool writeSingle(int fileID, double *point, std::string fpref);
-    virtual bool writeSingle(int fileID, double *point, std::string fpref, int points);
-    virtual void miscProcessing(pMat *Mat);
-    bool batchWrite(pMat *loadMat);
-    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int nModes);
-    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip);
-    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip);
-    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref);
+    virtual void checkSize(); ///< Check the size of a single file
+    virtual void checkExists();///< Check if the files exist
+    virtual bool readSingle(int fileID, double *point);///< Read a single file
+    virtual bool writeSingle(int fileID, double *point, std::string fpref);///< Write a single file
+    virtual bool writeSingle(int fileID, double *point, std::string fpref, int points);///< Write a single file if points is diiferent from initalized meta
+    virtual void miscProcessing(pMat *Mat);///< Perform misc processing on the data (not used in parent meta)
+    bool batchWrite(pMat *loadMat); ///< Write the data to the full set of files using defaults
+    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int nModes); ///< Write a subset of the files
+    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip); ///< Write a subset of the files
+    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip);///< Write a subset of the files
+    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref); ///< Write the data to the full set of files using specified names
     bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip, int dim);
-    bool batchRead(pMat *loadMat);
-    bool batchRead(pMat *loadMat, int ii);
+    bool batchRead(pMat *loadMat); ///< Read the data from the full set of files using defaults
+    bool batchRead(pMat *loadMat, int ii); ///< Read the data from the full set of files using defaults
 };
 
 class tecIO : public meta
