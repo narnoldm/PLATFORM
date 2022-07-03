@@ -13,6 +13,7 @@
 #include <sstream>
 #include <algorithm>
 #include <numeric>
+#include <limits>
 
 //#include "extern_func.hpp"
 #include "processGrid.hpp"
@@ -24,7 +25,7 @@
 #endif*/
 #include <Eigen/Dense>
 
-/*** 
+/***
 *pMat: This file contains the headers for the PGrid and pMat classes.
 *These define how the code distributes data into the ScaLAPACK format
 * */
@@ -80,6 +81,7 @@ public:
 	// I/O
 	int write_bin(std::string);
 	int read_bin(std::string);
+    int write_ascii(std::string filename, std::string header);
 	bool check_bin_size(std::string, int &, int &);
 
 	// PBLAS
@@ -105,8 +107,8 @@ public:
 	int qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv, std::string outdir, bool stdout);
 	int qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv, std::string outdir, std::string outfile, bool stdout);
 
-	// Least-squares 
-	int leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int ja, int ib, int jb); 
+	// Least-squares
+	int leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int ja, int ib, int jb);
 
 	// Utilities
 	int transpose(pMat *);

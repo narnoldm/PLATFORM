@@ -43,8 +43,7 @@ pMat::pMat(int m, int n, PGrid *pGp, int t, int b, int c, double init, bool stdo
 }
 pMat::~pMat()
 {
-        // if (pG->rank == 0)
-        //         cout << "Deallocating Distributed Matrix" << endl;
+
 }
 void destroyPMat(pMat *A, bool stdout)
 {
@@ -114,7 +113,6 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init, bool stdout)
                 mb = M / (pG->pcol);
         }
         myRC[0] = numroc_(&M, &mb, &(pG->myrow), &i_zero, &(pG->prow));
-        //cout<<myRC[0]<<" "<<M<<" "<<mb<<" "<<pG->myrow<<" "<<pG->prow<<endl;
 
         myRC[1] = numroc_(&N, &nb, &(pG->mycol), &i_zero, &(pG->pcol));
 
@@ -155,8 +153,6 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init, bool stdout)
         }
 
         descinit_(desc, &M, &N, &mb, &nb, &i_zero, &i_zero, &(pG->icntxt), &myRC[0], &info);
-        //for(int i=0;i<9;i++)
-        //        cout<<desc[i]<<endl;
         if (info != 0)
         {
                 cout << "Error in descriptor setup in argument, info=" << -info << endl;
@@ -322,6 +318,83 @@ int pMat::read_bin(string filename)
                 cout << "read of " << filename << " took " << t2 - t1 << " seconds" << endl;
 
         return 1;
+}
+
+int pMat::write_ascii(string filename, string header)
+{
+    // TODO: generalize
+    if (N > 1)
+    {
+        cout << "pMat::write_ascii only works with column vectors right now" << endl;
+        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+    if (block != 0)
+    {
+        cout << "pMat::write_ascii only works with square block pMats" << endl;
+        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+
+    int rank, size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    const char* buffer;
+    MPI_Offset offset = 0;
+
+    // open file
+    MPI_Status status;
+    MPI_File fh;
+    MPI_File_open(MPI_COMM_SELF, filename.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+
+    // write header
+    header += "\n";
+    if (rank == 0)
+    {
+        buffer = header.c_str();
+        MPI_File_write_at_all(fh, offset, buffer, strlen(buffer), MPI_CHAR, &status);
+    }
+
+    // determine length of single line
+    ostringstream outstream;
+    double val = 1.0;
+    outstream << scientific << setprecision(numeric_limits<double>::digits10) << val << "\n";
+    int valLength = strlen((outstream.str()).c_str());
+    outstream.str("");
+    outstream.clear();
+
+    // TODO: this is all meaningless for general matrix write
+    if (pG->mycol == 0)
+    {
+        int xi, li;
+        string outstring;
+
+        // loop global element index
+        for (int i = 0; i < M; ++i)
+        {
+            // determine if this process owns this element
+            xi = i % mb;  // grid row index
+            li = i / (pG->prow * mb);
+
+            if (pG->myrow == (i / mb) % pG->prow)
+            {
+                val = dataD[li * mb + xi];
+                outstream << scientific << setprecision(numeric_limits<double>::digits10) << val << "\n";
+                outstring = outstream.str();
+                offset = strlen(header.c_str()) + valLength * i;
+                buffer = outstring.c_str();
+                MPI_File_write_at_all(fh, offset, buffer, strlen(buffer), MPI_CHAR, &status);
+                outstream.str("");
+                outstream.clear();
+            }
+        }
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_File_close(&fh);
+
+    return 1;
+
 }
 
 bool pMat::check_bin_size(string filename, int &mM, int &mN)
@@ -1056,15 +1129,9 @@ void pMat::pinv(pMat *A)
         vector<double> SS(std::min(A->M, A->N), 0.0);
 
         A->svd_run(A->M, A->N, 0, 0, UU, VV, SS, false);
-        // UU->write_bin("UU.bin");
-        // VV->write_bin("VV.bin");
-        // cout << "Summing outer products" << endl;
-        // cout << "pinv tol check " << SS[0] << " " << std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0] << endl;
         this->matrix_Product('T', 'T', VV->N, UU->M, 1, VV, 0, 0, UU, 0, 0, 1.0 / SS[0], 0.0, 0, 0);
         for (int i = 1; i < SS.size(); i++)
         {
-                //check tolerance
-                // cout << "tol check " << SS[i] << " " << std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0] << "\r";
                 if (SS[i] > std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0])
                         this->matrix_Product('T', 'T', VV->N, UU->M, 1, VV, i, 0, UU, 0, i, 1.0 / SS[i], 1.0, 0, 0);
         }

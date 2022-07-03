@@ -48,13 +48,14 @@ int main(int argc, char *argv[])
 
         // read centering inputs
         string centerFile, centerMethod;
-        bool center, centerIsField;
+        bool center, centerIsField, writeCentering;
         inputFile.getParamBool("center", center);
         if (center)
         {
             inputFile.getParamString("centerFile", centerFile, "");
             inputFile.getParamString("centerMethod", centerMethod, "");
             inputFile.getParamBool("centerIsField", centerIsField, false);
+            inputFile.getParamBool("writeCentering", writeCentering, true);
             if ((centerFile == "") && (centerMethod == ""))
             {
                 cout << "Must provide centerFile or centerMethod if center = true" << endl;
@@ -68,24 +69,25 @@ int main(int argc, char *argv[])
 
             if (centerFile != "")
             {
-                dataset1->calcCentering(evenMat, centerFile, true);
+                dataset1->calcCentering(evenMat, centerFile, true, writeCentering);
             }
             else
             {
-                dataset1->calcCentering(evenMat, centerMethod, centerIsField);
+                dataset1->calcCentering(evenMat, centerMethod, centerIsField, writeCentering);
             }
             dataset1->centerData(evenMat, false);
         }
 
         // read scaling inputs
         string scaleFile, scaleMethod;
-        bool scale, scaleIsField;
+        bool scale, scaleIsField, writeScaling;
         inputFile.getParamBool("scale", scale);
         if (scale)
         {
             inputFile.getParamString("scaleFile", scaleFile, "");
             inputFile.getParamString("scaleMethod", scaleMethod, "");
             inputFile.getParamBool("scaleIsField", scaleIsField, false);
+            inputFile.getParamBool("writeScaling", writeScaling, true);
             if ((scaleFile == "") && (scaleMethod == ""))
             {
                 cout << "Must provide centerFile or centerMethod if center = true" << endl;
@@ -98,11 +100,11 @@ int main(int argc, char *argv[])
             }
             if (scaleFile != "")
             {
-                dataset1->calcScaling(evenMat, scaleFile, true);
+                dataset1->calcScaling(evenMat, scaleFile, true, writeScaling);
             }
             else
             {
-                dataset1->calcScaling(evenMat, scaleMethod, scaleIsField);
+                dataset1->calcScaling(evenMat, scaleMethod, scaleIsField, writeScaling);
             }
             dataset1->scaleData(evenMat, false);
         }

@@ -100,7 +100,7 @@ bool meta::readSingle(int fileID, double *point)
 
 bool meta::batchRead(pMat *loadMat)
 {
-    double t1,t2; 
+    double t1,t2;
     t1=MPI_Wtime();
     if (loadMat->mb == nPoints)
     {
@@ -1042,7 +1042,7 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
         vector<double> centerVals(numVars);
         copy(centerVec.begin(), centerVec.end(), centerVals.begin());
         centerVec.resize(nPoints, 0.0);
-        for (int k = 0; k < numVars; ++k) 
+        for (int k = 0; k < numVars; ++k)
         {
             for (int i = 0; i < nCells; ++i)
             {
@@ -1058,7 +1058,6 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
         if (dataMat->pG->rank == 0)
         {
             // TODO: get SZPLT to output correctly, without silly fileID requirement
-            // writeSingle(0, centerVec.data(), "centerProf");
             // convert to cell_id order and write
             vector<double> vecOut(nPoints, 0.0);
             vecToCellIDOrder(centerVec, vecOut);
@@ -1415,7 +1414,7 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
         copy(scalingDivVec.begin(), scalingDivVec.end(), divVals.begin());
         scalingSubVec.resize(nPoints, 0.0);
         scalingDivVec.resize(nPoints, 0.0);
-        for (int k = 0; k < numVars; ++k) 
+        for (int k = 0; k < numVars; ++k)
         {
             for (int i = 0; i < nCells; ++i)
             {
@@ -1427,7 +1426,7 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
 
     // prevent divisive factors close to zero
     // really only happens when min and max are same, implying field is uniform
-    for (int k = 0; k < numVars; ++k) 
+    for (int k = 0; k < numVars; ++k)
     {
         for (int i = 0; i < nCells; ++i)
         {
@@ -1446,7 +1445,6 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
         if (dataMat->pG->rank == 0)
         {
             // TODO: get SZPLT to output correctly, without silly fileID requirement
-            // writeSingle(0, centerVec.data(), "centerProf");
             vector<double> vecOut(nPoints, 0.0);
             vecToCellIDOrder(scalingSubVec, vecOut);
             writeASCIIDoubleVec("scalingSubProf.dat", vecOut);
@@ -1550,7 +1548,7 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
         {
             if (methodName == "min")
             {
-                groupVal = HUGE_VAL; 
+                groupVal = HUGE_VAL;
             }
             else if (methodName == "max")
             {
@@ -1811,7 +1809,7 @@ void tecIO::vecToCellIDOrder(vector<double> &vecIn, vector<double> &vecOut)
             vecOut[i * nCells + j] = vecIn[i * nCells + idx[j]];
         }
     }
-    
+
 }
 
 void tecIO::activateGEMSbin(string file)
@@ -1834,7 +1832,7 @@ int compareMeta(meta* meta1, meta* meta2)
 	if ( (meta1->prefix == meta2->prefix) && (meta1->suffix == meta2->suffix) )
     {
 
-		if ( (meta1->snap0 == meta2->snap0) && 
+		if ( (meta1->snap0 == meta2->snap0) &&
 			 (meta1->snapF == meta2->snapF) &&
 			 (meta1->snapSkip == meta2->snapSkip) )
         {
