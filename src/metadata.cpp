@@ -471,7 +471,7 @@ bool tecIO::readSingle(string filename, double *point)
         }
         if (reorder)
         {
-            //cout << "reording slice" << endl;
+            // TODO: there has to be a lower memory alternative
             std::vector<double> temp(nCells, 0.0);
             for (int j = 0; j < nCells; j++)
             {
@@ -480,7 +480,6 @@ bool tecIO::readSingle(string filename, double *point)
             for (int j = 0; j < nCells; j++)
             {
                 point[i * nCells + j] = temp[idx[j]];
-                //hash[j]=j;
             }
             temp.clear();
         }
