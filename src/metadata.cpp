@@ -927,25 +927,7 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
         isField = true;
         if (centerMethod.substr(centerMethod.size()-6, 6) == ".szplt")
         {
-            // TODO: this is the worst-case scenario w/r/t/ memory, FIX
-            int currentCol = 0;
-            vector<double> tempR;
-            tempR.resize(nPoints);
-            readSingle(centerMethod, tempR.data());
-            if (centerVec->pG->mycol == 0)
-            {
-                for (int i = 0; i < nPoints; i++)
-                {
-                    int xi = i % centerVec->mb;
-                    int li = i / (centerVec->pG->prow * centerVec->mb);
-                    if (centerVec->pG->myrow == (i / centerVec->mb) % centerVec->pG->prow)
-                    {
-                        centerVec->dataD[xi + li * centerVec->mb] = tempR[i];
-                    }
-                }
-            }
-            // clean up memory
-            vector<double>().swap(tempR);
+            readSZPLTToPMat(centerMethod, centerVec);
         }
         else
         {
@@ -1010,7 +992,7 @@ void tecIO::centerData(pMat *dataMat, bool uncenter)
     }
 
     // subtract centering vector, column-by-column
-    for (int j = 0; j < dataMat->N; j++)
+    for (int j = 0; j < dataMat->N; ++j)
     {
         dataMat->matrix_Sum('N', dataMat->M, 1, centerVec, 0, 0, 0, j, alpha, 1.0);
     }
@@ -1041,6 +1023,9 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
 
     isScaled = true;
     genHash(prefix + to_string(snap0) + suffix);
+    scalingSubVec = new pMat(nPoints, 1, dataMat->pG, 0, 0, 0.0, false);
+    scalingDivVec = new pMat(nPoints, 1, dataMat->pG, 0, 0, 0.0, false);
+    scalingSubVecFull = new pMat(nPoints, 1, dataMat->pG, 0, 0, 0.0, false);
 
     if ((scaleMethod == "sphere") && (isField))
     {
@@ -1057,13 +1042,24 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
     // if so, all scaling will be by scalar values
     for (int i = 0; i < numVars; ++i)
     {
-        if (scalingInput[i] > 0)
+        if (scalingInput[i] > 0.0)
         {
             if (!isField)
             {
-                cout << "WARNING: Passed a scaling factor, all scaling will by by scalars" << endl;
+                cout << "WARNING: Passed a scaling factor, all scaling will be by scalars" << endl;
             }
             isField = false;
+            break;
+        }
+    }
+
+    // check if any values need to be calculated
+    bool calc = false;
+    for (int i = 0; i < numVars; ++i)
+    {
+        if (scalingInput[i] < 0.0)
+        {
+            calc = true;
             break;
         }
     }
@@ -1074,20 +1070,14 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
         (scaleMethod != "sphere"))
     {
         // load from file
-        // TODO: allow reading from small vector
         // TODO: allow reading from ASCII file
         isField = true;
-        ifstream szlFile((scaleMethod + "SubProf.szplt").c_str());
-        ifstream datFile((scaleMethod + "SubProf.dat").c_str());
-        if (szlFile.good())
+        ifstream szlSub((scaleMethod + "SubProf.szplt").c_str());
+        ifstream szlDiv((scaleMethod + "DivProf.szplt").c_str());
+        if (szlSub.good() && szlDiv.good())
         {
-            readSZPLTToVec(scaleMethod + "SubProf.szplt", scalingSubVec);
-            readSZPLTToVec(scaleMethod + "DivProf.szplt", scalingDivVec);
-        }
-        else if (datFile.good())
-        {
-            readDATToVec(scaleMethod + "SubProf.dat", scalingSubVec);
-            readDATToVec(scaleMethod + "DivProf.dat", scalingDivVec);
+            readSZPLTToPMat(scaleMethod + "SubProf.szplt", scalingSubVec);
+            readSZPLTToPMat(scaleMethod + "DivProf.szplt", scalingDivVec);
         }
         else
         {
@@ -1098,241 +1088,36 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
     }
     else
     {
-
-        // initialize scaling vectors to appropriate size
-        int scaleVecSize;
-        if (isField)
+        if (calc)
         {
-            scaleVecSize = nPoints;
-        }
-        else
-        {
-            scaleVecSize = numVars;
-        }
-        cout << "Allocating scaling as " << scaleVecSize << " values" << endl;
-        scalingSubVec.resize(scaleVecSize, 0.0);
-        scalingDivVec.resize(scaleVecSize, 1.0);
-        cout << "Scaling allocated" << endl;
-
-        // need a copy of data for standardization
-        pMat* dataMatCopy;
-        if (scaleMethod == "standardize")
-        {
-            dataMatCopy = new pMat(nPoints, nSets, dataMat->pG, 0, 0, 0.0, false);
-        }
-
-        double val1, val2;
-        vector<double> valVec1(nCells);
-        vector<double> valVec2(nCells);
-        bool skip;
-        vector<int> skipFlags;
-        for (int k = 0; k < numVars; ++k)
-        {
-            if (scalingInput[k] < 0)
-            {
-                // check if this group has already been evaluated
-                skip = false;
-                for (int g = 0; g < skipFlags.size(); ++g)
-                {
-                    if (scalingInput[k] == skipFlags[g])
-                    {
-                        skip = true;
-                        break;
-                    }
-                }
-                if (skip)
-                {
-                    continue;
-                }
-
-                if (scaleMethod == "minmax")
-                {
-                    calcGroupQuant(dataMat, val1, valVec1, k, "min", isField);
-                    calcGroupQuant(dataMat, val2, valVec2, k, "max", isField);
-                }
-                else if (scaleMethod == "standardize")
-                {
-                    // requires a few extra steps
-
-                    // calculate average
-                    calcGroupQuant(dataMat, val1, valVec1, k, "avg", isField);
-                    pMat* avgVecP0 = new pMat(nCells, 1, dataMat->pG, 0, 2, 0.0, false);
-                    pMat* avgVec = new pMat(nCells, 1, dataMat->pG, 0, 0, 0.0, false);
-                    int rank;
-                    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-                    if (!rank)
-                    {
-                        for (int i = 0; i < nCells; ++i)
-                        {
-                            if (isField)
-                            {
-                                avgVecP0->dataD[i] = valVec1[i];
-                            }
-                            else
-                            {
-                                avgVecP0->dataD[i] = val1;
-                            }
-                        }
-                    }
-                    avgVec->changeContext(avgVecP0, false);
-
-                    // subtract average
-                    // TODO: the repeated changeContext and squaring of all elements is CRAZY inefficient
-                    dataMatCopy->changeContext(dataMat, false);
-                    for (int j = 0; j < nSets; ++j)
-                    {
-                        for (int g = 0; g < numVars; ++g)
-                        {
-                            if (scalingInput[k] == scalingInput[g])
-                            {
-                                dataMatCopy->matrix_Sum('N', nCells, 1, avgVec, 0, 0, g * nCells, j, -1.0, 1.0);
-                            }
-                        }
-                    }
-
-                    // TODO: this is subtly incorrect for grouped variables
-                    // This computes the variance as sum((x1 - mu)^2 + (x2 - mu)^2) / N
-                    // Should be sum((x1 + x2 - 2 * mu)^2) / N
-                    // Not sure how this could be done efficiently
-
-                    // square elements
-                    for (int i = 0; i < dataMatCopy->dataD.size(); ++i)
-                    {
-                        dataMatCopy->dataD[i] = pow(dataMatCopy->dataD[i], 2);
-                    }
-                    MPI_Barrier(MPI_COMM_WORLD);
-
-                    // compute variance
-                    calcGroupQuant(dataMatCopy, val2, valVec2, k, "avg", isField);
-
-                }
-                else if (scaleMethod == "sphere")
-                {
-                    val1 = 0.0;
-                    calcGroupQuant(dataMat, val2, valVec2, k, "l2", isField);
-                }
-
-                // final calculations for scaling method
-                if (isField)
-                {
-                    if (scaleMethod == "minmax")
-                    {
-                        for (int i = 0; i < nCells; ++i)
-                        {
-                            scalingSubVec[k * nCells + i] = valVec1[i];
-                            scalingDivVec[k * nCells + i] = valVec2[i] - valVec1[i];
-                        }
-                    }
-                    else if (scaleMethod == "standardize")
-                    {
-                        for (int i = 0; i < nCells; ++i)
-                        {
-                            scalingSubVec[k * nCells + i] = valVec1[i];
-                            scalingDivVec[k * nCells + i] = sqrt(valVec2[i]);
-                        }
-                    }
-                }
-                else
-                {
-                    if (scaleMethod == "minmax")
-                    {
-                        scalingSubVec[k] = val1;
-                        scalingDivVec[k] = val2 - val1;
-                    }
-                    else if (scaleMethod == "standardize")
-                    {
-                        scalingSubVec[k] = val1;
-                        scalingDivVec[k] = sqrt(val2);
-                    }
-                    else if (scaleMethod == "sphere")
-                    {
-                        scalingSubVec[k] = val1;
-                        scalingDivVec[k] = val2;
-                    }
-                }
-
-            }
-            else
-            {
-                scalingSubVec[k] = 0.0;
-                scalingDivVec[k] = scalingInput[k];
-            }
-
-            if (!isField)
-            {
-                cout << "Subtractive scaling factor for " << varName[k] << " is: " << setprecision(numeric_limits<double>::digits10) << scalingSubVec[k] << endl;
-                cout << "Divisive scaling factor for " << varName[k] << " is: " << setprecision(numeric_limits<double>::digits10) << scalingDivVec[k] << endl;
-            }
-            else
-            {
-                cout << "Scaling field calculation for " << varName[k] << " complete" << endl;
-            }
-
-            // distribute to fields in same group instead of recalculating
-            for (int g = 0; g < numVars; g++)
-            {
-                if (g == k)
-                {
-                    continue;
-                }
-                else if (scalingInput[g] == scalingInput[k])
-                {
-                    if (isField)
-                    {
-                        for (int i = 0; i < nCells; ++i)
-                        {
-                            scalingSubVec[g * nCells + i] = scalingSubVec[k * nCells + i];
-                            scalingDivVec[g * nCells + i] = scalingDivVec[k * nCells + i];
-                        }
-                    }
-                    else
-                    {
-                        scalingSubVec[g] = scalingSubVec[k];
-                        scalingDivVec[g] = scalingDivVec[k];
-                    }
-                    skipFlags.push_back(k);
-                }
-            }
-        }
-        if (scaleMethod == "standardize")
-        {
-            destroyPMat(dataMatCopy);
+            cout << "Scaling calculation has not been re-implemented" << endl;
+            MPI_Barrier(MPI_COMM_WORLD);
+            MPI_Abort(MPI_COMM_WORLD, -1);
         }
     }
 
     // update global param
     scalingIsField = isField;
 
-    // expand constants to full field for convenience sake
+    // expand constants to full field
     if (!isField)
     {
-        vector<double> subVals(numVars);
-        vector<double> divVals(numVars);
-        copy(scalingSubVec.begin(), scalingSubVec.end(), subVals.begin());
-        copy(scalingDivVec.begin(), scalingDivVec.end(), divVals.begin());
-        scalingSubVec.resize(nPoints, 0.0);
-        scalingDivVec.resize(nPoints, 0.0);
-        for (int k = 0; k < numVars; ++k)
+        for (int j = 0; j < numVars; ++j)
         {
             for (int i = 0; i < nCells; ++i)
             {
-                scalingSubVec[k * nCells + i] = subVals[k];
-                scalingDivVec[k * nCells + i] = divVals[k];
+                scalingDivVec->setElement(j * nCells + i, 0, scalingInput[j]);
             }
         }
     }
 
     // prevent divisive factors close to zero
     // really only happens when min and max are same, implying field is uniform
-    for (int k = 0; k < numVars; ++k)
+    for (int i = 0; i < scalingDivVec->dataD.size(); ++i)
     {
-        for (int i = 0; i < nCells; ++i)
+        if (abs(scalingDivVec->dataD[i]) < 1e-15)
         {
-            if (abs(scalingDivVec[k * nCells + i]) < 1e-15)
-            {
-                scalingSubVec[k * nCells + i] = 0.0;
-                scalingDivVec[k * nCells + i] = 1.0;
-            }
+            scalingDivVec->dataD[i] = 1.0;
         }
     }
 
@@ -1340,29 +1125,17 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
     cout << "Scaling calculated" << endl;
     if (writeToDisk)
     {
-        if (dataMat->pG->rank == 0)
-        {
-            // TODO: get SZPLT to output correctly, without silly fileID requirement
-            vector<double> vecOut(nPoints, 0.0);
-            vecToCellIDOrder(scalingSubVec, vecOut);
-            writeASCIIDoubleVec("scalingSubProf.dat", vecOut);
-            vecToCellIDOrder(scalingDivVec, vecOut);
-            writeASCIIDoubleVec("scalingDivProf.dat", vecOut);
-        }
+        // TODO: get SZPLT to output correctly, without silly fileID requirement
+        scalingSubVec->write_ascii("scalingSubProf.dat", "scalingSubProf");
+        scalingDivVec->write_ascii("scalingDivProf.dat", "scalingDivProf");
 
         // if also centering, combine into single profile (useful for GEMS)
         if (isCentered)
         {
+            scalingSubVecFull->matrix_Sum('N', nPoints, 1, centerVec, 0, 0, 0, 0, 1.0, 1.0);
+            scalingSubVecFull->matrix_Sum('N', nPoints, 1, scalingSubVec, 0, 0, 0, 0, 1.0, 1.0);
             cout << "Writing combined subtractive scaling factors" << endl;
-            scalingSubVecFull.resize(nPoints);
-            // for (int i = 0; i < nPoints; ++i)
-            // {
-            //     scalingSubVecFull[i] = centerVec[i] + scalingSubVec[i];
-            // }
-            if (dataMat->pG->rank == 0)
-            {
-                writeASCIIDoubleVec("scalingSubProfFull.dat", scalingSubVecFull);
-            }
+            scalingSubVecFull->write_ascii("scalingSubProfFull.dat", "scalingSubProfFull");
         }
 
         cout << "Scaling files written" << endl;
@@ -1379,34 +1152,63 @@ void tecIO::scaleData(pMat *dataMat)
 void tecIO::scaleData(pMat *dataMat, bool unscale)
 {
 
-    cout << "Scaling matrix by scaling factor" << endl;
-    int currentCol = 0;
-    for (int j = 0; j < dataMat->N; j++)
+    if (!scalingDivVec || !scalingSubVec)
     {
-        if (dataMat->pG->mycol == (j / dataMat->nb) % dataMat->pG->pcol)
+        cout << "Scaling isn't setup, call calcScaling first" << endl;
+        MPI_Abort(MPI_COMM_WORLD,-1);
+    }
+
+    if (unscale)
+    {
+        cout << "Unscaling" << endl;
+    }
+    else
+    {
+        cout << "Scaling" << endl;
+    }
+
+    double divFac;
+    if (unscale)
+    {
+        // multiply rows
+        for (int j = 0; j < dataMat->M; ++j)
         {
-            for (int i = 0; i < nPoints; i++)
-            {
-                int xi = i % dataMat->mb;
-                int li = i / (dataMat->pG->prow * dataMat->mb);
-                if (dataMat->pG->myrow == (i / dataMat->mb) % dataMat->pG->prow)
-                {
-                    // (un)scale data
-                    if (unscale)
-                    {
-                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] *= scalingDivVec[i];
-                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] += scalingSubVec[i];
-                    }
-                    else
-                    {
-                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] -= scalingSubVec[i];
-                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] /= scalingDivVec[i];
-                    }
-                }
-            }
-            currentCol++;
+            divFac = scalingDivVec->getElement(j, 0);
+            dataMat->scale_col_row(divFac, j, true);
+        }
+
+        // add columns
+        for (int j = 0; j < dataMat->N; ++j)
+        {
+            dataMat->matrix_Sum('N', dataMat->M, 1, scalingSubVec, 0, 0, 0, j, 1.0, 1.0);
         }
     }
+    else
+    {
+        // subtract columns
+        for (int j = 0; j < dataMat->N; ++j)
+        {
+            dataMat->matrix_Sum('N', dataMat->M, 1, scalingSubVec, 0, 0, 0, j, -1.0, 1.0);
+        }
+
+        // divide rows
+        for (int j = 0; j < dataMat->M; ++j)
+        {
+            divFac = scalingDivVec->getElement(j, 0);
+            divFac = 1.0 / divFac;
+            dataMat->scale_col_row(divFac, j, true);
+        }
+    }
+
+    if (unscale)
+    {
+        cout << "Data unscaled" << endl;
+    }
+    else
+    {
+        cout << "Data scaled" << endl;
+    }
+
 }
 
 // compute cell-wise quantity across all snapshots
@@ -1694,6 +1496,26 @@ void tecIO::readSZPLTToVec(string filename, vector<double> &vec)
     }
     tecFileReaderClose(&fH);
     cout << "Vector loaded from: " << filename << endl;
+}
+
+void tecIO::readSZPLTToPMat(string filename, pMat* loadMat)
+{
+    // TODO: this is the worst-case scenario w/r/t/ memory, FIX
+    vector<double> tempR;
+    tempR.resize(nPoints);
+    readSingle(filename, tempR.data());
+    if (loadMat->pG->mycol == 0)
+    {
+        for (int i = 0; i < nPoints; i++)
+        {
+            int xi = i % loadMat->mb;
+            int li = i / (loadMat->pG->prow * loadMat->mb);
+            if (loadMat->pG->myrow == (i / loadMat->mb) % loadMat->pG->prow)
+            {
+                loadMat->dataD[xi + li * loadMat->mb] = tempR[i];
+            }
+        }
+    }
 }
 
 void tecIO::vecToCellIDOrder(vector<double> &vecIn, vector<double> &vecOut)

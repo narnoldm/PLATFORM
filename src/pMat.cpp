@@ -359,7 +359,7 @@ int pMat::write_ascii(string filename, string header)
     ostringstream outstream;
     double val = 1.0;
     outstream << scientific << setprecision(numeric_limits<double>::digits10) << val << "\n";
-    int valLength = strlen((outstream.str()).c_str());
+    int valLength = strlen((outstream.str()).c_str()) + 1; // add extra space for negative values
     outstream.str("");
     outstream.clear();
 
@@ -367,6 +367,7 @@ int pMat::write_ascii(string filename, string header)
     if (pG->mycol == 0)
     {
         int xi, li;
+        string tail;
         string outstring;
 
         // loop global element index
@@ -379,7 +380,16 @@ int pMat::write_ascii(string filename, string header)
             if (pG->myrow == (i / mb) % pG->prow)
             {
                 val = dataD[li * mb + xi];
-                outstream << scientific << setprecision(numeric_limits<double>::digits10) << val << "\n";
+                // pad non-negative numbers with an additional space
+                if (val < 0.0)
+                {
+                    tail = "\n";
+                }
+                else
+                {
+                    tail = " \n";
+                }
+                outstream << scientific << setprecision(numeric_limits<double>::digits10) << val << tail;
                 outstring = outstream.str();
                 offset = strlen(header.c_str()) + valLength * i;
                 buffer = outstring.c_str();

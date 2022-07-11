@@ -64,7 +64,9 @@ public:
     bool isScaled = false;
     bool scalingIsField;
     std::vector<double> scalingInput;
-    std::vector<double> scalingSubVec, scalingDivVec, scalingSubVecFull;
+    pMat* scalingSubVec = NULL;
+    pMat* scalingDivVec = NULL;
+    pMat* scalingSubVecFull = NULL;
 
     std::vector<int> idx;
     std::vector<int> cellID;
@@ -90,6 +92,7 @@ public:
 
     // I/O
     void vecToCellIDOrder(std::vector<double> &vecIn, std::vector<double> &vecOut);
+    void readSZPLTToPMat(std::string filename, pMat* loadMat);
     void readDATToVec(std::string filename, std::vector<double> &vec);
     void readSZPLTToVec(std::string filename, std::vector<double> &vec);
     virtual bool readSingle(int fileID, double *point);
