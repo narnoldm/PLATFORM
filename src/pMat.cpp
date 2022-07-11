@@ -207,25 +207,25 @@ void pMat::switchType(int t)
 
 void pMat::printMat()
 {
-        for (int p = 0; p < pG->size; p++)
+    for (int p = 0; p < pG->size; p++)
+    {
+        if (p == pG->rank)
         {
-                if (p == pG->rank)
-                {
-                        cout << "processor " << p << " has :" << endl;
-                        for (int i = 0; i < nelements; i++)
-                        {
-                                if (i % myRC[0] == 0)
-                                        cout << endl;
+            cout << "processor " << p << " has :" << endl;
+            for (int i = 0; i < nelements; i++)
+            {
+                if (i % myRC[0] == 0)
+                    cout << endl;
 
-                                if (type == 0)
-                                        cout << i << " " << dataD[i] << endl;
-                                else if (type == 1)
-                                        cout << dataC[i].real << " + " << dataC[i].imag << " i " << endl;
-                        }
-                        fflush(stdout);
-                }
-                MPI_Barrier(MPI_COMM_WORLD);
+                if (type == 0)
+                    cout << i << " " << dataD[i] << endl;
+                else if (type == 1)
+                    cout << dataC[i].real << " + " << dataC[i].imag << " i " << endl;
+            }
+            fflush(stdout);
         }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
 }
 
 int pMat::write_bin(std::string filename)

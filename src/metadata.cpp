@@ -437,11 +437,18 @@ void tecIO::checkExists()
         }
     }
 }
+
 bool tecIO::readSingle(int fileID, double *point)
 {
-    cout << (prefix + std::to_string(fileID) + suffix) << "\r";
+    string filename = prefix + std::to_string(fileID) + suffix;
+    readSingle(filename, point);
+}
+
+bool tecIO::readSingle(string filename, double *point)
+{
+    cout << filename << "\r";
     void *fH = NULL;
-    tecFileReaderOpen((prefix + std::to_string(fileID) + suffix).c_str(), &fH);
+    tecFileReaderOpen(filename.c_str(), &fH);
     int type;
     assert(fH != NULL);
     std::vector<float> get;
@@ -909,6 +916,7 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
 
     isCentered = true;
     genHash(prefix + to_string(snap0) + suffix);
+    centerVec = new pMat(nPoints, 1, dataMat->pG, 0, 0, 0.0, false);
 
     // update this check when a new method is added
     if ((centerMethod != "avg") && (centerMethod != "avgmag"))
@@ -916,15 +924,28 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
 
         // load from file
         // TODO: allow reading from small vector
-        // TODO: allow reading from ASCII file
         isField = true;
         if (centerMethod.substr(centerMethod.size()-6, 6) == ".szplt")
         {
-            readSZPLTToVec(centerMethod, centerVec);
-        }
-        else if (centerMethod.substr(centerMethod.size()-4, 4) == ".dat")
-        {
-            readDATToVec(centerMethod, centerVec);
+            // TODO: this is the worst-case scenario w/r/t/ memory, FIX
+            int currentCol = 0;
+            vector<double> tempR;
+            tempR.resize(nPoints);
+            readSingle(centerMethod, tempR.data());
+            if (centerVec->pG->mycol == 0)
+            {
+                for (int i = 0; i < nPoints; i++)
+                {
+                    int xi = i % centerVec->mb;
+                    int li = i / (centerVec->pG->prow * centerVec->mb);
+                    if (centerVec->pG->myrow == (i / centerVec->mb) % centerVec->pG->prow)
+                    {
+                        centerVec->dataD[xi + li * centerVec->mb] = tempR[i];
+                    }
+                }
+            }
+            // clean up memory
+            vector<double>().swap(tempR);
         }
         else
         {
@@ -935,102 +956,9 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
     }
     else
     {
-        // otherwise, calculate centering profile
-        int centerSize;
-        if (isField)
-        {
-            centerSize = nPoints;
-        }
-        else
-        {
-            centerSize = numVars;
-        }
-        cout << "Allocating centering as " << centerSize << " values" << endl;
-        centerVec.resize(centerSize, 0.0);
-        cout << "Centering allocated" << endl;
-
-        double val;
-        vector<double> valVec(nCells);
-        bool skip;
-        vector<int> skipFlags;
-        for (int k = 0; k < numVars; ++k)
-        {
-            if (scalingInput[k] < 0)
-            {
-                // check if this group has already been evaluated
-                skip = false;
-                for (int g = 0; g < skipFlags.size(); ++g)
-                {
-                    if (scalingInput[k] == skipFlags[g])
-                    {
-                        skip = true;
-                        break;
-                    }
-                }
-                if (skip)
-                {
-                    continue;
-                }
-
-                if (centerMethod == "avg")
-                {
-                    calcGroupQuant(dataMat, val, valVec, k, "avg", isField);
-                }
-                else if (centerMethod == "avgmag")
-                {
-                    calcGroupQuant(dataMat, val, valVec, k, "avgmag", isField);
-                }
-
-                // final calculations for centering method
-                if ((centerMethod == "avg") || (centerMethod == "avgmag"))
-                {
-                    if (isField)
-                    {
-                        for (int i = 0; i < nCells; ++i)
-                        {
-                            centerVec[k * nCells + i] = valVec[i];
-                        }
-                    }
-                    else
-                    {
-                        centerVec[k] = val;
-                    }
-                }
-
-                // distribute to fields in same group instead of recalculating
-                for (int g = 0; g < numVars; g++)
-                {
-                    if (g == k)
-                    {
-                        continue;
-                    }
-                    else if (scalingInput[g] == scalingInput[k])
-                    {
-                        if (isField)
-                        {
-                            for (int i = 0; i < nCells; ++i)
-                            {
-                                centerVec[g * nCells + i] = centerVec[k * nCells + i];
-                            }
-                        }
-                        else
-                        {
-                            centerVec[g] = centerVec[k];
-                        }
-                        skipFlags.push_back(k);
-                    }
-                }
-            }
-
-            if (!isField)
-            {
-                cout << "Centering factor for " << varName[k] << " is: " << setprecision(numeric_limits<double>::digits10) << centerVec[k] << endl;
-            }
-            else
-            {
-                cout << "Centering field calculation for " << varName[k] << " complete" << endl;
-            }
-        }
+        cout << "Centering calculation has not been re-implemented" << endl;
+        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Abort(MPI_COMM_WORLD, -1);
     }
 
     // update global param
@@ -1039,30 +967,17 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
     // expand constants to full field for convenience sake
     if (!isField)
     {
-        vector<double> centerVals(numVars);
-        copy(centerVec.begin(), centerVec.end(), centerVals.begin());
-        centerVec.resize(nPoints, 0.0);
-        for (int k = 0; k < numVars; ++k)
-        {
-            for (int i = 0; i < nCells; ++i)
-            {
-                centerVec[k * nCells + i] = centerVals[k];
-            }
-        }
+        cout << "Distributing scalar centering values has not been re-implemented" << endl;
+        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Abort(MPI_COMM_WORLD, -1);
     }
 
     // write centering field to file
     cout << "Centering calculated" << endl;
     if (writeToDisk)
     {
-        if (dataMat->pG->rank == 0)
-        {
-            // TODO: get SZPLT to output correctly, without silly fileID requirement
-            // convert to cell_id order and write
-            vector<double> vecOut(nPoints, 0.0);
-            vecToCellIDOrder(centerVec, vecOut);
-            writeASCIIDoubleVec("centerProf.dat", vecOut);
-        }
+        // TODO: get SZPLT to output correctly, without silly fileID requirement
+        centerVec->write_ascii("centerProf.dat", "centerProf");
         cout << "Centering files written" << endl;
     }
     MPI_Barrier(MPI_COMM_WORLD);
@@ -1076,45 +991,28 @@ void tecIO::centerData(pMat *dataMat)
 
 void tecIO::centerData(pMat *dataMat, bool uncenter)
 {
-    if (centerVec.size() == 0)
+    if (!centerVec)
     {
         cout << "Centering isn't setup, call calcCentering first" << endl;
         MPI_Abort(MPI_COMM_WORLD,-1);
     }
 
+    double alpha;
     if (uncenter)
     {
         cout << "Uncentering" << endl;
+        alpha = 1.0;
     }
     else
     {
         cout << "Centering" << endl;
+        alpha = -1.0;
     }
 
-    int currentCol = 0;
+    // subtract centering vector, column-by-column
     for (int j = 0; j < dataMat->N; j++)
     {
-        if (dataMat->pG->mycol == (j / dataMat->nb) % dataMat->pG->pcol)
-        {
-            for (int i = 0; i < nPoints; i++)
-            {
-                int xi = i % dataMat->mb;
-                int li = i / (dataMat->pG->prow * dataMat->mb);
-                if (dataMat->pG->myrow == (i / dataMat->mb) % dataMat->pG->prow)
-                {
-                    // center data
-                    if (uncenter)
-                    {
-                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] += centerVec[i];
-                    }
-                    else
-                    {
-                        dataMat->dataD[currentCol * dataMat->myRC[0] + xi + li * dataMat->mb] -= centerVec[i];
-                    }
-                }
-            }
-            currentCol++;
-        }
+        dataMat->matrix_Sum('N', dataMat->M, 1, centerVec, 0, 0, 0, j, alpha, 1.0);
     }
 
     if (uncenter)
@@ -1457,10 +1355,10 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
         {
             cout << "Writing combined subtractive scaling factors" << endl;
             scalingSubVecFull.resize(nPoints);
-            for (int i = 0; i < nPoints; ++i)
-            {
-                scalingSubVecFull[i] = centerVec[i] + scalingSubVec[i];
-            }
+            // for (int i = 0; i < nPoints; ++i)
+            // {
+            //     scalingSubVecFull[i] = centerVec[i] + scalingSubVec[i];
+            // }
             if (dataMat->pG->rank == 0)
             {
                 writeASCIIDoubleVec("scalingSubProfFull.dat", scalingSubVecFull);

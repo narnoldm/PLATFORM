@@ -57,7 +57,7 @@ public:
     bool isCentered = false;
     bool centeringIsField;
     std::vector<double> centeringInput;
-    std::vector<double> centerVec;
+    pMat* centerVec = NULL;
 
     // data scaling
     // (x - scalingSubVec) / scalingDivVec
@@ -93,6 +93,7 @@ public:
     void readDATToVec(std::string filename, std::vector<double> &vec);
     void readSZPLTToVec(std::string filename, std::vector<double> &vec);
     virtual bool readSingle(int fileID, double *point);
+    virtual bool readSingle(std::string filename, double *point);
     virtual bool writeSingle(int fileID, double *point, std::string fpref);
     virtual bool writeSingle(int fileID, double *point, std::string fpref, int points);
     bool writeSingleFile(std::string filename, std::vector<std::string> &fvars, double *point, std::string meshfile);

@@ -78,6 +78,9 @@ int main(int argc, char *argv[])
             dataset1->centerData(evenMat, false);
         }
 
+        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Abort(MPI_COMM_WORLD, -1);
+
         // read scaling inputs
         string scaleFile, scaleMethod;
         bool scale, scaleIsField, writeScaling;

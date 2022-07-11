@@ -16,8 +16,8 @@ target_link_libraries(projErP param meta)
 add_executable(calcSamplingError calcSamplingError.cpp)
 target_link_libraries(calcSamplingError param meta)
 
-add_executable(serial_norm serial_norm_calc.cpp)
-target_link_libraries(serial_norm param meta)
+#add_executable(serial_norm serial_norm_calc.cpp)
+#target_link_libraries(serial_norm param meta)
 
 # Timing executables
 

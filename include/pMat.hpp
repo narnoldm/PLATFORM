@@ -59,15 +59,15 @@ public:
 
 	pMat();
 	// Will create copy pMat object of pointed one
-	pMat(pMat *);
-	pMat(int, int, PGrid *);
-	pMat(int, int, PGrid *, bool);
+	pMat(pMat *point);
+	pMat(int m, int n, PGrid *pGp);
+	pMat(int m, int n, PGrid *pGp, bool);
 	// Creates pMat of dimension M,N on context pG with contant value
-	pMat(int, int, PGrid *, int, int, double);
-	pMat(int, int, PGrid *, int, int, double, bool);
+	pMat(int m, int n, PGrid *pGp, int t, int b, double);
+	pMat(int m, int n, PGrid *pGp, int t, int b, double, bool stdout_bool);
 	// Creates pMat of dimension M,N on context pG with contant value with cycles
-	pMat(int, int, PGrid *, int, int, int, double);
-	pMat(int, int, PGrid *, int, int, int, double, bool);
+	pMat(int m, int n, PGrid *pGp, int t, int b, int c, double);
+	pMat(int m, int n, PGrid *pGp, int t, int b, int c, double, bool stdout_bool);
 	~pMat();
 
 	// core setup routine called by different contructors
