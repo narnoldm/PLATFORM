@@ -13,7 +13,7 @@ void printASCIIVecP0(std::string fname, std::vector<T> &Mat, int N)
                 if (typeid(T) == typeid(double))
                         fprintf(fid, "%.9E\n", Mat[i]);
                 if (typeid(T) == typeid(int))
-                        fprintf(fid, "%d\n", Mat[i]);
+                        fprintf(fid, "%d\n", (int)Mat[i]);
         }
         fclose(fid);
 }

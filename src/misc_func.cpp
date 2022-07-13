@@ -66,18 +66,19 @@ void readMat(std::string filename, std::vector<int> &Mat)
     FILE *fid;
     int n, m; //check size
     fid = fopen(filename.c_str(), "rb");
-    fread(&n, sizeof(int), 1, fid);
-    fread(&m, sizeof(int), 1, fid);
+    size_t warn;
+    warn = fread(&n, sizeof(int), 1, fid);
+    warn = fread(&m, sizeof(int), 1, fid);
     if (n * m != Mat.size())
     {
         cout << "size does not match up resizing Mat to " << n * m << endl;
         Mat.resize(n * m, 0);
     }
-    fread(Mat.data(), sizeof(int), n * m, fid);
+    warn = fread(Mat.data(), sizeof(int), n * m, fid);
     fclose(fid);
 }
 
-// write vector of ints to binary file, 
+// write vector of ints to binary file,
 // with two 4-byte int header values defining the number of rows and columns
 // of the matrix which is defined by the vector
 void writeMat(std::string filename, int m, int n, std::vector<int> &Mat)

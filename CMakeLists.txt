@@ -46,13 +46,13 @@ add_dependencies(Eigen Eigen3)
 
 
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-message("${CMAKE_CXX_COMPILER_ID} detected")
-set(isINTEL 1)
-message("MKLROOT $ENV{MKLROOT}")
-set(MKLROOT $ENV{MKLROOT})
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -DUSE_MKL")
-else()
+#if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+#message("${CMAKE_CXX_COMPILER_ID} detected")
+#set(isINTEL 1)
+#message("MKLROOT $ENV{MKLROOT}")
+#set(MKLROOT $ENV{MKLROOT})
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -DUSE_MKL")
+#else()
 set(SCALAPACK_INSTALL_DIR ${CMAKE_BINARY_DIR}/external/Scalapack)
 ExternalProject_Add(Scalapack
     GIT_REPOSITORY https://github.com/Reference-ScaLAPACK/scalapack.git
@@ -65,7 +65,7 @@ find_package(LAPACK)
 
 set_target_properties(scalapack PROPERTIES IMPORTED_LOCATION ${SCALAPACK_LIB_DIR}/libscalapack.a)
 target_link_libraries(scalapack INTERFACE ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES} ${MPI_C_LIBRARIES} gfortran)
-endif()
+#endif()
 
 
 

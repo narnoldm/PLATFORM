@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
         projDir = fomDir + "/projection/k" + to_string(setBasis->nSets);
         if (outProjField || outLatentCode) {
             if (!rank)
-                system(("mkdir " + projDir).c_str());
+                size_t ierr = system(("mkdir " + projDir).c_str());
         }
     }
 
@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
         errSuffix = "_" + to_string(setFOM->snap0) + "_" + to_string(setFOM->snapF) + "_" + to_string(setFOM->snapSkip);
     }
     if (!rank)
-        system(("mkdir -p " + errDir).c_str());
+        size_t ierr = system(("mkdir -p " + errDir).c_str());
 
     // ----- FINISH PREPROCESSING -----
 
@@ -179,7 +179,7 @@ int main(int argc, char *argv[]) {
             }
             setFOM->scaleData(QTruth);
         }
-        
+
         if (outProjField)
             setFOM->batchWrite(QTruth, projDir, "fom_sol_raw_");
 
@@ -204,7 +204,7 @@ int main(int argc, char *argv[]) {
             if (errType == 1)
                 setFOM->centerData(QTruth, true);
         }
-        
+
         if (errType == 1) {
             QComp = QTruth_proj;
         } else {

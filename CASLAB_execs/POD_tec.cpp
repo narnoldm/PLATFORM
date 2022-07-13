@@ -1,5 +1,6 @@
 #include "metadata.hpp"
 #include "param.hpp"
+#include "extern_func.hpp"
 
 using namespace ::std;
 int main(int argc, char *argv[])
@@ -43,7 +44,7 @@ int main(int argc, char *argv[])
     if ((mosStep == 0) || (mosStep == 1) || (mosStep == 3))
     {
 
-        evenMat = new pMat(dataset1->nPoints, dataset1->nSets, evenG, 0, 0, 0.0);
+        evenMat = new pMat(dataset1->nPoints, dataset1->nSets, evenG, 0, 0, 0.0, false);
         dataset1->batchRead(evenMat);
 
         // read centering inputs

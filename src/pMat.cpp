@@ -4,42 +4,42 @@ using namespace ::std;
 
 pMat::pMat()
 {
-        cout << "empty pMat created" << endl;
+    cout << "empty pMat created" << endl;
 }
 pMat::pMat(pMat *point)
 {
-        pG = point->pG;
-        setupMat(point->M, point->N, point->type, point->block, point->cycles, 0.0, true);
+    pG = point->pG;
+    setupMat(point->M, point->N, point->type, point->block, point->cycles, 0.0, true);
 }
 pMat::pMat(int m, int n, PGrid *pGp)
 {
-        pG = pGp;
-        setupMat(m, n, 0, 0, 1, 0.0, true);
+    pG = pGp;
+    setupMat(m, n, 0, 0, 1, 0.0, true);
 }
 pMat::pMat(int m, int n, PGrid *pGp, bool stdout)
 {
-        pG = pGp;
-        setupMat(m, n, 0, 0, 1, 0.0, stdout);
+    pG = pGp;
+    setupMat(m, n, 0, 0, 1, 0.0, stdout);
 }
 pMat::pMat(int m, int n, PGrid *pGp, int t, int b, double init)
 {
-        pG = pGp;
-        setupMat(m, n, t, b, 1, init, true);
+    pG = pGp;
+    setupMat(m, n, t, b, 1, init, true);
 }
 pMat::pMat(int m, int n, PGrid *pGp, int t, int b, double init, bool stdout)
 {
-        pG = pGp;
-        setupMat(m, n, t, b, 1, init, stdout);
+    pG = pGp;
+    setupMat(m, n, t, b, 1, init, stdout);
 }
 pMat::pMat(int m, int n, PGrid *pGp, int t, int b, int c, double init)
 {
-        pG = pGp;
-        setupMat(m, n, t, b, c, init, true);
+    pG = pGp;
+    setupMat(m, n, t, b, c, init, true);
 }
 pMat::pMat(int m, int n, PGrid *pGp, int t, int b, int c, double init, bool stdout)
 {
-        pG = pGp;
-        setupMat(m, n, t, b, c, init, stdout);
+    pG = pGp;
+    setupMat(m, n, t, b, c, init, stdout);
 }
 pMat::~pMat()
 {
@@ -47,119 +47,120 @@ pMat::~pMat()
 }
 void destroyPMat(pMat *A, bool stdout)
 {
-        if ((A->pG->rank == 0) && stdout)
-                cout << "Deallocating Distributed Matrix" << endl;
-        delete A;
+    if ((A->pG->rank == 0) && stdout)
+        cout << "Deallocating Distributed Matrix" << endl;
+    delete A;
 }
 void destroyPMat(pMat *A)
 {
-        destroyPMat(A, true);
+    destroyPMat(A, true);
 }
 void pMat::setupMat(int m, int n, int t, int b, int c, double init, bool stdout)
 {
-        M = m;
-        N = n;
-        type = t;
-        block = b;
-        cycles = c;
-        printRank = pG->printRank;
+    M = m;
+    N = n;
+    type = t;
+    block = b;
+    cycles = c;
+    printRank = pG->printRank;
 
+    if (stdout)
+    {
+        cout << "Creating Matrix" << endl
+            << "M = " << M << " N = " << N << endl;
+    }
+    if (block == 0) // square blocks
+    {
+        nb = 128;
+        mb = nb;
+        if (mb > (M / pG->getDim(1)))
+            mb = std::max(1, M / (pG->getDim(1) * cycles));
+        if (nb > (N / pG->getDim(0)))
+            nb = std::max(1, N / (pG->getDim(0) * cycles));
+        mb = std::min(mb, nb);
+        nb = mb;
+        if (stdout)
+            cout << "mb/nb = " << nb << endl;
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+    else if (block == 1) // load blocks
+    {
+        nb = 128;
+        mb = M;
+        if (nb > (N / pG->getDim(0)))
+            nb = std::max(1, N / pG->getDim(0));
         if (stdout)
         {
-                cout << "Creating Matrix" << endl
-                     << "M=" << M << " N=" << N << endl;
-        }
-        if (block == 0) //square blocks
-        {
-                nb = 128;
-                mb = nb;
-                if (mb > (M / pG->getDim(1)))
-                        mb = std::max(1, M / (pG->getDim(1) * cycles));
-                if (nb > (N / pG->getDim(0)))
-                        nb = std::max(1, N / (pG->getDim(0) * cycles));
-                mb = std::min(mb, nb);
-                nb = mb;
-                if (stdout)
-                        cout << "mb/nb = " << nb << endl;
-                MPI_Barrier(MPI_COMM_WORLD);
-        }
-        else if (block == 1) //load blocks
-        {
-                nb = 128;
-                mb = M;
-                if (nb > (N / pG->getDim(0)))
-                        nb = std::max(1, N / pG->getDim(0));
-                if (stdout)
-                {
-                        cout << "mb is " << mb << endl;
-                        cout << "nb is " << nb << endl;
-                }
-                MPI_Barrier(MPI_COMM_WORLD);
-        }
-        else if (block == 2) //p0 block
-        {
-                nb = N;
-                mb = M;
-                if (stdout)
-                {
-                        cout << "nb is " << nb << endl;
-                        cout << "mb is " << mb << endl;
-                }
-                MPI_Barrier(MPI_COMM_WORLD);
-        }
-        else if (block == 3) //synched block
-        {
-                nb = N / (pG->prow);
-                mb = M / (pG->pcol);
-        }
-        myRC[0] = numroc_(&M, &mb, &(pG->myrow), &i_zero, &(pG->prow));
-
-        myRC[1] = numroc_(&N, &nb, &(pG->mycol), &i_zero, &(pG->pcol));
-
-        nelements = (long long)myRC[0] * (long long)myRC[1];
-        for (int i = 0; i < 2; i++)
-                myRC[i] = std::max(1, myRC[i]);
-
-        if (type == 0)
-        {
-                if (stdout)
-                        cout << "Mat is Double" << endl;
-                dataD.resize(nelements, init);
-                MBs = nelements * 8.0 / (1.0e6);
-        }
-        else if (type == 1)
-        {
-                if (stdout)
-                        cout << "Mat is Complex" << endl;
-                dataC.resize(nelements);
-                for (int i = 0; i < nelements; i++)
-                {
-                        dataC[i].real = init;
-                        dataC[i].imag = 0.0;
-                        MBs = nelements * 16.0 / (1.0e6);
-                }
-        }
-        else
-        {
-                cout << "invalid type" << endl;
-                MPI_Abort(MPI_COMM_WORLD, -1);
+            cout << "mb is " << mb << endl;
+            cout << "nb is " << nb << endl;
         }
         MPI_Barrier(MPI_COMM_WORLD);
-
+    }
+    else if (block == 2) // p0 block
+    {
+        nb = N;
+        mb = M;
         if (stdout)
         {
-                cout << "nelements " << nelements << endl;
-                cout << myRC[0] << " " << myRC[1] << endl;
+            cout << "nb is " << nb << endl;
+            cout << "mb is " << mb << endl;
         }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+    else if (block == 3) // synched block
+    {
+        nb = N / (pG->prow);
+        mb = M / (pG->pcol);
+    }
 
-        descinit_(desc, &M, &N, &mb, &nb, &i_zero, &i_zero, &(pG->icntxt), &myRC[0], &info);
-        if (info != 0)
-        {
-                cout << "Error in descriptor setup in argument, info=" << -info << endl;
-        }
+    myRC[0] = numroc_(&M, &mb, &(pG->myrow), &i_zero, &(pG->prow));
+    myRC[1] = numroc_(&N, &nb, &(pG->mycol), &i_zero, &(pG->pcol));
 
+    nelements = (long long)myRC[0] * (long long)myRC[1];
+    for (int i = 0; i < 2; i++)
+        myRC[i] = std::max(1, myRC[i]);
+
+    if (type == 0)
+    {
         if (stdout)
-                cout << "Matrix Constructed" << endl;
+            cout << "Mat is Double" << endl;
+        dataD.resize(nelements, init);
+        MBs = nelements * 8.0 / (1.0e6);
+    }
+    else if (type == 1)
+    {
+        if (stdout)
+            cout << "Mat is Complex" << endl;
+        dataC.resize(nelements);
+        for (int i = 0; i < nelements; i++)
+        {
+            dataC[i].real = init;
+            dataC[i].imag = 0.0;
+            MBs = nelements * 16.0 / (1.0e6);
+        }
+    }
+    else
+    {
+        cout << "invalid type" << endl;
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    if (stdout)
+    {
+        cout << "nelements " << nelements << endl;
+        cout << myRC[0] << " " << myRC[1] << endl;
+    }
+
+    desc = new int[9];
+    descinit_(desc, &M, &N, &mb, &nb, &i_zero, &i_zero, &(pG->icntxt), &myRC[0], &info);
+    if (info != 0)
+    {
+        cout << "Error in descriptor setup in argument, info=" << -info << endl;
+    }
+
+    if (stdout)
+        cout << "Matrix Constructed" << endl;
 }
 
 void pMat::switchType(int t)
@@ -502,41 +503,57 @@ int pMat::matrix_vec_product(char trans, int m, int n, double alpha, pMat *A, in
 int pMat::matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int jb, double alpha, double beta)
 {
 
-        if ((A->type == 0) && (type == 0))
-        {
-                // if (printRank)
-                //         cout << "Double Sum" << endl;
-                int IA = ia + 1;
-                int JA = ja + 1;
-                int IB = ib + 1;
-                int JB = jb + 1;
-                pdgeadd_(&tA, &m, &n, &alpha, A->dataD.data(), &IA, &JA, A->desc, &beta, dataD.data(), &IB, &JB, desc);
-        }
-        else if ((A->type == 1) && (type == 1))
-        {
-                if (printRank)
-                        cout << "Complex Sum" << endl;
-                int IA = ia + 1;
-                int JA = ja + 1;
-                int IB = ib + 1;
-                int JB = jb + 1;
+    if ((A->type == 0) && (type == 0))
+    {
+        int IA = ia + 1;
+        int JA = ja + 1;
+        int IB = ib + 1;
+        int JB = jb + 1;
+        pdgeadd_(&tA, &m, &n, &alpha, A->dataD.data(), &IA, &JA, A->desc, &beta, dataD.data(), &IB, &JB, desc);
+    }
+    else if ((A->type == 1) && (type == 1))
+    {
+        int IA = ia + 1;
+        int JA = ja + 1;
+        int IB = ib + 1;
+        int JB = jb + 1;
 #ifdef USE_MKL
-                MKL_Complex16 Ac, Bc;
+        MKL_Complex16 Ac, Bc;
 #else
-                complex16 Ac, Bc;
+        complex16 Ac, Bc;
 #endif
-                Ac.real = alpha;
-                Ac.imag = 0;
-                Bc.real = beta;
-                Bc.imag = 0;
-                pzgeadd_(&tA, &m, &n, &Ac, A->dataC.data(), &IA, &JA, A->desc, &Bc, dataC.data(), &IB, &JB, desc);
-        }
-        else
-        {
-                if (printRank)
-                        cout << "Other Formats not supported yet" << endl;
-        }
-        return 0;
+        Ac.real = alpha;
+        Ac.imag = 0;
+        Bc.real = beta;
+        Bc.imag = 0;
+        pzgeadd_(&tA, &m, &n, &Ac, A->dataC.data(), &IA, &JA, A->desc, &Bc, dataC.data(), &IB, &JB, desc);
+    }
+    else
+    {
+        cout << "Other Formats not supported yet" << endl;
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+    return 0;
+}
+
+// Element-wise sub-matrix multiplication, scaled by alpha
+void pMat::matrix_elem_mult(char tA, int m, int n, double alpha, pMat *A, int ia, int ja, int ic, int jc)
+{
+
+    if ((A->type == 0) && (type == 0))
+    {
+        int IA = ia + 1;
+        int JA = ja + 1;
+        int IC = ic + 1;
+        int JC = jc + 1;
+        pdgemul(tA, m, n, alpha, A->dataD.data(), IA, JA, A->desc, dataD.data(), IC, JC, desc);
+    }
+    else
+    {
+        cout << "Other formats not supported yet" << endl;
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+
 }
 
 // scales row or column of matrix by factor alpha
@@ -754,7 +771,7 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
 
                         FILE *fid;
                         fid = fopen("S.bin", "rb");
-                        fread(S.data(), sizeof(double), N, fid);
+                        size_t warn = fread(S.data(), sizeof(double), N, fid);
 
                         t1 = MPI_Wtime();
                         int modeCount = 0;
@@ -1270,6 +1287,11 @@ double pMat::getLocalElement(int I, int J, double temp)
 
 void pMat::setElement(int I, int J, double val)
 {
+    setElement(I, J, val, true);
+}
+
+void pMat::setElement(int I, int J, double val, bool barrier)
+{
         int l, m;
         int x, y;
 
@@ -1283,73 +1305,77 @@ void pMat::setElement(int I, int J, double val)
                 assert(((m * nb + y) * myRC[0] + l * mb + x) < nelements);
                 dataD[(m * nb + y) * myRC[0] + l * mb + x] = val;
         }
-		MPI_Barrier(MPI_COMM_WORLD);
+        if (barrier)
+        {
+            MPI_Barrier(MPI_COMM_WORLD);
+        }
+
 }
 
 bool operator==(pMat const &p1, pMat const &p2)
 {
-        if ((p1.M != p2.M) || (p1.N != p2.N))
+    if ((p1.M != p2.M) || (p1.N != p2.N))
+    {
+        cout << "Dim mismatch" << endl;
+        return false;
+    }
+    else if ((p1.nelements != p2.nelements))
+    {
+        cout << "element mismatch" << endl;
+        return false;
+    }
+    else
+    {
+        if (p1.type == 0)
         {
-                cout << "Dim mismatch" << endl;
-                return false;
-        }
-        else if ((p1.nelements != p2.nelements))
-        {
-                cout << "element mismatch" << endl;
-                return false;
-        }
-        else
-        {
-                if (p1.type == 0)
+            for (int i = 0; i < p1.nelements; i++)
+            {
+                double epsilon = .01;
+                if (p1.dataD[i] > 0)
                 {
-                        for (int i = 0; i < p1.nelements; i++)
-                        {
-                                double epsilon = .01;
-                                if (p1.dataD[i] > 0)
-                                {
-                                        if ((p1.dataD[i] + p1.dataD[i] * epsilon) < p2.dataD[i] || (p1.dataD[i] - p1.dataD[i] * epsilon) > p2.dataD[i])
-                                        {
-                                                cout << "element " << i << " does not match" << endl;
-                                                cout << (p1.dataD[i] - p1.dataD[i] * epsilon) << "< " << p2.dataD[i] << " < " << (p1.dataD[i] + p1.dataD[i] * epsilon) << endl;
-                                                cout << p1.dataD[i] << "!=" << p2.dataD[i] << endl;
-                                                return false;
-                                        }
-                                }
-                                else
-                                {
-                                        if ((p1.dataD[i] + p1.dataD[i] * epsilon) > p2.dataD[i] || (p1.dataD[i] - p1.dataD[i] * epsilon) < p2.dataD[i])
-                                        {
-                                                cout << "element " << i << " does not match" << endl;
-                                                cout << (p1.dataD[i] - p1.dataD[i] * epsilon) << "< " << p2.dataD[i] << " < " << (p1.dataD[i] + p1.dataD[i] * epsilon) << endl;
-                                                cout << p1.dataD[i] << "!=" << p2.dataD[i] << endl;
-                                                return false;
-                                        }
-                                }
-                        }
+                    if ((p1.dataD[i] + p1.dataD[i] * epsilon) < p2.dataD[i] || (p1.dataD[i] - p1.dataD[i] * epsilon) > p2.dataD[i])
+                    {
+                        cout << "element " << i << " does not match" << endl;
+                        cout << (p1.dataD[i] - p1.dataD[i] * epsilon) << "< " << p2.dataD[i] << " < " << (p1.dataD[i] + p1.dataD[i] * epsilon) << endl;
+                        cout << p1.dataD[i] << "!=" << p2.dataD[i] << endl;
+                        return false;
+                    }
                 }
-                else if (p1.type == 1)
+                else
                 {
-                        for (int i = 0; i < p1.nelements; i++)
-                        {
-                                if ((p1.dataC[i].real != p2.dataC[i].real) || (p1.dataC[i].imag != p2.dataC[i].imag))
-                                        return false;
-                        }
+                    if ((p1.dataD[i] + p1.dataD[i] * epsilon) > p2.dataD[i] || (p1.dataD[i] - p1.dataD[i] * epsilon) < p2.dataD[i])
+                    {
+                        cout << "element " << i << " does not match" << endl;
+                        cout << (p1.dataD[i] - p1.dataD[i] * epsilon) << "< " << p2.dataD[i] << " < " << (p1.dataD[i] + p1.dataD[i] * epsilon) << endl;
+                        cout << p1.dataD[i] << "!=" << p2.dataD[i] << endl;
+                        return false;
+                    }
                 }
+            }
         }
+        else if (p1.type == 1)
+        {
+            for (int i = 0; i < p1.nelements; i++)
+            {
+                if ((p1.dataC[i].real != p2.dataC[i].real) || (p1.dataC[i].imag != p2.dataC[i].imag))
+                    return false;
+            }
+        }
+    }
 
-        return true;
+    return true;
 }
 
 int pMat::commCreate(MPI_Comm &col_comm, int dim)
 {
-        if (dim == 0)
-        {
-                MPI_Comm_split(MPI_COMM_WORLD, pG->mycol, pG->rank, &col_comm);
-        }
-        else if (dim == 1)
-        {
-                MPI_Comm_split(MPI_COMM_WORLD, pG->myrow, pG->rank, &col_comm);
-        }
-        else
-                MPI_Abort(MPI_COMM_WORLD, -1);
+    if (dim == 0)
+    {
+        MPI_Comm_split(MPI_COMM_WORLD, pG->mycol, pG->rank, &col_comm);
+    }
+    else if (dim == 1)
+    {
+        MPI_Comm_split(MPI_COMM_WORLD, pG->myrow, pG->rank, &col_comm);
+    }
+    else
+        MPI_Abort(MPI_COMM_WORLD, -1);
 }

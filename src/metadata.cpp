@@ -57,8 +57,9 @@ void meta::checkSize()
     fid = fopen((prefix + to_string(snap0) + suffix).c_str(), "rb");
     assert(fid != NULL);
     int header[2] = {0, 0};
-    fread(&(header[0]), sizeof(int), 1, fid);
-    fread(&(header[1]), sizeof(int), 1, fid);
+    size_t warn;
+    warn = fread(&(header[0]), sizeof(int), 1, fid);
+    warn = fread(&(header[1]), sizeof(int), 1, fid);
     assert(header[1] == 1);
     nPoints = header[0];
     fclose(fid);
@@ -89,11 +90,12 @@ bool meta::readSingle(int fileID, double *point)
     FILE *fid;
     fid = fopen((prefix + to_string(fileID) + suffix).c_str(), "rb");
     int header[2] = {0, 0};
-    fread(&(header[0]), sizeof(int), 1, fid);
-    fread(&(header[1]), sizeof(int), 1, fid);
+    size_t warn;
+    warn = fread(&(header[0]), sizeof(int), 1, fid);
+    warn = fread(&(header[1]), sizeof(int), 1, fid);
     assert(header[1] == 1);
     assert(header[0] == nPoints);
-    fread(point, sizeof(double), nPoints, fid);
+    warn = fread(point, sizeof(double), nPoints, fid);
     fclose(fid);
     return true;
 }
@@ -261,7 +263,7 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (!rank)
-        system(("mkdir " + dir).c_str());
+        int ierr = system(("mkdir " + dir).c_str());
 
     MPI_Barrier(MPI_COMM_WORLD);
     int iP = 0, fileIndex, localC = 0;
@@ -1170,10 +1172,9 @@ void tecIO::scaleData(pMat *dataMat, bool unscale)
     if (unscale)
     {
         // multiply rows
-        for (int j = 0; j < dataMat->M; ++j)
+        for (int j = 0; j < dataMat->N; ++j)
         {
-            divFac = scalingDivVec->getElement(j, 0);
-            dataMat->scale_col_row(divFac, j, true);
+            dataMat->matrix_elem_mult('N', dataMat->M, 1, 1.0, scalingDivVec, 0, 0, 0, j);
         }
 
         // add columns
@@ -1190,13 +1191,24 @@ void tecIO::scaleData(pMat *dataMat, bool unscale)
             dataMat->matrix_Sum('N', dataMat->M, 1, scalingSubVec, 0, 0, 0, j, -1.0, 1.0);
         }
 
-        // divide rows
-        for (int j = 0; j < dataMat->M; ++j)
+        // change scalingDivVec to multiplicative factor
+        for (int j = 0; j < scalingDivVec->dataD.size(); ++j)
         {
-            divFac = scalingDivVec->getElement(j, 0);
-            divFac = 1.0 / divFac;
-            dataMat->scale_col_row(divFac, j, true);
+            scalingDivVec->dataD[j] = 1.0 / scalingDivVec->dataD[j];
         }
+
+        // divide rows
+        for (int j = 0; j < dataMat->N; ++j)
+        {
+            dataMat->matrix_elem_mult('N', dataMat->M, 1, 1.0, scalingDivVec, 0, 0, 0, j);
+        }
+
+        // reverse scalingDivVec modification
+        for (int j = 0; j < scalingDivVec->dataD.size(); ++j)
+        {
+            scalingDivVec->dataD[j] = 1.0 / scalingDivVec->dataD[j];
+        }
+
     }
 
     if (unscale)

@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
 		if (!dir) {
 			throw(-1);
 		}
-		system(("mkdir -p " + fieldDir).c_str());
+		size_t err = system(("mkdir -p " + fieldDir).c_str());
 	}
 
 	string errSuffix = "_" + to_string(setField->snap0) + "_" + to_string(setField->snapF) + "_" + to_string(setField->snapSkip);

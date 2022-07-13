@@ -15,7 +15,7 @@
 #include <numeric>
 #include <limits>
 
-//#include "extern_func.hpp"
+#include "extern_func.hpp" // TODO: this needs a compiler flag to avoid adding when not using MKL
 #include "processGrid.hpp"
 
 /*#ifdef USE_MKL
@@ -39,22 +39,25 @@
 class pMat
 {
 public:
-	int myRC[2]={0,0}, desc[9]={0,0,0,0,0,0,0,0,0};
-	int M=0, N=0, mb=0, nb=0;
-	long MBs=0;
+	int myRC[2] = {0,0};
+    int* desc;
+	int M = 0, N = 0, mb = 0, nb = 0;
+	long MBs = 0;
+
 	std::vector<double> dataD;
 #ifdef USE_MKL
 	std::vector<MKL_Complex16> dataC;
 #else
 	std::vector<complex16> dataC;
 #endif
-	bool printRank=false;
-	bool isComp=false;
+
+	bool printRank = false;
+	bool isComp = false;
 	const int i_zero = 0;
 	const int i_one = 1;
 
-	int info=0, type=0, block=0, cycles=0;
-	long long nelements=0;
+	int info = 0, type = 0, block = 0, cycles = 0;
+	long long nelements = 0;
 	PGrid *pG;
 
 	pMat();
@@ -71,18 +74,19 @@ public:
 	~pMat();
 
 	// core setup routine called by different contructors
-	void setupMat(int, int, int, int, int, double, bool);
-	// Will switch type
-	void switchType(int);
+	void setupMat(int m, int n, int t, int b, int c, double init, bool stdout);
+
+    // Will switch type
+	void switchType(int t);
 
 	// Will print out entire matrix (DO NOT USE unless debugging)
 	void printMat();
 
 	// I/O
-	int write_bin(std::string);
-	int read_bin(std::string);
+	int write_bin(std::string filename);
+	int read_bin(std::string filename);
     int write_ascii(std::string filename, std::string header);
-	bool check_bin_size(std::string, int &, int &);
+	bool check_bin_size(std::string filename, int &mM, int &mN);
 
 	// PBLAS
 	int matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia, int ja, pMat *B, int ib, int jb, double alpha, double beta, int ic, int jc);
@@ -91,6 +95,7 @@ public:
 	int matrix_vec_product(char trans, int m, int n, double alpha, pMat *A, int ia, int ja, pMat *B, int ib, int jb,
 						   double beta, int ic, int jc);
     int scale_col_row(double alpha, int idx, bool scaleRows);
+    void matrix_elem_mult(char tA, int m, int n, double alpha, pMat *A, int ia, int ja, int ic, int jc);
 
 	// SVD
 	int svd_run(int, int, int, int, pMat *&, pMat *&, std::vector<double> &);
@@ -124,6 +129,7 @@ public:
 	double getLocalElement(int I, int J);
     double getLocalElement(int I, int J, double temp);
 	void setElement(int I, int J, double val);
+    void setElement(int I, int J, double val, bool barrier);
 
 	// Other
 	int outerProductSum(pMat *U, char, pMat *VT, char, std::vector<double> &S, int inv);
