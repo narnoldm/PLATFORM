@@ -155,8 +155,8 @@ bool meta::batchRead(pMat *loadMat)
         }
         tempR.clear();
     }
-    t2=MPI_Wtime();
-    cout<<"batch Read took "<<t2-t1<<" secs"<<endl;
+    t2 = MPI_Wtime();
+    cout << endl << "batch Read took " << t2 - t1 << " secs" << endl;
 }
 
 bool meta::batchRead(pMat *loadMat, int ii)
@@ -176,7 +176,7 @@ bool meta::batchRead(pMat *loadMat, int ii)
         {
             fileIndex = snap0 + i * snapSkip;
 
-            cout << "proc " << iP << " is reading file " << fileIndex << "\r";
+            cout << "proc " << iP << " is reading file " << fileIndex << "\r" << flush;
 
             readSingle(fileIndex, loadMat->dataD.data() + nPoints * localC);
             localC++;
@@ -448,12 +448,19 @@ bool tecIO::readSingle(int fileID, double *point)
 
 bool tecIO::readSingle(string filename, double *point)
 {
-    cout << filename << "\r";
+    cout << filename << "\r" << flush;
     void *fH = NULL;
     tecFileReaderOpen(filename.c_str(), &fH);
     int type;
     assert(fH != NULL);
-    std::vector<float> get;
+    vector<float> get;
+    vector<double> temp;
+
+    if (reorder)
+    {
+        temp.resize(nCells);
+    }
+
     for (int i = 0; i < numVars; i++)
     {
         tecZoneVarGetType(fH, 1, varIndex[i], &type);
@@ -465,7 +472,6 @@ bool tecIO::readSingle(string filename, double *point)
             {
                 point[j + i * nCells] = (double)get[j];
             }
-            get.clear();
         }
         else if (type == 2)
         {
@@ -474,7 +480,6 @@ bool tecIO::readSingle(string filename, double *point)
         if (reorder)
         {
             // TODO: there has to be a lower memory alternative
-            std::vector<double> temp(nCells, 0.0);
             for (int j = 0; j < nCells; j++)
             {
                 temp[j] = point[i * nCells + j];
@@ -483,7 +488,6 @@ bool tecIO::readSingle(string filename, double *point)
             {
                 point[i * nCells + j] = temp[idx[j]];
             }
-            temp.clear();
         }
     }
     tecFileReaderClose(&fH);
@@ -861,36 +865,33 @@ void tecIO::genHash(string filename)
     {
         int var_index = 0;
         var_index = getVariableIndex("cell_id", filename);
-        if (!rank)
-        {
-            int hashType;
-            cellID.resize(nCells);
-            tecFileReaderOpen(filename.c_str(), &fH);
-            tecZoneVarGetType(fH, 1, var_index, &hashType);
-            if (hashType == 3)
-            {
-                tecZoneVarGetInt32Values(fH, 1, var_index, 1, nCells, cellID.data());
-            }
-            else
-            {
-                MPI_Abort(MPI_COMM_WORLD,-1);
-            }
-            tecFileReaderClose(&fH);
-            for (int i = 0; i < nCells; i++)
-            {
-                cellID[i]--;
-            }
 
-            printf("hash table built\nDistributing to procs\n");
+        // faster if every process loads cell_id instead of broadcasting
+        int hashType;
+        cellID.resize(nCells);
+        tecFileReaderOpen(filename.c_str(), &fH);
+        tecZoneVarGetType(fH, 1, var_index, &hashType);
+        if (hashType == 3)
+        {
+            tecZoneVarGetInt32Values(fH, 1, var_index, 1, nCells, cellID.data());
+        }
+        else
+        {
+            MPI_Abort(MPI_COMM_WORLD,-1);
+        }
+        tecFileReaderClose(&fH);
+        for (int i = 0; i < nCells; i++)
+        {
+            cellID[i]--;
         }
 
-        MPI_Bcast(idx.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
-        MPI_Bcast(cellID.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
+        cout << "Hash table built" << endl;
         stable_sort(idx.begin(), idx.end(), [&](int i, int j) { return cellID[i] < cellID[j]; });
+        cout << "Finish sort" << endl;
     }
     else
     {
-        cout << "assume default hash" << endl;
+        cout << "Assume default hash" << endl;
         for (int i = 0; i < nCells; i++)
         {
             cellID[i] = i;
@@ -919,6 +920,8 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
     genHash(prefix + to_string(snap0) + suffix);
     centerVec = new pMat(nPoints, 1, dataMat->pG, 0, 0, 0.0, false);
 
+    cout << "Loading/calculating centering" << endl;
+
     // update this check when a new method is added
     if ((centerMethod != "avg") && (centerMethod != "avgmag"))
     {
@@ -929,6 +932,7 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
         if (centerMethod.substr(centerMethod.size()-6, 6) == ".szplt")
         {
             readSZPLTToPMat(centerMethod, centerVec);
+            cout << endl;
         }
         else
         {
@@ -1078,7 +1082,9 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
         if (szlSub.good() && szlDiv.good())
         {
             readSZPLTToPMat(scaleMethod + "SubProf.szplt", scalingSubVec);
+            cout << endl;
             readSZPLTToPMat(scaleMethod + "DivProf.szplt", scalingDivVec);
+            cout << endl;
         }
         else
         {
@@ -1107,7 +1113,7 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
         {
             for (int i = 0; i < nCells; ++i)
             {
-                scalingDivVec->setElement(j * nCells + i, 0, scalingInput[j]);
+                scalingDivVec->setElement(j * nCells + i, 0, scalingInput[j], false);
             }
         }
     }

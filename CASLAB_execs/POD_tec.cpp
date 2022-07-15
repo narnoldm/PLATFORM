@@ -41,6 +41,8 @@ int main(int argc, char *argv[])
     tecIO *dataset1;
     dataset1 = new tecIO(token);
 
+    double t1;
+
     if ((mosStep == 0) || (mosStep == 1) || (mosStep == 3))
     {
 
@@ -68,6 +70,7 @@ int main(int argc, char *argv[])
                 throw(-1);
             }
 
+            t1 = MPI_Wtime();
             if (centerFile != "")
             {
                 dataset1->calcCentering(evenMat, centerFile, true, writeCentering);
@@ -77,6 +80,7 @@ int main(int argc, char *argv[])
                 dataset1->calcCentering(evenMat, centerMethod, centerIsField, writeCentering);
             }
             dataset1->centerData(evenMat, false);
+            cout << "Centering time: " << MPI_Wtime() - t1 << endl;
         }
 
         // read scaling inputs
@@ -99,6 +103,8 @@ int main(int argc, char *argv[])
                 cout << "Can only set centerFile OR centerMethod if center = true" << endl;
                 throw(-1);
             }
+
+            t1 = MPI_Wtime();
             if (scaleFile != "")
             {
                 dataset1->calcScaling(evenMat, scaleFile, true, writeScaling);
@@ -108,6 +114,7 @@ int main(int argc, char *argv[])
                 dataset1->calcScaling(evenMat, scaleMethod, scaleIsField, writeScaling);
             }
             dataset1->scaleData(evenMat, false);
+            cout << "Scaling time: " << MPI_Wtime() - t1 << endl;
         }
 
     }
