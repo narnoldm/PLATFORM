@@ -433,39 +433,50 @@ void tecIO::readSingleLowMem(string filename, pMat* dataMat, int colIdx)
     tecFileReaderOpen(filename.c_str(), &fH);
 
     int type, dataIdx;
-    float getF;
-    double getD;
-    double t1;
-    double varTime = 0.0, idxTime = 0.0;
+    long maxReadSize = min(nCells, (long)MAX_IOVEC_SIZE);
+    vector<float> getF(maxReadSize);
+    vector<double> getD(maxReadSize);
+
+    int numCellLoops = ceil((float)nCells / (float)maxReadSize);
+    int readSize, cellIdx;
 
     for (int i = 0; i < numVars; i++)
     {
         tecZoneVarGetType(fH, 1, varIndex[i], &type);
-        for (int j = 0; j < nCells; j++)
+        for (int j = 0; j < numCellLoops; j++)
         {
+
+            if (j < numCellLoops - 1)
+                readSize = maxReadSize;
+            else
+                readSize = nCells - maxReadSize * (numCellLoops - 1);
 
             if (type == 1)
             {
-                tecZoneVarGetFloatValues(fH, 1, varIndex[i], j + 1, 1, &getF);
-                getD = (double)getF;
+                tecZoneVarGetFloatValues(fH, 1, varIndex[i], j * maxReadSize + 1, readSize, getF.data());
+                copy(getF.begin(), getF.end(), getD.begin());
             }
             else if (type == 2)
             {
-                tecZoneVarGetDoubleValues(fH, 1, varIndex[i], j + 1, 1, &getD);
+                tecZoneVarGetDoubleValues(fH, 1, varIndex[i], j * maxReadSize + 1, readSize, getD.data());
             }
 
-            if (reorder)
+            for (int k = 0; k < readSize; ++k)
             {
-                dataIdx = dataMat->getDataIndex(i * nCells + idx[j], colIdx);
-            }
-            else
-            {
-                dataIdx = dataMat->getDataIndex(i * nCells + j, colIdx);
-            }
+                cellIdx = j * maxReadSize + k;
+                if (reorder)
+                {
+                    dataIdx = dataMat->getDataIndex(i * nCells + idx[cellIdx], colIdx);
+                }
+                else
+                {
+                    dataIdx = dataMat->getDataIndex(i * nCells + cellIdx, colIdx);
+                }
 
-            if (dataIdx >= 0)
-            {
-                dataMat->dataD[dataIdx] = getD;
+                if (dataIdx >= 0)
+                {
+                    dataMat->dataD[dataIdx] = getD[k];
+                }
             }
         }
     }

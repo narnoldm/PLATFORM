@@ -12,6 +12,12 @@
 #include "misc_func.hpp"
 #include "misc_func_mpi.hpp"
 
+// maximum vector size (regardless of type) that will be used read/write routines
+// bigger allows for more efficient I/O, but can eat a lot of memory
+#ifndef MAX_IOVEC_SIZE
+#define MAX_IOVEC_SIZE 100000
+#endif
+
 class meta
 {
 public:
