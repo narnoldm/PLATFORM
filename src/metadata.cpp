@@ -963,7 +963,7 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
         isField = true;
         if (centerMethod.substr(centerMethod.size()-6, 6) == ".szplt")
         {
-            readSZPLTToPMat(centerMethod, centerVec);
+            readSingleLowMem(centerMethod, centerVec, 0);
             cout << endl;
         }
         else
@@ -1113,9 +1113,9 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
         ifstream szlDiv((scaleMethod + "DivProf.szplt").c_str());
         if (szlSub.good() && szlDiv.good())
         {
-            readSZPLTToPMat(scaleMethod + "SubProf.szplt", scalingSubVec);
+            readSingleLowMem(scaleMethod + "SubProf.szplt", scalingSubVec, 0);
             cout << endl;
-            readSZPLTToPMat(scaleMethod + "DivProf.szplt", scalingDivVec);
+            readSingleLowMem(scaleMethod + "DivProf.szplt", scalingSubVec, 0);
             cout << endl;
         }
         else
@@ -1446,136 +1446,6 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
                 outVal += outVec[i];
             }
             outVal /= nCells;
-        }
-    }
-
-}
-
-void tecIO::readDATToVec(std::string filename, std::vector<double> &vec)
-{
-    if (vec.size() != nPoints)
-    {
-        cout << "Allocating vector as " << nPoints << " cells" << endl;
-        vec.resize(nPoints, 0.0);
-        cout << "Vector allocated" << endl;
-    }
-
-    // open file, check it exists
-    ifstream inFile;
-    inFile.open(filename);
-    if (!inFile)
-    {
-        cout << "Failed to open file at " << filename << endl;
-        MPI_Abort(MPI_COMM_WORLD, -1);
-    }
-
-    // assumed to be in cell_id order, need hash
-    genHash(prefix + to_string(snap0) + suffix);
-
-    // header
-    string header;
-    inFile >> header;
-
-    // read doubles from file
-    int count = 0;
-    int varNum;
-    double num;
-    while (inFile >> num)
-    {
-        varNum = count / nCells;
-        if (reorder)
-        {
-            vec[varNum * nCells + (count % nCells)] = num;
-        }
-        else
-        {
-            vec[varNum * nCells + idx[count % nCells]] = num;
-        }
-        count++;
-    }
-}
-
-void tecIO::readSZPLTToVec(string filename, vector<double> &vec)
-{
-
-    if (vec.size() != nPoints)
-    {
-        cout << "Allocating vector as " << nPoints << " cells" << endl;
-        vec.resize(nPoints, 0.0);
-        cout << "Vector allocated" << endl;
-    }
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    void *fH;
-    tecFileReaderOpen(filename.c_str(), &fH);
-    int type;
-    vector<float> get;
-    int ii;
-    for (int i = 0; i < numVars; i++)
-    {
-        ii = getVariableIndex(varName[i], filename);
-        tecZoneVarGetType(fH, 1, ii, &type);
-        if (type == 1)
-        {
-            get.resize(nCells);
-            tecZoneVarGetFloatValues(fH, 1, ii, 1, nCells, get.data());
-            for (int j = 0; j < nCells; j++)
-            {
-                vec[j + i * nCells] = (double)get[j];
-            }
-            get.clear();
-        }
-        else if (type == 2)
-        {
-            tecZoneVarGetDoubleValues(fH, 1, ii, 1, nCells, &(vec[i * nCells]));
-        }
-        if (reorder)
-        {
-            vector<double> temp(nCells, 0.0);
-            for (int j = 0; j < nCells; j++)
-            {
-                temp[j] = vec[i * nCells + j];
-            }
-            for (int j = 0; j < nCells; j++)
-            {
-                vec[i * nCells + j] = temp[idx[j]];
-            }
-            temp.clear();
-        }
-    }
-    tecFileReaderClose(&fH);
-    cout << "Vector loaded from: " << filename << endl;
-}
-
-void tecIO::readSZPLTToPMat(string filename, pMat* loadMat)
-{
-    // TODO: this is the worst-case scenario w/r/t/ memory, FIX
-    vector<double> tempR;
-    tempR.resize(nPoints);
-    readSingle(filename, tempR.data());
-    if (loadMat->pG->mycol == 0)
-    {
-        for (int i = 0; i < nPoints; i++)
-        {
-            int xi = i % loadMat->mb;
-            int li = i / (loadMat->pG->prow * loadMat->mb);
-            if (loadMat->pG->myrow == (i / loadMat->mb) % loadMat->pG->prow)
-            {
-                loadMat->dataD[xi + li * loadMat->mb] = tempR[i];
-            }
-        }
-    }
-}
-
-void tecIO::vecToCellIDOrder(vector<double> &vecIn, vector<double> &vecOut)
-{
-    genHash(prefix + to_string(snap0) + suffix);
-
-    for (int i = 0; i < numVars; ++i)
-    {
-        for (int j = 0; j < nCells; ++j)
-        {
-            vecOut[i * nCells + j] = vecIn[i * nCells + idx[j]];
         }
     }
 

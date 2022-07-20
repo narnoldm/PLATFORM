@@ -89,10 +89,6 @@ public:
     virtual void checkExists();
 
     // I/O
-    void vecToCellIDOrder(std::vector<double> &vecIn, std::vector<double> &vecOut);
-    void readSZPLTToPMat(std::string filename, pMat* loadMat);
-    void readDATToVec(std::string filename, std::vector<double> &vec);
-    void readSZPLTToVec(std::string filename, std::vector<double> &vec);
     virtual void readSingle(int fileID, double *point);
     virtual void readSingle(std::string filename, double *point);
     virtual void readSingleLowMem(int fileID, pMat* dataMat, int colIdx);
