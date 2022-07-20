@@ -99,9 +99,8 @@ public:
     virtual void readSingle(std::string filename, double *point);
     virtual void readSingleLowMem(int fileID, pMat* dataMat, int colIdx);
     virtual void readSingleLowMem(std::string filename, pMat* dataMat, int colIdx);
-    void writeSingle(int fileID, double *point, std::string fpref);
-    void writeSingle(int fileID, double *point, std::string fpref, int points);
-    void writeSingleFile(std::string filename, std::vector<std::string> &fvars, double *point, std::string meshfile);
+    virtual void writeSingle(int fileID, double *point, std::string fpref);
+    virtual void writeSingle(int fileID, double *point, std::string fpref, int points);
 
     void addVar(std::string var, std::string &norm);
     int getVariableIndex(std::string var, std::string file);

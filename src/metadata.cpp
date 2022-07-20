@@ -405,7 +405,7 @@ void tecIO::checkExists()
     {
         if (i % size == rank)
         {
-            tecFileReaderOpen((prefix + std::to_string(i) + suffix).c_str(), &fH);
+            tecFileReaderOpen((prefix + to_string(i) + suffix).c_str(), &fH);
             assert(fH != NULL);
             tecFileReaderClose(&fH);
         }
@@ -415,7 +415,7 @@ void tecIO::checkExists()
 // alternative to readSingle that doesn't require a huge vector
 void tecIO::readSingleLowMem(int fileID, pMat* dataMat, int colIdx)
 {
-    string filename = prefix + std::to_string(fileID) + suffix;
+    string filename = prefix + to_string(fileID) + suffix;
     readSingleLowMem(filename, dataMat, colIdx);
 }
 
@@ -487,7 +487,7 @@ void tecIO::readSingleLowMem(string filename, pMat* dataMat, int colIdx)
 
 void tecIO::readSingle(int fileID, double *point)
 {
-    string filename = prefix + std::to_string(fileID) + suffix;
+    string filename = prefix + to_string(fileID) + suffix;
     readSingle(filename, point);
 }
 
@@ -553,7 +553,7 @@ void tecIO::writeSingle(int fileID, double *point, string fpref, int points)
     }
     else
     {
-        tecFileReaderOpen((prefix + std::to_string(fileID) + suffix).c_str(), &infH);
+        tecFileReaderOpen((prefix + to_string(fileID) + suffix).c_str(), &infH);
     }
     assert(infH != NULL);
     int zoneType;
@@ -566,7 +566,7 @@ void tecIO::writeSingle(int fileID, double *point, string fpref, int points)
         MPI_Abort(MPI_COMM_WORLD,-1);
     }
 
-    std::string varstr = "";
+    string varstr = "";
     if (dim == 1)
     {
         varstr = "x";
@@ -583,12 +583,12 @@ void tecIO::writeSingle(int fileID, double *point, string fpref, int points)
     {
         varstr = varstr + "," + varName[i];
     }
-    tecFileWriterOpen((fpref + std::to_string(fileID) + suffix).c_str(), "Code out", varstr.c_str(), 1, 0, 1, NULL, &outfH);
+    tecFileWriterOpen((fpref + to_string(fileID) + suffix).c_str(), "Code out", varstr.c_str(), 1, 0, 1, NULL, &outfH);
     assert(outfH != NULL);
-    std::vector<int> varTypes(dim + numVars);
-    std::vector<int> valueLoc(dim + numVars);
-    std::vector<int> passive(dim + numVars);
-    std::vector<int> shareVar(dim + numVars);
+    vector<int> varTypes(dim + numVars);
+    vector<int> valueLoc(dim + numVars);
+    vector<int> passive(dim + numVars);
+    vector<int> shareVar(dim + numVars);
     for (int i = 0; i < (dim + numVars); i++)
     {
         if (i < dim)
@@ -609,14 +609,15 @@ void tecIO::writeSingle(int fileID, double *point, string fpref, int points)
     int shareCon, fNeigh, outZone;
     tecZoneConnectivityGetSharedZone(infH, 1, &shareCon);
     tecZoneFaceNbrGetMode(infH, 1, &fNeigh);
-    tecZoneCreateFE(outfH, std::to_string(fileID).c_str(), zoneType, iMax, jMax, &varTypes[0], &shareVar[0], &valueLoc[0], &passive[0], shareCon, 0, 0, &outZone);
+    tecZoneCreateFE(outfH, to_string(fileID).c_str(), zoneType, iMax, jMax, &varTypes[0], &shareVar[0], &valueLoc[0], &passive[0], shareCon, 0, 0, &outZone);
     tecZoneSetUnsteadyOptions(outfH, outZone, fileID, (int)fileID);
 
+    // copy nodal coordinate data from baseline file
     vector<float> nfDat;
     vector<double> ndDat;
     for (int i = 0; i < dim; i++)
     {
-        if (varTypes[i] == 1) //float
+        if (varTypes[i] == 1)
         {
             nfDat.resize(iMax);
             tecZoneVarGetFloatValues(infH, 1, i + 1, 1, iMax, nfDat.data());
@@ -629,8 +630,10 @@ void tecIO::writeSingle(int fileID, double *point, string fpref, int points)
             tecZoneVarWriteDoubleValues(outfH, 1, i + 1, 0, iMax, &ndDat[0]);
         }
     }
-    nfDat.clear();
-    ndDat.clear();
+    vector<float>().swap(nfDat);
+    vector<double>().swap(ndDat);
+
+    // write field data
     for (int i = dim; i < (dim + numVars); i++)
     {
         if (reorder)
@@ -647,18 +650,17 @@ void tecIO::writeSingle(int fileID, double *point, string fpref, int points)
             tecZoneVarWriteDoubleValues(outfH, 1, i + 1, 0, jMax, &point[(i - dim) * jMax]);
         }
     }
+
+    // write nodemap
     long numValues;
     tecZoneNodeMapGetNumValues(infH, 1, jMax, &numValues);
     vector<int> nodeMap(numValues);
     tecZoneNodeMapGet(infH, 1, 1, jMax, nodeMap.data());
     tecZoneNodeMapWrite32(outfH, 1, 0, 1, numValues, nodeMap.data());
-    nodeMap.clear();
+
+    // close files
     tecFileReaderClose(&infH);
     tecFileWriterClose(&outfH);
-    varTypes.clear();
-    valueLoc.clear();
-    passive.clear();
-    shareVar.clear();
 
     if (GEMSbin)
     {
@@ -667,7 +669,7 @@ void tecIO::writeSingle(int fileID, double *point, string fpref, int points)
         fid = fopen((fpref + to_string(fileID) + ".bin").c_str(), "wb");
 
         int ONE = 1;
-        fwrite(&points, sizeof(int), 1, fid);
+        fwrite(&nPoints, sizeof(int), 1, fid);
         fwrite(&ONE, sizeof(int), 1, fid);
         for (int i = 0; i < numVars; i++)
         {
@@ -686,118 +688,6 @@ void tecIO::writeSingle(int fileID, double *point, string fpref, int points)
     }
 }
 
-
-void tecIO::writeSingleFile(std::string filename, std::vector<std::string> &fvars, double *point, std::string meshPfile)
-{
-    void *infH = NULL;
-    void *outfH = NULL;
-    tecFileReaderOpen((meshPfile).c_str(), &infH);
-
-    assert(infH != NULL);
-    int zoneType;
-    long iMax, jMax, kMax;
-    tecZoneGetType(infH, 1, &zoneType);
-    tecZoneGetIJK(infH, 1, &iMax, &jMax, &kMax);
-    if ((zoneType != 5) && (zoneType != 3))
-    {
-        printf("Zone is weird/Not supported\n");
-        MPI_Abort(MPI_COMM_WORLD,-1);
-    }
-
-    std::string varstr = "";
-    if (dim == 1)
-    {
-        varstr = "x";
-    }
-    if (dim == 2)
-    {
-        varstr = "x,y";
-    }
-    if (dim == 3)
-    {
-        varstr = "x,y,z";
-    }
-    for (int i = 0; i < fvars.size(); i++)
-    {
-        varstr = varstr + "," + fvars[i];
-    }
-    tecFileWriterOpen(filename.c_str(), "Code out", varstr.c_str(), 1, 0, 1, NULL, &outfH);
-    assert(outfH != NULL);
-    std::vector<int> varTypes(dim + fvars.size());
-    std::vector<int> valueLoc(dim + fvars.size());
-    std::vector<int> passive(dim + fvars.size());
-    std::vector<int> shareVar(dim + fvars.size());
-    for (int i = 0; i < (dim + fvars.size()); i++)
-    {
-        if (i < dim)
-        {
-            tecZoneVarGetType(infH, 1, i + 1, varTypes.data() + i);
-            tecZoneVarGetValueLocation(infH, 1, i + 1, valueLoc.data() + i);
-            tecZoneVarIsPassive(infH, 1, i + 1, passive.data() + i);
-            tecZoneVarGetSharedZone(infH, 1, i + 1, shareVar.data() + i);
-        }
-        else
-        {
-            varTypes[i] = 2;
-            valueLoc[i] = 0;
-            passive[i] = 0;
-            shareVar[i] = 0;
-        }
-    }
-    int shareCon, fNeigh, outZone;
-    tecZoneConnectivityGetSharedZone(infH, 1, &shareCon);
-    tecZoneFaceNbrGetMode(infH, 1, &fNeigh);
-    tecZoneCreateFE(outfH, std::to_string(snap0).c_str(), zoneType, iMax, jMax, &varTypes[0], &shareVar[0], &valueLoc[0], &passive[0], shareCon, 0, 0, &outZone);
-    tecZoneSetUnsteadyOptions(outfH, outZone, snap0, (int)snap0);
-
-    vector<float> nfDat;
-    vector<double> ndDat;
-    for (int i = 0; i < dim; i++)
-    {
-        if (varTypes[i] == 1) //float
-        {
-            nfDat.resize(iMax);
-            tecZoneVarGetFloatValues(infH, 1, i + 1, 1, iMax, nfDat.data());
-            tecZoneVarWriteFloatValues(outfH, 1, i + 1, 0, iMax, nfDat.data());
-        }
-        else if (varTypes[i] == 2)
-        {
-            ndDat.resize(iMax);
-            tecZoneVarGetDoubleValues(infH, 1, i + 1, 1, iMax, &ndDat[0]);
-            tecZoneVarWriteDoubleValues(outfH, 1, i + 1, 0, iMax, &ndDat[0]);
-        }
-    }
-    nfDat.clear();
-    ndDat.clear();
-    for (int i = dim; i < (dim + fvars.size()); i++)
-    {
-        if (reorder)
-        {
-            vector<double> temp(jMax, 0.0);
-            for (int n = 0; n < jMax; n++)
-            {
-                temp[idx[n]] = point[(i - dim) * jMax + n];
-            }
-            tecZoneVarWriteDoubleValues(outfH, 1, i + 1, 0, jMax, temp.data());
-        }
-        else
-        {
-            tecZoneVarWriteDoubleValues(outfH, 1, i + 1, 0, jMax, &point[(i - dim) * jMax]);
-        }
-    }
-    long numValues;
-    tecZoneNodeMapGetNumValues(infH, 1, jMax, &numValues);
-    vector<int> nodeMap(numValues);
-    tecZoneNodeMapGet(infH, 1, 1, jMax, nodeMap.data());
-    tecZoneNodeMapWrite32(outfH, 1, 0, 1, numValues, nodeMap.data());
-    nodeMap.clear();
-    tecFileReaderClose(&infH);
-    tecFileWriterClose(&outfH);
-    varTypes.clear();
-    valueLoc.clear();
-    passive.clear();
-    shareVar.clear();
-}
 void tecIO::addVar(string var, string &norm)
 {
     varName.push_back(var);
@@ -863,7 +753,7 @@ void tecIO::getDimNodes()
         }
         else
         {
-            checkMeshDim((prefix + std::to_string(snap0) + suffix));
+            checkMeshDim((prefix + to_string(snap0) + suffix));
         }
     }
     MPI_Bcast(&nCells, 1, MPI_LONG, 0, MPI_COMM_WORLD);
