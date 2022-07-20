@@ -634,11 +634,11 @@ void tecIO::writeSingle(int fileID, double *point, string fpref, int points)
     vector<double>().swap(ndDat);
 
     // write field data
+    vector<double> temp(jMax, 0.0);
     for (int i = dim; i < (dim + numVars); i++)
     {
         if (reorder)
         {
-            vector<double> temp(jMax, 0.0);
             for (int n = 0; n < jMax; n++)
             {
                 temp[idx[n]] = point[(i - dim) * jMax + n];
@@ -650,6 +650,7 @@ void tecIO::writeSingle(int fileID, double *point, string fpref, int points)
             tecZoneVarWriteDoubleValues(outfH, 1, i + 1, 0, jMax, &point[(i - dim) * jMax]);
         }
     }
+    vector<double>().swap(temp);
 
     // write nodemap
     long numValues;
@@ -657,6 +658,7 @@ void tecIO::writeSingle(int fileID, double *point, string fpref, int points)
     vector<int> nodeMap(numValues);
     tecZoneNodeMapGet(infH, 1, 1, jMax, nodeMap.data());
     tecZoneNodeMapWrite32(outfH, 1, 0, 1, numValues, nodeMap.data());
+    vector<int>().swap(nodeMap);
 
     // close files
     tecFileReaderClose(&infH);
