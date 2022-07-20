@@ -29,18 +29,18 @@ public:
 
     virtual void checkSize();
     virtual void checkExists();
-    virtual bool readSingle(int fileID, double *point);
-    virtual bool writeSingle(int fileID, double *point, std::string fpref);
-    virtual bool writeSingle(int fileID, double *point, std::string fpref, int points);
-    virtual void miscProcessing(pMat *Mat);
-    bool batchWrite(pMat *loadMat);
-    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int nModes);
-    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip);
-    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip);
-    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref);
-    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip, int dim);
-    bool batchRead(pMat *loadMat);
-    bool batchRead(pMat *loadMat, int ii);
+    virtual void readSingle(int fileID, double *point);
+    virtual void readSingleLowMem(int fileID, pMat* dataMat, int colIdx);
+    virtual void writeSingle(int fileID, double *point, std::string fpref);
+    virtual void writeSingle(int fileID, double *point, std::string fpref, int points);
+    void batchWrite(pMat *loadMat);
+    void batchWrite(pMat *loadMat, std::string dir, std::string fpref, int nModes);
+    void batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip);
+    void batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip);
+    void batchWrite(pMat *loadMat, std::string dir, std::string fpref);
+    void batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip, int dim);
+    void batchRead(pMat *loadMat);
+    void batchRead(pMat *loadMat, int ii);
 };
 
 class tecIO : public meta
@@ -69,7 +69,6 @@ public:
     pMat* scalingSubVecFull = NULL;
 
     std::vector<int> idx;
-    std::vector<int> cellID;
 
     std::string meshFile;
     bool outBin = false;
@@ -88,18 +87,19 @@ public:
     ~tecIO();
     virtual void checkSize();
     virtual void checkExists();
-    virtual void miscProcessing(pMat *Mat);
 
     // I/O
     void vecToCellIDOrder(std::vector<double> &vecIn, std::vector<double> &vecOut);
     void readSZPLTToPMat(std::string filename, pMat* loadMat);
     void readDATToVec(std::string filename, std::vector<double> &vec);
     void readSZPLTToVec(std::string filename, std::vector<double> &vec);
-    virtual bool readSingle(int fileID, double *point);
-    virtual bool readSingle(std::string filename, double *point);
-    virtual bool writeSingle(int fileID, double *point, std::string fpref);
-    virtual bool writeSingle(int fileID, double *point, std::string fpref, int points);
-    bool writeSingleFile(std::string filename, std::vector<std::string> &fvars, double *point, std::string meshfile);
+    virtual void readSingle(int fileID, double *point);
+    virtual void readSingle(std::string filename, double *point);
+    virtual void readSingleLowMem(int fileID, pMat* dataMat, int colIdx);
+    virtual void readSingleLowMem(std::string filename, pMat* dataMat, int colIdx);
+    void writeSingle(int fileID, double *point, std::string fpref);
+    void writeSingle(int fileID, double *point, std::string fpref, int points);
+    void writeSingleFile(std::string filename, std::vector<std::string> &fvars, double *point, std::string meshfile);
 
     void addVar(std::string var, std::string &norm);
     int getVariableIndex(std::string var, std::string file);

@@ -83,7 +83,7 @@ void meta::checkExists()
     }
 }
 
-bool meta::readSingle(int fileID, double *point)
+void meta::readSingle(int fileID, double *point)
 {
     cout << "meta read " << fileID << endl;
     cout<< (prefix + to_string(fileID) + suffix)<<endl;
@@ -97,13 +97,18 @@ bool meta::readSingle(int fileID, double *point)
     assert(header[0] == nPoints);
     warn = fread(point, sizeof(double), nPoints, fid);
     fclose(fid);
-    return true;
 }
 
-bool meta::batchRead(pMat *loadMat)
+void meta::readSingleLowMem(int fileID, pMat* dataMat, int colIdx)
 {
-    double t1,t2;
-    t1=MPI_Wtime();
+    cout << "No low-memory call for meta" << endl;
+    throw(-1);
+}
+
+void meta::batchRead(pMat *loadMat)
+{
+    double t1, t2;
+    t1 = MPI_Wtime();
     if (loadMat->mb == nPoints)
     {
         int iP = 0;
@@ -119,47 +124,33 @@ bool meta::batchRead(pMat *loadMat)
             if (loadMat->pG->rank == iP)
             {
                 fileIndex = snap0 + i * snapSkip;
-
-                cout << "proc " << iP << " is reading file " << fileIndex << endl;
-
+                cout << "Proc " << iP << " is reading file " << fileIndex << endl;
                 readSingle(fileIndex, loadMat->dataD.data() + nPoints * localC);
                 localC++;
             }
         }
-        miscProcessing(loadMat);
-        cout << "waiting for other processes read" << endl;
+        cout << "Eaiting for other processes read" << endl;
         MPI_Barrier(MPI_COMM_WORLD);
     }
     else
     {
-        cout << "even Read" << endl;
-        int currentCol = 0;
-        vector<double> tempR;
-        tempR.resize(nPoints);
+        cout << "Even read" << endl;
         for (int j = 0; j < nSets; j++)
         {
+            // check if process owns a part of this column
             if (loadMat->pG->mycol == (j / loadMat->nb) % loadMat->pG->pcol)
             {
-                readSingle(snap0 + j * snapSkip, tempR.data());
-                for (int i = 0; i < nPoints; i++)
-                {
-                    int xi = i % loadMat->mb;
-                    int li = i / (loadMat->pG->prow * loadMat->mb);
-                    if (loadMat->pG->myrow == (i / loadMat->mb) % loadMat->pG->prow)
-                    {
-                        loadMat->dataD[currentCol * loadMat->myRC[0] + xi + li * loadMat->mb] = tempR[i];
-                    }
-                }
-                currentCol++;
+                readSingleLowMem(snap0 + j * snapSkip, loadMat, j);
             }
         }
-        tempR.clear();
     }
+
     t2 = MPI_Wtime();
-    cout << endl << "batch Read took " << t2 - t1 << " secs" << endl;
+    cout << endl << "Batch read took " << t2 - t1 << " secs" << endl;
+
 }
 
-bool meta::batchRead(pMat *loadMat, int ii)
+void meta::batchRead(pMat *loadMat, int ii)
 {
     if (loadMat->mb == nPoints)
     {
@@ -182,42 +173,28 @@ bool meta::batchRead(pMat *loadMat, int ii)
             localC++;
         }
         cout << endl;
-        miscProcessing(loadMat);
         cout << "waiting for other processes read" << endl;
         MPI_Barrier(MPI_COMM_WORLD);
     }
     else
     {
-        cout << "even Read single" << endl;
-        int currentCol = 0;
-        vector<double> tempR;
-        tempR.resize(nPoints);
+        cout << "Even read single" << endl;
         int j = ii;
         if (loadMat->pG->mycol == (j / loadMat->nb) % loadMat->pG->pcol)
         {
-            readSingle(snap0 + j * snapSkip, tempR.data());
-            for (int i = 0; i < nPoints; i++)
-            {
-                int xi = i % loadMat->mb;
-                int li = i / (loadMat->pG->prow * loadMat->mb);
-                if (loadMat->pG->myrow == (i / loadMat->mb) % loadMat->pG->prow)
-                {
-                    loadMat->dataD[currentCol * loadMat->myRC[0] + xi + li * loadMat->mb] = tempR[i];
-                }
-            }
-            currentCol++;
+            readSingleLowMem(snap0 + j * snapSkip, loadMat, j);
         }
-        tempR.clear();
     }
 }
 
-bool meta::writeSingle(int fileID, double *point, string fpref)
+void meta::writeSingle(int fileID, double *point, string fpref)
 {
     writeSingle(fileID, point, fpref, nPoints);
 }
 
-bool meta::writeSingle(int fileID, double *point, string fpref, int points)
+void meta::writeSingle(int fileID, double *point, string fpref, int points)
 {
+
     cout << "meta write single" << endl;
     FILE *fid;
     fid = fopen((fpref + to_string(fileID) + suffix).c_str(), "wb");
@@ -227,22 +204,22 @@ bool meta::writeSingle(int fileID, double *point, string fpref, int points)
     fwrite(&ONE, sizeof(int), 1, fid);
     fwrite(point, sizeof(double), points, fid);
     fclose(fid);
-    return true;
+
 }
 
-bool meta::batchWrite(pMat *loadMat)
+void meta::batchWrite(pMat *loadMat)
 {
     batchWrite(loadMat, "out/", prefix);
 }
-bool meta::batchWrite(pMat *loadMat, string dir, string fpref)
+void meta::batchWrite(pMat *loadMat, string dir, string fpref)
 {
     batchWrite(loadMat, dir, fpref, 0, nSets, 1);
 }
-bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int nModes)
+void meta::batchWrite(pMat *loadMat, string dir, string fpref, int nModes)
 {
     batchWrite(loadMat, dir, fpref, 0, nModes, 1);
 }
-bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int mEnd, int mSkip)
+void meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int mEnd, int mSkip)
 {
     batchWrite(loadMat, dir, fpref, mStart, mEnd, mSkip, snap0, snapSkip, 0);
 }
@@ -256,7 +233,7 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
 // fStart: starting index of output file names
 // fSkip: index increment of output file names
 // writeCols: if true, write columns of loadMat, otherwise write rows
-bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip, int dim)
+void meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip, int dim)
 {
 
     assert(system(NULL)); //check if system commands work
@@ -360,11 +337,6 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
     cout << "batch Write took " << t2 - t1 << " secs" << endl;
 }
 
-void meta::miscProcessing(pMat *Mat)
-{
-    cout << "no additional processing for binary" << endl;
-}
-
 tecIO::tecIO(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
 {
     init(t0, tf, ts, iPrefix, iSuffix);
@@ -440,13 +412,75 @@ void tecIO::checkExists()
     }
 }
 
-bool tecIO::readSingle(int fileID, double *point)
+// alternative to readSingle that doesn't require a huge vector
+void tecIO::readSingleLowMem(int fileID, pMat* dataMat, int colIdx)
+{
+    string filename = prefix + std::to_string(fileID) + suffix;
+    readSingleLowMem(filename, dataMat, colIdx);
+}
+
+void tecIO::readSingleLowMem(string filename, pMat* dataMat, int colIdx)
+{
+
+    if (dataMat->M != nPoints)
+    {
+        cout << "readSingleLowMem only reads to columns for now" << endl;
+        throw(-1);
+    }
+
+    cout << filename << "\r" << flush;
+    void *fH = NULL;
+    tecFileReaderOpen(filename.c_str(), &fH);
+
+    int type, dataIdx;
+    float getF;
+    double getD;
+    double t1;
+    double varTime = 0.0, idxTime = 0.0;
+
+    for (int i = 0; i < numVars; i++)
+    {
+        tecZoneVarGetType(fH, 1, varIndex[i], &type);
+        for (int j = 0; j < nCells; j++)
+        {
+
+            if (type == 1)
+            {
+                tecZoneVarGetFloatValues(fH, 1, varIndex[i], j + 1, 1, &getF);
+                getD = (double)getF;
+            }
+            else if (type == 2)
+            {
+                tecZoneVarGetDoubleValues(fH, 1, varIndex[i], j + 1, 1, &getD);
+            }
+
+            if (reorder)
+            {
+                dataIdx = dataMat->getDataIndex(i * nCells + idx[j], colIdx);
+            }
+            else
+            {
+                dataIdx = dataMat->getDataIndex(i * nCells + j, colIdx);
+            }
+
+            if (dataIdx >= 0)
+            {
+                dataMat->dataD[dataIdx] = getD;
+            }
+        }
+    }
+
+    tecFileReaderClose(&fH);
+
+}
+
+void tecIO::readSingle(int fileID, double *point)
 {
     string filename = prefix + std::to_string(fileID) + suffix;
     readSingle(filename, point);
 }
 
-bool tecIO::readSingle(string filename, double *point)
+void tecIO::readSingle(string filename, double *point)
 {
     cout << filename << "\r" << flush;
     void *fH = NULL;
@@ -493,12 +527,12 @@ bool tecIO::readSingle(string filename, double *point)
     tecFileReaderClose(&fH);
 }
 
-bool tecIO::writeSingle(int fileID, double *point, string fpref)
+void tecIO::writeSingle(int fileID, double *point, string fpref)
 {
     writeSingle(fileID, point, fpref, nPoints);
 }
 
-bool tecIO::writeSingle(int fileID, double *point, string fpref, int points)
+void tecIO::writeSingle(int fileID, double *point, string fpref, int points)
 {
     void *infH = NULL;
     void *outfH = NULL;
@@ -640,10 +674,9 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref, int points)
         fclose(fid);
     }
 }
-void tecIO::miscProcessing(pMat *Mat)
-{
-}
-bool tecIO::writeSingleFile(std::string filename, std::vector<std::string> &fvars, double *point, std::string meshPfile)
+
+
+void tecIO::writeSingleFile(std::string filename, std::vector<std::string> &fvars, double *point, std::string meshPfile)
 {
     void *infH = NULL;
     void *outfH = NULL;
@@ -857,7 +890,7 @@ void tecIO::genHash(string filename)
 
     idx.resize(nCells, 0);
     iota(idx.begin(), idx.end(), 0);
-    cellID.resize(nCells, 0);
+    vector<int> cellID(nCells);
     void *fH;
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -868,7 +901,6 @@ void tecIO::genHash(string filename)
 
         // faster if every process loads cell_id instead of broadcasting
         int hashType;
-        cellID.resize(nCells);
         tecFileReaderOpen(filename.c_str(), &fH);
         tecZoneVarGetType(fH, 1, var_index, &hashType);
         if (hashType == 3)

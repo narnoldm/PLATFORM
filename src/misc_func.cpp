@@ -9,8 +9,9 @@ void printASCIIVecP0(std::string fname, double *Mat, int N)
 {
     FILE *fid;
     fid = fopen(fname.c_str(), "w");
+    int ierr;
     for (int i = 0; i < N; i++)
-        fprintf(fid, "%d %.9E\n", i, Mat[i]);
+        ierr = fprintf(fid, "%d %.9E\n", i, Mat[i]);
     fclose(fid);
 }
 
@@ -105,10 +106,10 @@ void writeASCIIDoubleVec(std::string filename, std::vector<double> &vec)
     {
         printf("error with file open\n");
     }
-    fprintf(fid, "file=%s\n", filename.c_str());
+    int ierr = fprintf(fid, "file=%s\n", filename.c_str());
     for (int i = 0; i < vec.size(); ++i)
     {
-        fprintf(fid, "%16.16E\n", vec.data()[i]);
+        ierr = fprintf(fid, "%16.16E\n", vec.data()[i]);
     }
     fclose(fid);
 }

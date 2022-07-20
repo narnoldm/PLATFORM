@@ -1237,26 +1237,39 @@ ostream &operator<<(std::ostream &os, const pMat &p)
         return os;
 }
 
+// determine index of element in dataD corresponding to global indices (I, J)
+// returns -1 if process does not own global index
+// zero-indexed
+int pMat::getDataIndex(int I, int J)
+{
+    int l = I / (pG->prow * mb);
+    int m = J / (pG->pcol * nb);
+
+    int x = I % mb;
+    int y = J % nb;
+
+    // TODO: should this be int64?
+    int localIndex = -1;
+    if ((pG->myrow == (I / mb) % pG->prow) && (pG->mycol == (J / nb) % pG->pcol))
+    {
+        localIndex = (m * nb + y) * myRC[0] + l * mb + x;
+    }
+
+    return localIndex;
+}
+
 // retrieve element from pMat, no matter what process owns the element
 double pMat::getElement(int I, int J)
 {
-        double item = 0.0;
-        int l, m;
-        int x, y;
-
-        l = I / (pG->prow * mb);
-        m = J / (pG->pcol * nb);
-
-        x = I % mb;
-        y = J % nb;
-        double temp = 0.0;
-        if ((pG->myrow == (I / mb) % pG->prow) && (pG->mycol == (J / nb) % pG->pcol))
-        {
-                assert(((m * nb + y) * myRC[0] + l * mb + x) < nelements);
-                temp = dataD[(m * nb + y) * myRC[0] + l * mb + x];
-        }
-        MPI_Allreduce(MPI_IN_PLACE, &temp, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-        return temp;
+    int index = getDataIndex(I, J);
+    double temp = 0.0;
+    if (index >= 0)
+    {
+        assert(index < nelements);
+        temp = dataD[index];
+    }
+    MPI_Allreduce(MPI_IN_PLACE, &temp, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    return temp;
 }
 
 // retrieve element from pMat, only if the process owns the element
@@ -1268,21 +1281,13 @@ double pMat::getLocalElement(int I, int J)
 
 double pMat::getLocalElement(int I, int J, double temp)
 {
-        double item = 0.0;
-        int l, m;
-        int x, y;
-
-        l = I / (pG->prow * mb);
-        m = J / (pG->pcol * nb);
-
-        x = I % mb;
-        y = J % nb;
-        if ((pG->myrow == (I / mb) % pG->prow) && (pG->mycol == (J / nb) % pG->pcol))
-        {
-                assert(((m * nb + y) * myRC[0] + l * mb + x) < nelements);
-                temp = dataD[(m * nb + y) * myRC[0] + l * mb + x];
-        }
-        return temp;
+    int index = getDataIndex(I, J);
+    if (index >= 0)
+    {
+        assert(index < nelements);
+        temp = dataD[index];
+    }
+    return temp;
 }
 
 void pMat::setElement(int I, int J, double val)
@@ -1292,24 +1297,16 @@ void pMat::setElement(int I, int J, double val)
 
 void pMat::setElement(int I, int J, double val, bool barrier)
 {
-        int l, m;
-        int x, y;
-
-        l = I / (pG->prow * mb);
-        m = J / (pG->pcol * nb);
-
-        x = I % mb;
-        y = J % nb;
-        if ((pG->myrow == (I / mb) % pG->prow) && (pG->mycol == (J / nb) % pG->pcol))
+        int index = getDataIndex(I, J);
+        if (index >= 0)
         {
-                assert(((m * nb + y) * myRC[0] + l * mb + x) < nelements);
-                dataD[(m * nb + y) * myRC[0] + l * mb + x] = val;
+            assert(index < nelements);
+            dataD[index] = val;
         }
         if (barrier)
         {
             MPI_Barrier(MPI_COMM_WORLD);
         }
-
 }
 
 bool operator==(pMat const &p1, pMat const &p2)

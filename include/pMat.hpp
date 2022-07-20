@@ -125,11 +125,12 @@ public:
 	int dMax(int, int, double &, int &);
 	int argmax_vec();
 	int dSum(int, int, double &);
-    double getElement(int, int);
+    double getElement(int I, int J);
 	double getLocalElement(int I, int J);
     double getLocalElement(int I, int J, double temp);
 	void setElement(int I, int J, double val);
     void setElement(int I, int J, double val, bool barrier);
+    int getDataIndex(int I, int J);
 
 	// Other
 	int outerProductSum(pMat *U, char, pMat *VT, char, std::vector<double> &S, int inv);
