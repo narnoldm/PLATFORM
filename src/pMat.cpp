@@ -74,10 +74,10 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init, bool stdout)
         nb = 128;
         mb = nb;
         if (mb > (M / pG->getDim(1)))
-            mb = std::max(1, M / (pG->getDim(1) * cycles));
+            mb = max(1, M / (pG->getDim(1) * cycles));
         if (nb > (N / pG->getDim(0)))
-            nb = std::max(1, N / (pG->getDim(0) * cycles));
-        mb = std::min(mb, nb);
+            nb = max(1, N / (pG->getDim(0) * cycles));
+        mb = min(mb, nb);
         nb = mb;
         if (stdout)
             cout << "mb/nb = " << nb << endl;
@@ -88,7 +88,7 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init, bool stdout)
         nb = 128;
         mb = M;
         if (nb > (N / pG->getDim(0)))
-            nb = std::max(1, N / pG->getDim(0));
+            nb = max(1, N / pG->getDim(0));
         if (stdout)
         {
             cout << "mb is " << mb << endl;
@@ -118,7 +118,7 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init, bool stdout)
 
     nelements = (long long)myRC[0] * (long long)myRC[1];
     for (int i = 0; i < 2; i++)
-        myRC[i] = std::max(1, myRC[i]);
+        myRC[i] = max(1, myRC[i]);
 
     if (type == 0)
     {
@@ -223,7 +223,7 @@ void pMat::printMat()
     }
 }
 
-void pMat::write_bin(std::string filename)
+void pMat::write_bin(string filename)
 {
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_File fH = NULL;
@@ -575,7 +575,7 @@ void pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<dou
     int info = 0;
     string computeFlag = "V";
     const char *JOBU = computeFlag.c_str(), *JOBVT = computeFlag.c_str();
-    std::vector<double> WORK(1);
+    vector<double> WORK(1);
     int LWORK = -1;
     int IA = ia + 1;
     int JA = ja + 1;
@@ -614,7 +614,7 @@ void pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<dou
     int i_one = 1;
     double t2, t1;
     cout << "starting MOS" << endl;
-    int minMN = std::min(M, N);
+    int minMN = min(M, N);
 
     pMat *corMat;
     pMat *corMatp0;
@@ -648,7 +648,7 @@ void pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<dou
         else if (mosStep == 2)
         {
             // configure corMat on proc 0
-            std::string corMatString = "corMat.bin";
+            string corMatString = "corMat.bin";
             corMat->read_bin(corMatString);
             corMatp0->changeContext(corMat);
             delete corMat;
@@ -688,7 +688,7 @@ void pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<dou
                 {
                     if (S[i] < 0.0)
                         S[i] = 0.0;
-                    S[i] = std::sqrt(S[i]);
+                    S[i] = sqrt(S[i]);
                 }
                 t2 = MPI_Wtime();
                 cout << "finish eigensolve in " << t2 - t1 << " seconds" << endl;
@@ -744,7 +744,7 @@ void pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<dou
             // compute left singular vectors
 
             V = new pMat(VT->M, VT->N, VT->pG, 0, VT->block, 0.0);
-            std::string Vstring = "V.bin";
+            string Vstring = "V.bin";
             V->read_bin(Vstring);
 
             FILE *fid;
@@ -795,7 +795,7 @@ void pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<dou
     int i_one = 1;
     double t2, t1;
     cout << "starting MOS" << endl;
-    int minMN = std::min(M, N);
+    int minMN = min(M, N);
 
     pMat *corMat = new pMat(minMN, minMN, pG, 0, 0, 0.0);
     pMat *corMatp0 = new pMat(minMN, minMN, pG, 0, 2, 0.0);
@@ -832,7 +832,7 @@ void pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<dou
             {
                 if (S[i] < 0.0)
                         S[i] = 0.0;
-                S[i] = std::sqrt(S[i]);
+                S[i] = sqrt(S[i]);
             }
             t2 = MPI_Wtime();
             cout << "Finish eigensolve in " << t2 - t1 << " seconds" << endl;
@@ -897,16 +897,16 @@ void pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<dou
     }
 }
 
-void pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv)
+void pMat::qr_run(int m, int n, int ia, int ja, vector<int> &ipiv)
 {
     qr_run(m, n, ia, ja, ipiv, "./", "P.bin", true);
 }
 
-void pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string outdir, bool stdout) {
+void pMat::qr_run(int m, int n, int ia, int ja, vector<int> &ipiv, string outdir, bool stdout) {
 	qr_run(m, n, ia, ja, ipiv, outdir, "P.bin", stdout);
 }
 
-void pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string outdir, string outfile, bool stdout)
+void pMat::qr_run(int m, int n, int ia, int ja, vector<int> &ipiv, string outdir, string outfile, bool stdout)
 {
     if (stdout)
         cout << "QR initializing" << endl;
@@ -914,10 +914,10 @@ void pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string o
     int JA = ja + 1;
 
     int JAnpm1 = JA + n - 1;
-    int JAminMNm1 = JA + std::min(m, n) - 1;
+    int JAminMNm1 = JA + min(m, n) - 1;
 
-    int ipiv_LOCc = std::max(1, numroc_(&JAnpm1, &nb, &(pG->mycol), &(desc[7]), &(pG->pcol)));
-    int tau_LOCc = std::max(1, numroc_(&JAminMNm1, &nb, &(pG->mycol), &(desc[7]), &(pG->pcol)));
+    int ipiv_LOCc = max(1, numroc_(&JAnpm1, &nb, &(pG->mycol), &(desc[7]), &(pG->pcol)));
+    int tau_LOCc = max(1, numroc_(&JAminMNm1, &nb, &(pG->mycol), &(desc[7]), &(pG->pcol)));
     if (stdout)
     {
         cout << "ipiv_LOCc= " << ipiv_LOCc << endl;
@@ -939,7 +939,7 @@ void pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string o
     LWORK = WORK[0];
     WORK.resize(LWORK);
     if (stdout)
-        std::cout << "WORK allocated starting QR" << std::endl;
+        cout << "WORK allocated starting QR" << endl;
     MPI_Barrier(MPI_COMM_WORLD);
     t1 = MPI_Wtime();
     pdgeqpf_(&m, &n, dataD.data(), &IA, &JA, desc, ipiv.data(), tau.data(), WORK.data(), &LWORK, &info);
@@ -954,7 +954,7 @@ void pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string o
     MPI_Barrier(MPI_COMM_WORLD);
     int ONE = 1;
     MPI_File fH;
-    std::string pivot_name = outdir + "/" + outfile;
+    string pivot_name = outdir + "/" + outfile;
     MPI_File_open(MPI_COMM_WORLD, pivot_name.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fH);
     if (printRank)
     {
@@ -1128,15 +1128,15 @@ void pMat::dSum(int dim, int rc, double &val)
 void pMat::pinv(pMat *A)
 {
     pMat *UU, *VV;
-    UU = new pMat(A->M, std::min(A->M, A->N), A->pG, false);
-    VV = new pMat(std::min(A->M, A->N), A->N, A->pG, false);
-    vector<double> SS(std::min(A->M, A->N), 0.0);
+    UU = new pMat(A->M, min(A->M, A->N), A->pG, false);
+    VV = new pMat(min(A->M, A->N), A->N, A->pG, false);
+    vector<double> SS(min(A->M, A->N), 0.0);
 
     A->svd_run(A->M, A->N, 0, 0, UU, VV, SS, false);
     this->matrix_Product('T', 'T', VV->N, UU->M, 1, VV, 0, 0, UU, 0, 0, 1.0 / SS[0], 0.0, 0, 0);
     for (int i = 1; i < SS.size(); i++)
     {
-        if (SS[i] > std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0])
+        if (SS[i] > numeric_limits<double>::epsilon() * max(A->M, A->N) * SS[0])
             this->matrix_Product('T', 'T', VV->N, UU->M, 1, VV, i, 0, UU, 0, i, 1.0 / SS[i], 1.0, 0, 0);
     }
     delete UU;
@@ -1178,7 +1178,7 @@ void pMat::leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, in
 
 }
 
-void pMat::outerProductSum(pMat *U, char UT, pMat *VT, char VTT, std::vector<double> &S, int inv)
+void pMat::outerProductSum(pMat *U, char UT, pMat *VT, char VTT, vector<double> &S, int inv)
 {
     if (inv == 1)
     {
@@ -1198,18 +1198,18 @@ void pMat::outerProductSum(pMat *U, char UT, pMat *VT, char VTT, std::vector<dou
     }
 }
 
-ostream &operator<<(std::ostream &os, const pMat &p)
+ostream &operator<<(ostream &os, const pMat &p)
 {
-    std::cout << "Descriptor type: " << p.desc[0] << std::endl;
-    std::cout << "BLACS context: " << p.desc[1] << std::endl;
-    std::cout << "Global Rows: " << p.desc[2] << std::endl;
-    std::cout << "Global Cols: " << p.desc[3] << std::endl;
-    std::cout << "Row Blocking factor: " << p.desc[4] << std::endl;
-    std::cout << "Column Blocking factor: " << p.desc[5] << std::endl;
-    std::cout << "Process row where first row is: " << p.desc[6] << std::endl;
-    std::cout << "Process Col where first col is: " << p.desc[7] << std::endl;
-    std::cout << "Leading Dimension: " << p.desc[8] << std::endl;
-    std::cout << "Memory usage(data only) MB = " << p.MBs << std::endl;
+    cout << "Descriptor type: " << p.desc[0] << endl;
+    cout << "BLACS context: " << p.desc[1] << endl;
+    cout << "Global Rows: " << p.desc[2] << endl;
+    cout << "Global Cols: " << p.desc[3] << endl;
+    cout << "Row Blocking factor: " << p.desc[4] << endl;
+    cout << "Column Blocking factor: " << p.desc[5] << endl;
+    cout << "Process row where first row is: " << p.desc[6] << endl;
+    cout << "Process Col where first col is: " << p.desc[7] << endl;
+    cout << "Leading Dimension: " << p.desc[8] << endl;
+    cout << "Memory usage(data only) MB = " << p.MBs << endl;
     return os;
 }
 

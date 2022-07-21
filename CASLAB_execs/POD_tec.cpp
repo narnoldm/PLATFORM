@@ -167,6 +167,13 @@ int main(int argc, char *argv[])
 
         VT->write_bin("VT.bin");
 
+        // determine output format
+        int outMode;
+        bool writeModesSZPLT, writeModesBin;
+        inputFile.getParamBool("writeModesSZPLT", writeModesSZPLT, true);
+        inputFile.getParamBool("writeModesBin", writeModesBin, true);
+
+        // set up meta
         tecIO *Uout = new tecIO();
         Uout->snap0 = 1;
         Uout->snapF = U->N;
@@ -183,13 +190,10 @@ int main(int argc, char *argv[])
         Uout->numVars = Uout->varName.size();
         Uout->nPoints = Uout->nCells * Uout->numVars;
 
+        // for reordering output
         string firstFile = dataset1->prefix + std::to_string(dataset1->snap0) + dataset1->suffix;
+        Uout->genHash(firstFile);
 
-        // determine output format
-        int outMode = -1;
-        bool writeModesSZPLT, writeModesBin;
-        inputFile.getParamBool("writeModesSZPLT", writeModesSZPLT, true);
-        inputFile.getParamBool("writeModesBin", writeModesBin, true);
         if (writeModesSZPLT)
         {
             if (writeModesBin)
@@ -200,15 +204,20 @@ int main(int argc, char *argv[])
             {
                 outMode = 1;
             }
+
+            // write modes to file
+            Uout->batchWrite(U, "Spatial_Modes", "Spatial_Mode_", 0, modeEnd - modeStart + 1, 1, modeStart, 1, 0, outMode);
+
         }
         else if (writeModesBin)
         {
-            outMode = 2;
+            Uout->batchWrite_bin(U, "Spatial_Modes", "Spatial_Mode_", 0, modeEnd - modeStart + 1, 1, modeStart, 1);
+        }
+        else
+        {
+            cout << "No output requested" << endl;
         }
 
-        // write modes to file
-        Uout->genHash(firstFile);
-        Uout->batchWrite(U, "Spatial_Modes", "Spatial_Mode_", 0, modeEnd - modeStart + 1, 1, modeStart, 1, 0, outMode);
     }
 
     cout.rdbuf(strm_buffer);

@@ -548,6 +548,75 @@ void tecIO::readSingle(string filename, double *point)
     tecFileReaderClose(&fH);
 }
 
+// modification of pMat::write_bin() that uses idx and MPI_File_write_at_all() to guarantee write order
+void tecIO::batchWrite_bin(pMat* dataMat, string dir, string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip)
+{
+    if ((numVars * nCells) != dataMat->M)
+    {
+        cout << "numCells * numVars does not match dataMat->M: " << (numVars * nCells) << " " << dataMat->M << endl;
+        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+
+    int rank, size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    const char* buffer;
+    MPI_Offset offset = 0;
+
+    // file info
+    MPI_Status status;
+    MPI_File fh;
+    int fileIndex;
+    string filename;
+
+    int bufInt, bufDouble, dataIdx;
+    for (int k = mStart; k < mEnd; k = k + mSkip)
+    {
+
+        cout << "Binary write " << (k + 1) << endl;
+
+        fileIndex = fStart + (k - mStart) * fSkip;
+        filename = dir + "/" + fpref + to_string(fileIndex) + ".bin";
+        MPI_File_open(MPI_COMM_SELF, filename.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+
+        // write header
+        if (rank == 0)
+        {
+            bufInt = dataMat->M;
+            MPI_File_write_at_all(fh, 0, &bufInt, 1, MPI_INT, &status);
+            bufInt = 1;
+            MPI_File_write_at_all(fh, 4, &bufInt, 1, MPI_INT, &status);
+        }
+
+        for (int j = 0; j < numVars; ++j)
+        {
+            for (int i = 0; i < nCells; ++i)
+            {
+                if (reorder)
+                {
+                    dataIdx = dataMat->getDataIndex(j * nCells + idx[i], k);
+                }
+                else
+                {
+                    dataIdx = dataMat->getDataIndex(j * nCells + i, k);
+                }
+
+                // proc owns this index; write to file
+                if (dataIdx >= 0)
+                {
+                    bufDouble = dataMat->dataD[dataIdx];
+                    offset = 8 + (j * nCells + i) * sizeof(double);
+                    MPI_File_write_at_all(fh, offset, &bufDouble, 1, MPI_DOUBLE, &status);
+                }
+            }
+        }
+
+        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_File_close(&fh);
+    }
+}
+
 void tecIO::writeSingle(int fileID, double *point, string fpref)
 {
     writeSingle(fileID, point, fpref, nPoints, 0);
