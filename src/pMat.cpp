@@ -165,45 +165,39 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init, bool stdout)
 
 void pMat::switchType(int t)
 {
-        if (type == t)
-        {
-                if (pG->printRank)
-                        cout << "matrix is already of data type " << type << endl;
-                ;
-                return;
-        }
-        else if (t == 0)
-        {
-                if (pG->printRank)
-                        cout << "Switching to Double " << endl;
-                dataD.resize(nelements);
-                for (int i = 0; i < nelements; i++)
-                        dataD[i] = dataC[i].real;
-                dataC.clear();
-                type = 0;
-                if (pG->printRank)
-                        cout << "Matrix is now type" << type << endl;
-                ;
-                return;
-        }
-        else if (t == 1)
-        {
-                if (pG->printRank)
-                        cout << "Switching to Complex" << endl;
+    if (type == t)
+    {
+        if (pG->printRank)
+            cout << "matrix is already of data type " << type << endl;
+    }
+    else if (t == 0)
+    {
+        if (pG->printRank)
+            cout << "Switching to Double " << endl;
+        dataD.resize(nelements);
+        for (int i = 0; i < nelements; i++)
+            dataD[i] = dataC[i].real;
+        dataC.clear();
+        type = 0;
+        if (pG->printRank)
+            cout << "Matrix is now type" << type << endl;
+    }
+    else if (t == 1)
+    {
+        if (pG->printRank)
+            cout << "Switching to Complex" << endl;
 
-                dataC.resize(nelements);
-                for (int i = 0; i < nelements; i++)
-                {
-                        dataC[i].real = dataD[i];
-                        dataC[i].imag = 0;
-                }
-                dataD.clear();
-                type = 1;
-                if (pG->printRank)
-                        cout << "Matrix is now type " << type << endl;
-                ;
-                return;
+        dataC.resize(nelements);
+        for (int i = 0; i < nelements; i++)
+        {
+            dataC[i].real = dataD[i];
+            dataC[i].imag = 0;
         }
+        dataD.clear();
+        type = 1;
+        if (pG->printRank)
+            cout << "Matrix is now type " << type << endl;
+    }
 }
 
 void pMat::printMat()
@@ -229,7 +223,7 @@ void pMat::printMat()
     }
 }
 
-int pMat::write_bin(std::string filename)
+void pMat::write_bin(std::string filename)
 {
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_File fH = NULL;
@@ -271,7 +265,7 @@ int pMat::write_bin(std::string filename)
         cout << "Write time is " << t2 - t1 << endl;
 }
 
-int pMat::read_bin(string filename)
+void pMat::read_bin(string filename)
 {
     int rM, rN;
     double t2, t1;
@@ -317,10 +311,9 @@ int pMat::read_bin(string filename)
     if (printRank)
         cout << "read of " << filename << " took " << t2 - t1 << " seconds" << endl;
 
-    return 1;
 }
 
-int pMat::write_ascii(string filename, string header)
+void pMat::write_ascii(string filename, string header)
 {
     // TODO: generalize
     if (N > 1)
@@ -403,103 +396,96 @@ int pMat::write_ascii(string filename, string header)
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_File_close(&fh);
 
-    return 1;
-
 }
 
 bool pMat::check_bin_size(string filename, int &mM, int &mN)
 {
-        MPI_Barrier(MPI_COMM_WORLD);
-        MPI_File fH;
-        if (!MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fH))
-        {
-                MPI_File_read_all(fH, &mM, 1, MPI_INT, MPI_STATUS_IGNORE);
-                MPI_File_read_all(fH, &mN, 1, MPI_INT, MPI_STATUS_IGNORE);
-                MPI_File_close(&fH);
-                cout << filename << " has data with M: " << mM << " N: " << mN << endl;
-                return true;
-        }
-        else
-        {
-                cout << filename << " not found" << endl;
-                return false;
-        }
+    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_File fH;
+    if (!MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fH))
+    {
+        MPI_File_read_all(fH, &mM, 1, MPI_INT, MPI_STATUS_IGNORE);
+        MPI_File_read_all(fH, &mN, 1, MPI_INT, MPI_STATUS_IGNORE);
+        MPI_File_close(&fH);
+        cout << filename << " has data with M: " << mM << " N: " << mN << endl;
+        return true;
+    }
+    else
+    {
+        cout << filename << " not found" << endl;
+        return false;
+    }
 }
 
-int pMat::matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia, int ja, pMat *B, int ib, int jb, double alpha, double beta, int ic, int jc)
+void pMat::matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia, int ja, pMat *B, int ib, int jb, double alpha, double beta, int ic, int jc)
 {
 
-        if ((A->type == 0) && (B->type == 0) && (type == 0))
-        {
-                int IA = ia + 1;
-                int JA = ja + 1;
-                int IB = ib + 1;
-                int JB = jb + 1;
-                int IC = ic + 1;
-                int JC = jc + 1;
-                pdgemm_(&tA, &tB, &m, &n, &k, &alpha, A->dataD.data(), &IA, &JA, A->desc, B->dataD.data(), &IB, &JB, B->desc, &beta, dataD.data(), &IC, &JC, desc);
-        }
-        else if ((A->type == 1) && (B->type == 1) && (type == 1))
-        {
-                int IA = ia + 1;
-                int JA = ja + 1;
-                int IB = ib + 1;
-                int JB = jb + 1;
-                int IC = ic + 1;
-                int JC = jc + 1;
-#ifdef USE_MKL
-                MKL_Complex16 Ac, Bc;
-#else
-                complex16 Ac, Bc;
-#endif
-                Ac.real = alpha;
-                Ac.imag = 0;
-                Bc.real = beta;
-                Bc.imag = 0;
-                pzgemm_(&tA, &tB, &m, &n, &k, &Ac, A->dataC.data(), &IA, &JA, A->desc, B->dataC.data(), &IB, &JB, B->desc, &Bc, dataC.data(), &IC, &JC, desc);
-        }
-        else
-        {
-                if (printRank)
-                        cout << "Other matrix datatypes not supported yet" << endl;
-        }
-        return 0;
-}
-
-
-
-// symmetric matrix product A^T*A or A*A^T
-int pMat::matrix_Product_sym(char uplo, char trans, int n, int k, double alpha, pMat *A, int ia, int ja, double beta, int ic, int jc)
-{
-
-        int IA = ia + 1;
-        int JA = ja + 1;
-        int IC = ic + 1;
-        int JC = jc + 1;
-        pdsyrk_(&uplo, &trans, &n, &k, &alpha, A->dataD.data(), &IA, &JA, A->desc, &beta, dataD.data(), &IC, &JC, desc);
-
-        return 0;
-}
-
-// matrix vector product A*X, where X is a subvector of pMat* B
-int pMat::matrix_vec_product(char trans, int m, int n, double alpha, pMat *A, int ia, int ja, pMat *B, int ib, int jb,
-                             double beta, int ic, int jc)
-{
-
+    if ((A->type == 0) && (B->type == 0) && (type == 0))
+    {
         int IA = ia + 1;
         int JA = ja + 1;
         int IB = ib + 1;
         int JB = jb + 1;
         int IC = ic + 1;
         int JC = jc + 1;
-        int INCB = 1;
-        int INCC = 1;
-        pdgemv_(&trans, &m, &n, &alpha, A->dataD.data(), &IA, &JA, A->desc, B->dataD.data(), &IB, &JB, B->desc, &INCB, &beta, dataD.data(), &IC, &JC, desc, &INCC);
-
-        return 0;
+        pdgemm_(&tA, &tB, &m, &n, &k, &alpha, A->dataD.data(), &IA, &JA, A->desc, B->dataD.data(), &IB, &JB, B->desc, &beta, dataD.data(), &IC, &JC, desc);
+    }
+    else if ((A->type == 1) && (B->type == 1) && (type == 1))
+    {
+        int IA = ia + 1;
+        int JA = ja + 1;
+        int IB = ib + 1;
+        int JB = jb + 1;
+        int IC = ic + 1;
+        int JC = jc + 1;
+#ifdef USE_MKL
+        MKL_Complex16 Ac, Bc;
+#else
+        complex16 Ac, Bc;
+#endif
+        Ac.real = alpha;
+        Ac.imag = 0;
+        Bc.real = beta;
+        Bc.imag = 0;
+        pzgemm_(&tA, &tB, &m, &n, &k, &Ac, A->dataC.data(), &IA, &JA, A->desc, B->dataC.data(), &IB, &JB, B->desc, &Bc, dataC.data(), &IC, &JC, desc);
+    }
+    else
+    {
+        if (printRank)
+            cout << "Other matrix datatypes not supported yet" << endl;
+    }
 }
 
-int pMat::matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int jb, double alpha, double beta)
+// symmetric matrix product A^T*A or A*A^T
+void pMat::matrix_Product_sym(char uplo, char trans, int n, int k, double alpha, pMat *A, int ia, int ja, double beta, int ic, int jc)
+{
+
+    int IA = ia + 1;
+    int JA = ja + 1;
+    int IC = ic + 1;
+    int JC = jc + 1;
+    pdsyrk_(&uplo, &trans, &n, &k, &alpha, A->dataD.data(), &IA, &JA, A->desc, &beta, dataD.data(), &IC, &JC, desc);
+
+}
+
+// matrix vector product A*X, where X is a subvector of pMat* B
+void pMat::matrix_vec_product(char trans, int m, int n, double alpha, pMat *A, int ia, int ja, pMat *B, int ib, int jb,
+                             double beta, int ic, int jc)
+{
+
+    int IA = ia + 1;
+    int JA = ja + 1;
+    int IB = ib + 1;
+    int JB = jb + 1;
+    int IC = ic + 1;
+    int JC = jc + 1;
+    int INCB = 1;
+    int INCC = 1;
+    pdgemv_(&trans, &m, &n, &alpha, A->dataD.data(), &IA, &JA, A->desc, B->dataD.data(), &IB, &JB, B->desc, &INCB, &beta, dataD.data(), &IC, &JC, desc, &INCC);
+
+}
+
+void pMat::matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int jb, double alpha, double beta)
 {
 
     if ((A->type == 0) && (type == 0))
@@ -532,7 +518,6 @@ int pMat::matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int
         cout << "Other Formats not supported yet" << endl;
         MPI_Abort(MPI_COMM_WORLD, -1);
     }
-    return 0;
 }
 
 // Element-wise sub-matrix multiplication, scaled by alpha
@@ -552,13 +537,12 @@ void pMat::matrix_elem_mult(char tA, int m, int n, double alpha, pMat *A, int ia
         cout << "Other formats not supported yet" << endl;
         MPI_Abort(MPI_COMM_WORLD, -1);
     }
-
 }
 
 // scales row or column of matrix by factor alpha
 // idx indicates the row or column index (zero-indexed)
 // if scaleRow == true, scales row, otherwise scales column
-int pMat::scale_col_row(double alpha, int idx, bool scaleRow)
+void pMat::scale_col_row(double alpha, int idx, bool scaleRow)
 {
     int inc, len;
     int ix, jx;
@@ -581,594 +565,588 @@ int pMat::scale_col_row(double alpha, int idx, bool scaleRow)
 
 }
 
-int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S)
+void pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S)
 {
         svd_run(M, N, ia, ja, U, VT, S, true);
 }
 
-int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S, bool stdout)
+void pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S, bool stdout)
 {
-        int info = 0;
-        string computeFlag = "V";
-        const char *JOBU = computeFlag.c_str(), *JOBVT = computeFlag.c_str();
-        std::vector<double> WORK(1);
-        int LWORK = -1;
-        int IA = ia + 1;
-        int JA = ja + 1;
-        int i_one = 1;
-        double t2, t1;
-        pdgesvd_(JOBU, JOBVT, &M, &N, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
-        if (stdout)
-                cout << "WORK= " << WORK[0] << ", LWORK= " << LWORK << ", info= " << info << endl;
+    int info = 0;
+    string computeFlag = "V";
+    const char *JOBU = computeFlag.c_str(), *JOBVT = computeFlag.c_str();
+    std::vector<double> WORK(1);
+    int LWORK = -1;
+    int IA = ia + 1;
+    int JA = ja + 1;
+    int i_one = 1;
+    double t2, t1;
+    pdgesvd_(JOBU, JOBVT, &M, &N, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
+    if (stdout)
+        cout << "WORK= " << WORK[0] << ", LWORK= " << LWORK << ", info= " << info << endl;
 
-        if (info < 0)
-        {
-                cout << "Error in SVD setup in argument, info=" << -info << endl;
-                MPI_Abort(MPI_COMM_WORLD, -1);
-        }
-        LWORK = WORK[0];
-        WORK.resize(LWORK);
-        if (stdout)
-                cout << "Work Allocated: " << LWORK / (1e6) * 8 << " MB per processor" << endl;
+    if (info < 0)
+    {
+        cout << "Error in SVD setup in argument, info=" << -info << endl;
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+    LWORK = WORK[0];
+    WORK.resize(LWORK);
+    if (stdout)
+        cout << "Work Allocated: " << LWORK / (1e6) * 8 << " MB per processor" << endl;
 
-        //SVD run
-        MPI_Barrier(MPI_COMM_WORLD);
-        t1 = MPI_Wtime();
-        pdgesvd_(JOBU, JOBVT, &M, &N, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
-        t2 = MPI_Wtime();
-        if (stdout)
-                cout << "SVD complete in " << t2 - t1 << " seconds" << endl;
-        WORK.resize(0);
+    //SVD run
+    MPI_Barrier(MPI_COMM_WORLD);
+    t1 = MPI_Wtime();
+    pdgesvd_(JOBU, JOBVT, &M, &N, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
+    t2 = MPI_Wtime();
+    if (stdout)
+        cout << "SVD complete in " << t2 - t1 << " seconds" << endl;
+    WORK.resize(0);
 
-        return 1;
 }
 
-int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S, int modeStart, int modeEnd,
+void pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S, int modeStart, int modeEnd,
                   int mosStep, PGrid *procGrid)
 {
-        int IA = ia + 1;
-        int JA = ja + 1;
-        int i_one = 1;
-        double t2, t1;
-        cout << "starting MOS" << endl;
-        int minMN = std::min(M, N);
+    int IA = ia + 1;
+    int JA = ja + 1;
+    int i_one = 1;
+    double t2, t1;
+    cout << "starting MOS" << endl;
+    int minMN = std::min(M, N);
 
-        pMat *corMat;
-        pMat *corMatp0;
-        pMat *Vp0;
-        pMat *V;
+    pMat *corMat;
+    pMat *corMatp0;
+    pMat *Vp0;
+    pMat *V;
 
-        if ((mosStep == 1) || (mosStep == 2))
+    if ((mosStep == 1) || (mosStep == 2))
+    {
+        corMat = new pMat(minMN, minMN, procGrid, 0, 0, 0.0);
+        if (mosStep == 2)
         {
-                corMat = new pMat(minMN, minMN, procGrid, 0, 0, 0.0);
-                if (mosStep == 2)
-                {
-                        corMatp0 = new pMat(minMN, minMN, procGrid, 0, 2, 0.0);
-                        Vp0 = new pMat(minMN, minMN, procGrid, 0, 2, 0.0);
-                }
+            corMatp0 = new pMat(minMN, minMN, procGrid, 0, 2, 0.0);
+            Vp0 = new pMat(minMN, minMN, procGrid, 0, 2, 0.0);
+        }
+    }
+
+    if (minMN == N)
+    {
+        // computing correlation matrix
+        if (mosStep == 1)
+        {
+            cout << "Calculating correlation matrix" << endl;
+            // corMat->matrix_Product_sym('U', 'T', minMN, M, 1.0, this, 0, 0, 0.0, 0, 0);
+            corMat->matrix_Product('T', 'N', minMN, minMN, M, this, 0, 0, this, 0, 0, 1.0, 0.0, 0, 0);
+            cout << "Correlation matrix calculated" << endl;
+
+            corMat->write_bin("corMat.bin");
+            delete corMat;
         }
 
-        if (minMN == N)
+        // computing singular values and right singular vectors
+        if (mosStep == 2)
         {
-                // computing correlation matrix
-                if (mosStep == 1)
-                {
-                        cout << "Calculating correlation matrix" << endl;
-                        // corMat->matrix_Product_sym('U', 'T', minMN, M, 1.0, this, 0, 0, 0.0, 0, 0);
-                        corMat->matrix_Product('T', 'N', minMN, minMN, M, this, 0, 0, this, 0, 0, 1.0, 0.0, 0, 0);
-                        cout << "Correlation matrix calculated" << endl;
+            // configure corMat on proc 0
+            std::string corMatString = "corMat.bin";
+            corMat->read_bin(corMatString);
+            corMatp0->changeContext(corMat);
+            delete corMat;
 
-                        corMat->write_bin("corMat.bin");
-                        delete corMat;
-                        return 0;
+            cout << minMN << endl;
+            if (procGrid->rank == 0)
+            {
+                cout << "Start eigensolve" << endl;
+                t1 = MPI_Wtime();
+
+                // map corMatp0 to Eigen data structure
+                Eigen::MatrixXd corMatEig = Eigen::Map<Eigen::MatrixXd>(corMatp0->dataD.data(), minMN, minMN);
+                // corMatEig = corMatEig.selfadjointView<Eigen::Upper>();
+
+                // compute eigensolve
+                // Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(corMatEig);
+                Eigen::EigenSolver<Eigen::MatrixXd> es(corMatEig);
+
+                Eigen::MatrixXcd VEig(minMN, minMN);
+                Eigen::VectorXcd SEig(minMN);
+                // Eigen::MatrixXd VEig(minMN,minMN);
+                // Eigen::VectorXd SEig(minMN);
+
+                // Eigen gives eigenvalues in ascending order, reverse for descending order
+                // SEig = es.eigenvalues().reverse();
+                // VEig = es.eigenvectors().rowwise().reverse();
+                SEig = es.eigenvalues();
+                VEig = es.eigenvectors();
+
+                // map Eigen objects to double vectors
+                Eigen::Map<Eigen::MatrixXd>(Vp0->dataD.data(), VEig.rows(), VEig.cols()) = VEig.real();
+                Eigen::Map<Eigen::VectorXd>(S.data(), minMN) = SEig.real();
+
+                cout << S.size() << endl;
+                // singular values of A are square roots of eigenvalues of A^T*A
+                for (int i = 0; i < S.size(); i++)
+                {
+                    if (S[i] < 0.0)
+                        S[i] = 0.0;
+                    S[i] = std::sqrt(S[i]);
+                }
+                t2 = MPI_Wtime();
+                cout << "finish eigensolve in " << t2 - t1 << " seconds" << endl;
+
+                // argsort singular values in descending order
+                vector<size_t> idx(S.size());
+                iota(idx.begin(), idx.end(), 0);
+                stable_sort(idx.begin(), idx.end(), [&S](size_t i1, size_t i2) { return S[i1] < S[i2]; });
+                reverse(idx.begin(), idx.end());
+
+                // sort singular values and right singular vectors
+                // TODO: this is not memory efficient, defnitely need to fix this
+                vector<double> S_sort(minMN);
+                vector<double> V_sort(minMN * minMN);
+                for (int i = 0; i < minMN; ++i)
+                {
+                    S_sort[i] = S[idx[i]];
+                    for (int j = 0; j < minMN; ++j)
+                    {
+                        V_sort[i * minMN + j] = Vp0->dataD[idx[i] * minMN + j];
+                    }
                 }
 
-                // computing singular values and right singular vectors
-                if (mosStep == 2)
+                for (int i = 0; i < minMN; ++i)
                 {
-
-                        // configure corMat on proc 0
-                        std::string corMatString = "corMat.bin";
-                        corMat->read_bin(corMatString);
-                        corMatp0->changeContext(corMat);
-                        delete corMat;
-
-                        cout << minMN << endl;
-                        if (procGrid->rank == 0)
-                        {
-                                cout << "Start eigensolve" << endl;
-                                t1 = MPI_Wtime();
-
-                                // map corMatp0 to Eigen data structure
-                                Eigen::MatrixXd corMatEig = Eigen::Map<Eigen::MatrixXd>(corMatp0->dataD.data(), minMN, minMN);
-                                // corMatEig = corMatEig.selfadjointView<Eigen::Upper>();
-
-                                // compute eigensolve
-                                // Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(corMatEig);
-                                Eigen::EigenSolver<Eigen::MatrixXd> es(corMatEig);
-
-                                Eigen::MatrixXcd VEig(minMN, minMN);
-                                Eigen::VectorXcd SEig(minMN);
-                                // Eigen::MatrixXd VEig(minMN,minMN);
-                                // Eigen::VectorXd SEig(minMN);
-
-                                // Eigen gives eigenvalues in ascending order, reverse for descending order
-                                // SEig = es.eigenvalues().reverse();
-                                // VEig = es.eigenvectors().rowwise().reverse();
-                                SEig = es.eigenvalues();
-                                VEig = es.eigenvectors();
-
-                                // map Eigen objects to double vectors
-                                Eigen::Map<Eigen::MatrixXd>(Vp0->dataD.data(), VEig.rows(), VEig.cols()) = VEig.real();
-                                Eigen::Map<Eigen::VectorXd>(S.data(), minMN) = SEig.real();
-
-                                cout << S.size() << endl;
-                                // singular values of A are square roots of eigenvalues of A^T*A
-                                for (int i = 0; i < S.size(); i++)
-                                {
-                                        if (S[i] < 0.0)
-                                                S[i] = 0.0;
-                                        S[i] = std::sqrt(S[i]);
-                                }
-                                t2 = MPI_Wtime();
-                                cout << "finish eigensolve in " << t2 - t1 << " seconds" << endl;
-
-                                // argsort singular values in descending order
-                                vector<size_t> idx(S.size());
-                                iota(idx.begin(), idx.end(), 0);
-                                stable_sort(idx.begin(), idx.end(), [&S](size_t i1, size_t i2) { return S[i1] < S[i2]; });
-                                reverse(idx.begin(), idx.end());
-
-                                // sort singular values and right singular vectors
-                                // TODO: this is not memory efficient, defnitely need to fix this
-                                vector<double> S_sort(minMN);
-                                vector<double> V_sort(minMN * minMN);
-                                for (int i = 0; i < minMN; ++i)
-                                {
-                                        S_sort[i] = S[idx[i]];
-                                        for (int j = 0; j < minMN; ++j)
-                                        {
-                                                V_sort[i * minMN + j] = Vp0->dataD[idx[i] * minMN + j];
-                                        }
-                                }
-
-                                for (int i = 0; i < minMN; ++i)
-                                {
-                                        S[i] = S_sort[i];
-                                        for (int j = 0; j < minMN; ++j)
-                                        {
-                                                Vp0->dataD[i * minMN + j] = V_sort[i * minMN + j];
-                                        }
-                                }
-
-                                // write singular values
-                                FILE *fid;
-                                fid = fopen("S.bin", "wb");
-                                fwrite(S.data(), sizeof(double), N, fid);
-                                fclose(fid);
-                        }
-                        MPI_Barrier(MPI_COMM_WORLD);
-
-                        // write right singular vectors
-                        V = new pMat(minMN, minMN, procGrid, 0, 0, 0.0);
-                        V->changeContext(Vp0);
-                        cout << "write V" << endl;
-                        V->write_bin("V.bin");
-
-                        delete corMatp0;
-                        delete Vp0;
-
-                        return 0;
-                }
-                else if (mosStep == 3)
-                {
-                        // compute left singular vectors
-
-                        V = new pMat(VT->M, VT->N, VT->pG, 0, VT->block, 0.0);
-                        std::string Vstring = "V.bin";
-                        V->read_bin(Vstring);
-
-                        FILE *fid;
-                        fid = fopen("S.bin", "rb");
-                        size_t warn = fread(S.data(), sizeof(double), N, fid);
-
-                        t1 = MPI_Wtime();
-                        int modeCount = 0;
-                        for (int i = modeStart - 1; i < modeEnd; i++)
-                        {
-                                cout << "Processing left singular vector " << (i + 1) << endl;
-                                // U->matrix_Product('N','N',M,1,minMN,this,0,0,V,0,i,(1.0/S[i]),0.0,0,modeCount);
-                                U->matrix_vec_product('N', M, N, (1.0 / S[i]), this, 0, 0, V, 0, i, 0.0, 0, modeCount);
-                                modeCount++;
-                        }
-                        t2 = MPI_Wtime();
-                        cout << "MOS SVD complete in " << t2 - t1 << " seconds" << endl;
-
-                        VT->transpose(V);
-                        delete V;
-
-                        return 0;
+                    S[i] = S_sort[i];
+                    for (int j = 0; j < minMN; ++j)
+                    {
+                        Vp0->dataD[i * minMN + j] = V_sort[i * minMN + j];
+                    }
                 }
 
-                cout << "Invalid value of mosStep: " << mosStep << endl;
-                MPI_Abort(MPI_COMM_WORLD, -1);
+                // write singular values
+                FILE *fid;
+                fid = fopen("S.bin", "wb");
+                fwrite(S.data(), sizeof(double), N, fid);
+                fclose(fid);
+            }
+            MPI_Barrier(MPI_COMM_WORLD);
+
+            // write right singular vectors
+            V = new pMat(minMN, minMN, procGrid, 0, 0, 0.0);
+            V->changeContext(Vp0);
+            cout << "write V" << endl;
+            V->write_bin("V.bin");
+
+            delete corMatp0;
+            delete Vp0;
+
+        }
+        else if (mosStep == 3)
+        {
+            // compute left singular vectors
+
+            V = new pMat(VT->M, VT->N, VT->pG, 0, VT->block, 0.0);
+            std::string Vstring = "V.bin";
+            V->read_bin(Vstring);
+
+            FILE *fid;
+            fid = fopen("S.bin", "rb");
+            size_t warn = fread(S.data(), sizeof(double), N, fid);
+
+            t1 = MPI_Wtime();
+            int modeCount = 0;
+            for (int i = modeStart - 1; i < modeEnd; i++)
+            {
+                cout << "Processing left singular vector " << (i + 1) << endl;
+                // U->matrix_Product('N','N',M,1,minMN,this,0,0,V,0,i,(1.0/S[i]),0.0,0,modeCount);
+                U->matrix_vec_product('N', M, N, (1.0 / S[i]), this, 0, 0, V, 0, i, 0.0, 0, modeCount);
+                modeCount++;
+            }
+            t2 = MPI_Wtime();
+            cout << "MOS SVD complete in " << t2 - t1 << " seconds" << endl;
+
+            VT->transpose(V);
+            delete V;
+
         }
 
-        else
-        {
-                cout << "min M not supported yet" << endl;
-                MPI_Abort(MPI_COMM_WORLD, -1);
-        }
+        cout << "Invalid value of mosStep: " << mosStep << endl;
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+
+    else
+    {
+        cout << "min M not supported yet" << endl;
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
 }
 
 // mos_run for full run
-int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S)
+void pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S)
 {
-
-        int modeStart = 1;
-        int modeEnd = N;
-        mos_run(M, N, ia, ja, U, VT, S, modeStart, modeEnd);
+    int modeStart = 1;
+    int modeEnd = N;
+    mos_run(M, N, ia, ja, U, VT, S, modeStart, modeEnd);
 }
 
-int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S, int modeStart, int modeEnd)
+void pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S, int modeStart, int modeEnd)
 {
-        int IA = ia + 1;
-        int JA = ja + 1;
-        int i_one = 1;
-        double t2, t1;
-        cout << "starting MOS" << endl;
-        int minMN = std::min(M, N);
+    int IA = ia + 1;
+    int JA = ja + 1;
+    int i_one = 1;
+    double t2, t1;
+    cout << "starting MOS" << endl;
+    int minMN = std::min(M, N);
 
-        pMat *corMat = new pMat(minMN, minMN, pG, 0, 0, 0.0);
-        pMat *corMatp0 = new pMat(minMN, minMN, pG, 0, 2, 0.0);
-        pMat *Vp0 = new pMat(minMN, minMN, pG, 0, 2, 0.0);
+    pMat *corMat = new pMat(minMN, minMN, pG, 0, 0, 0.0);
+    pMat *corMatp0 = new pMat(minMN, minMN, pG, 0, 2, 0.0);
+    pMat *Vp0 = new pMat(minMN, minMN, pG, 0, 2, 0.0);
 
-        if (minMN == N)
+    if (minMN == N)
+    {
+        corMat->matrix_Product('T', 'N', minMN, minMN, M, this, 0, 0, this, 0, 0, 1.0, 0.0, 0, 0);
+        cout << "Correlation matrix calculated" << endl;
+
+        corMatp0->changeContext(corMat);
+        delete corMat;
+
+        cout << "start eigensolve" << endl;
+        if (pG->rank == 0)
         {
-                corMat->matrix_Product('T', 'N', minMN, minMN, M, this, 0, 0, this, 0, 0, 1.0, 0.0, 0, 0);
-                cout << "Correlation matrix calculated" << endl;
+            t1 = MPI_Wtime();
+            Eigen::MatrixXd corMatEig = Eigen::Map<Eigen::MatrixXd>(corMatp0->dataD.data(), minMN, minMN);
+            Eigen::EigenSolver<Eigen::MatrixXd> es(corMatEig);
 
-                corMatp0->changeContext(corMat);
-                delete corMat;
+            Eigen::MatrixXcd VEig(minMN, minMN);
+            Eigen::VectorXcd SEig(minMN);
 
-                cout << "start eigensolve" << endl;
-                if (pG->rank == 0)
+            // eigen gives eigenvalues in ascending order, reverse for descending order
+            SEig = es.eigenvalues();
+            VEig = es.eigenvectors();
+
+            // map Eigen objects to double vectors
+            Eigen::Map<Eigen::MatrixXd>(Vp0->dataD.data(), VEig.rows(), VEig.cols()) = VEig.real();
+            Eigen::Map<Eigen::VectorXd>(S.data(), minMN) = SEig.real();
+
+            // singular values of A are square roots of eigenvalues of A^T*A
+            for (int i = 0; i < S.size(); i++)
+            {
+                if (S[i] < 0.0)
+                        S[i] = 0.0;
+                S[i] = std::sqrt(S[i]);
+            }
+            t2 = MPI_Wtime();
+            cout << "Finish eigensolve in " << t2 - t1 << " seconds" << endl;
+
+            // argsort singular values in ascending order
+            vector<size_t> idx(S.size());
+            iota(idx.begin(), idx.end(), 0);
+            stable_sort(idx.begin(), idx.end(), [&S](size_t i1, size_t i2) { return S[i1] < S[i2]; });
+
+            reverse(idx.begin(), idx.end()); // reverse order to get singular values in descending order
+
+            // sort singular values and right singular vectors
+            // TODO: this is not memory efficient, defnitely need to fix this
+            vector<double> S_sort(minMN);
+            vector<double> V_sort(minMN * minMN);
+            for (int i = 0; i < minMN; ++i)
+            {
+                S_sort[i] = S[idx[i]];
+                for (int j = 0; j < minMN; ++j)
                 {
-                        t1 = MPI_Wtime();
-                        Eigen::MatrixXd corMatEig = Eigen::Map<Eigen::MatrixXd>(corMatp0->dataD.data(), minMN, minMN);
-                        Eigen::EigenSolver<Eigen::MatrixXd> es(corMatEig);
-
-                        Eigen::MatrixXcd VEig(minMN, minMN);
-                        Eigen::VectorXcd SEig(minMN);
-
-                        // eigen gives eigenvalues in ascending order, reverse for descending order
-                        SEig = es.eigenvalues();
-                        VEig = es.eigenvectors();
-
-                        // map Eigen objects to double vectors
-                        Eigen::Map<Eigen::MatrixXd>(Vp0->dataD.data(), VEig.rows(), VEig.cols()) = VEig.real();
-                        Eigen::Map<Eigen::VectorXd>(S.data(), minMN) = SEig.real();
-
-                        // singular values of A are square roots of eigenvalues of A^T*A
-                        for (int i = 0; i < S.size(); i++)
-                        {
-                                if (S[i] < 0.0)
-                                        S[i] = 0.0;
-                                S[i] = std::sqrt(S[i]);
-                        }
-                        t2 = MPI_Wtime();
-                        cout << "Finish eigensolve in " << t2 - t1 << " seconds" << endl;
-
-                        // argsort singular values in ascending order
-                        vector<size_t> idx(S.size());
-                        iota(idx.begin(), idx.end(), 0);
-                        stable_sort(idx.begin(), idx.end(), [&S](size_t i1, size_t i2) { return S[i1] < S[i2]; });
-
-                        reverse(idx.begin(), idx.end()); // reverse order to get singular values in descending order
-
-                        // sort singular values and right singular vectors
-                        // TODO: this is not memory efficient, defnitely need to fix this
-                        vector<double> S_sort(minMN);
-                        vector<double> V_sort(minMN * minMN);
-                        for (int i = 0; i < minMN; ++i)
-                        {
-                                S_sort[i] = S[idx[i]];
-                                for (int j = 0; j < minMN; ++j)
-                                {
-                                        V_sort[i * minMN + j] = Vp0->dataD[idx[i] * minMN + j];
-                                }
-                        }
-
-                        for (int i = 0; i < minMN; ++i)
-                        {
-                                S[i] = S_sort[i];
-                                for (int j = 0; j < minMN; ++j)
-                                {
-                                        Vp0->dataD[i * minMN + j] = V_sort[i * minMN + j];
-                                }
-                        }
+                    V_sort[i * minMN + j] = Vp0->dataD[idx[i] * minMN + j];
                 }
+            }
 
-                delete corMatp0;
-
-                // map V from rank 0 to distributed matrix
-                MPI_Bcast(S.data(), S.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
-                pMat *V = new pMat(VT->M, VT->N, VT->pG, 0, VT->block, 0.0);
-                V->changeContext(Vp0);
-                delete Vp0;
-
-                VT->transpose(V);
-                delete V;
-
-                t1 = MPI_Wtime();
-                int modeCount = 0;
-                for (int i = modeStart - 1; i < modeEnd; i++)
+            for (int i = 0; i < minMN; ++i)
+            {
+                S[i] = S_sort[i];
+                for (int j = 0; j < minMN; ++j)
                 {
-                        cout << "Processing left singular vector " << (i + 1) << endl;
-                        U->matrix_Product('N', 'T', M, 1, minMN, this, 0, 0, VT, i, 0, (1.0 / S[i]), 0.0, 0, modeCount);
-                        modeCount++;
+                    Vp0->dataD[i * minMN + j] = V_sort[i * minMN + j];
                 }
-                t2 = MPI_Wtime();
-                cout << "MOS SVD complete in " << t2 - t1 << " seconds" << endl;
-
-                return 0;
+            }
         }
 
-        else
+        delete corMatp0;
+
+        // map V from rank 0 to distributed matrix
+        MPI_Bcast(S.data(), S.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        pMat *V = new pMat(VT->M, VT->N, VT->pG, 0, VT->block, 0.0);
+        V->changeContext(Vp0);
+        delete Vp0;
+
+        VT->transpose(V);
+        delete V;
+
+        t1 = MPI_Wtime();
+        int modeCount = 0;
+        for (int i = modeStart - 1; i < modeEnd; i++)
         {
-                cout << "min M not supported yet" << endl;
-                MPI_Abort(MPI_COMM_WORLD, -1);
+            cout << "Processing left singular vector " << (i + 1) << endl;
+            U->matrix_Product('N', 'T', M, 1, minMN, this, 0, 0, VT, i, 0, (1.0 / S[i]), 0.0, 0, modeCount);
+            modeCount++;
         }
+        t2 = MPI_Wtime();
+        cout << "MOS SVD complete in " << t2 - t1 << " seconds" << endl;
+
+    }
+    else
+    {
+            cout << "min M not supported yet" << endl;
+            MPI_Abort(MPI_COMM_WORLD, -1);
+    }
 }
 
-int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv)
+void pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv)
 {
     qr_run(m, n, ia, ja, ipiv, "./", "P.bin", true);
 }
 
-int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string outdir, bool stdout) {
+void pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string outdir, bool stdout) {
 	qr_run(m, n, ia, ja, ipiv, outdir, "P.bin", stdout);
 }
 
-int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string outdir, string outfile, bool stdout)
+void pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string outdir, string outfile, bool stdout)
 {
+    if (stdout)
+        cout << "QR initializing" << endl;
+    int IA = ia + 1;
+    int JA = ja + 1;
+
+    int JAnpm1 = JA + n - 1;
+    int JAminMNm1 = JA + std::min(m, n) - 1;
+
+    int ipiv_LOCc = std::max(1, numroc_(&JAnpm1, &nb, &(pG->mycol), &(desc[7]), &(pG->pcol)));
+    int tau_LOCc = std::max(1, numroc_(&JAminMNm1, &nb, &(pG->mycol), &(desc[7]), &(pG->pcol)));
+    if (stdout)
+    {
+        cout << "ipiv_LOCc= " << ipiv_LOCc << endl;
+        cout << "tau_LOCc= " << tau_LOCc << endl;
+    }
+    vector<double> tau(1);
+    vector<double> WORK(1);
+
+    ipiv.resize(ipiv_LOCc);
+    tau.resize(tau_LOCc);
+
+    double t1, t2;
+    int info = 0;
+    int LWORK = -1;
+
+    pdgeqpf_(&m, &n, dataD.data(), &IA, &JA, desc, ipiv.data(), tau.data(), WORK.data(), &LWORK, &info);
+    if (stdout)
+        cout << "WORK=" << WORK[0] << " ,LWORK= " << LWORK << ", info= " << info << endl;
+    LWORK = WORK[0];
+    WORK.resize(LWORK);
+    if (stdout)
+        std::cout << "WORK allocated starting QR" << std::endl;
+    MPI_Barrier(MPI_COMM_WORLD);
+    t1 = MPI_Wtime();
+    pdgeqpf_(&m, &n, dataD.data(), &IA, &JA, desc, ipiv.data(), tau.data(), WORK.data(), &LWORK, &info);
+    MPI_Barrier(MPI_COMM_WORLD);
+    t2 = MPI_Wtime();
+    if (stdout)
+        cout << "QR complete in " << t2 - t1 << " seconds info =" << info << endl;
+    MPI_Barrier(MPI_COMM_WORLD);
+    tau.resize(0);
+    WORK.resize(0);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    int ONE = 1;
+    MPI_File fH;
+    std::string pivot_name = outdir + "/" + outfile;
+    MPI_File_open(MPI_COMM_WORLD, pivot_name.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fH);
+    if (printRank)
+    {
+        MPI_File_write(fH, &ONE, 1, MPI_INT, MPI_STATUS_IGNORE);
+        MPI_File_write(fH, &N, 1, MPI_INT, MPI_STATUS_IGNORE);
         if (stdout)
-                cout << "QR initializing" << endl;
-        int IA = ia + 1;
-        int JA = ja + 1;
+        {
+            cout << "Write Start" << endl;
+            cout << "M=" << ONE << ", mb=" << mb << ", N=" << N << ", nb=" << nb << endl;
+        }
+    }
+    MPI_File_close(&fH);
+    MPI_Barrier(MPI_COMM_WORLD);
+    int disp = 2 * sizeof(int);
+    int dims[2] = {ONE, N};
+    int distribs[2] = {MPI_DISTRIBUTE_CYCLIC, MPI_DISTRIBUTE_CYCLIC};
+    int dargs[2] = {mb, nb};
+    MPI_Datatype darray;
+    MPI_Type_create_darray(pG->size, pG->rank, 2, dims, distribs, dargs, pG->pdims, MPI_ORDER_FORTRAN, MPI_INT, &darray);
+    MPI_Type_commit(&darray);
+    int tsize, mpiEls;
+    MPI_Type_size(darray, &tsize);
+    mpiEls = tsize / (sizeof(int));
+    if (myRC[1] != mpiEls)
+    {
+        cout << "Allocation via MPI " << mpiEls << " and pblacs " << myRC[1] << " is different" << endl;
+    }
+    MPI_File_open(MPI_COMM_WORLD, pivot_name.c_str(), MPI_MODE_WRONLY, MPI_INFO_NULL, &fH);
+    if (printRank && stdout)
+            cout << "MPI Allocation " << mpiEls << " , pblacs Allocation " << myRC[1] << endl;
+    t1 = MPI_Wtime();
+    MPI_File_set_view(fH, disp, MPI_INT, darray, "native", MPI_INFO_NULL);
+    MPI_File_write_all(fH, ipiv.data(), mpiEls, MPI_INT, MPI_STATUS_IGNORE);
+    MPI_File_close(&fH);
+    t2 = MPI_Wtime();
+    if (printRank && stdout)
+        cout << "Write time is " << t2 - t1 << endl;
 
-        int JAnpm1 = JA + n - 1;
-        int JAminMNm1 = JA + std::min(m, n) - 1;
+}
 
-        int ipiv_LOCc = std::max(1, numroc_(&JAnpm1, &nb, &(pG->mycol), &(desc[7]), &(pG->pcol)));
-        int tau_LOCc = std::max(1, numroc_(&JAminMNm1, &nb, &(pG->mycol), &(desc[7]), &(pG->pcol)));
+void pMat::transpose(pMat *A)
+{
+    transpose(A, this->M, this->N, 0, 0);
+}
+
+void pMat::transpose(pMat *A, int m, int n, int ia, int ja)
+{
+    int IA = ia + 1;
+    int JA = ja + 1;
+    cout << "Copying transpose" << endl;
+
+    if ((m != M) && (n != A->M))
+    {
+        cout << "transpose dimension mismatch" << endl;
+        cout << m << " " << M << " " << n << " " << A->M << endl;
+        throw(-1);
+    }
+    int i_one = 1;
+    double ONE = 1.0;
+    double ZERO = 0.0;
+    pdtran_(&m, &n, &ONE, A->dataD.data(), &IA, &JA, A->desc, &ZERO, dataD.data(), &i_one, &i_one, desc);
+}
+
+void pMat::changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb, bool stdout)
+{
+    int IA = ia + 1;
+    int JA = ja + 1;
+    int IB = ib + 1;
+    int JB = jb + 1;
+    if (stdout)
+        cout << "Copying Matrix" << endl
+            << "m = " << m << " , "
+            << "n = " << n << endl;
+    int i_one = 1;
+    if (type == 0)
+    {
         if (stdout)
-        {
-                cout << "ipiv_LOCc= " << ipiv_LOCc << endl;
-                cout << "tau_LOCc= " << tau_LOCc << endl;
-        }
-        vector<double> tau(1);
-        vector<double> WORK(1);
-
-        ipiv.resize(ipiv_LOCc);
-        tau.resize(tau_LOCc);
-
-        double t1, t2;
-        int info = 0;
-        int LWORK = -1;
-
-        pdgeqpf_(&m, &n, dataD.data(), &IA, &JA, desc, ipiv.data(), tau.data(), WORK.data(), &LWORK, &info);
+            cout << "Double changed pGrid" << endl;
+        pdgemr2d_(&m, &n, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, &(pG->icntxt));
+    }
+    if (type == 1)
+    {
         if (stdout)
-                cout << "WORK=" << WORK[0] << " ,LWORK= " << LWORK << ", info= " << info << endl;
-        LWORK = WORK[0];
-        WORK.resize(LWORK);
-        if (stdout)
-                std::cout << "WORK allocated starting QR" << std::endl;
-        MPI_Barrier(MPI_COMM_WORLD);
-        t1 = MPI_Wtime();
-        pdgeqpf_(&m, &n, dataD.data(), &IA, &JA, desc, ipiv.data(), tau.data(), WORK.data(), &LWORK, &info);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t2 = MPI_Wtime();
-        if (stdout)
-                cout << "QR complete in " << t2 - t1 << " seconds info =" << info << endl;
-        MPI_Barrier(MPI_COMM_WORLD);
-        tau.resize(0);
-        WORK.resize(0);
-
-        MPI_Barrier(MPI_COMM_WORLD);
-        int ONE = 1;
-        MPI_File fH;
-        std::string pivot_name = outdir + "/" + outfile;
-        MPI_File_open(MPI_COMM_WORLD, pivot_name.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fH);
-        if (printRank)
-        {
-                MPI_File_write(fH, &ONE, 1, MPI_INT, MPI_STATUS_IGNORE);
-                MPI_File_write(fH, &N, 1, MPI_INT, MPI_STATUS_IGNORE);
-                if (stdout)
-                {
-                        cout << "Write Start" << endl;
-                        cout << "M=" << ONE << ", mb=" << mb << ", N=" << N << ", nb=" << nb << endl;
-                }
-        }
-        MPI_File_close(&fH);
-        MPI_Barrier(MPI_COMM_WORLD);
-        int disp = 2 * sizeof(int);
-        int dims[2] = {ONE, N};
-        int distribs[2] = {MPI_DISTRIBUTE_CYCLIC, MPI_DISTRIBUTE_CYCLIC};
-        int dargs[2] = {mb, nb};
-        MPI_Datatype darray;
-        MPI_Type_create_darray(pG->size, pG->rank, 2, dims, distribs, dargs, pG->pdims, MPI_ORDER_FORTRAN, MPI_INT, &darray);
-        MPI_Type_commit(&darray);
-        int tsize, mpiEls;
-        MPI_Type_size(darray, &tsize);
-        mpiEls = tsize / (sizeof(int));
-        if (myRC[1] != mpiEls)
-        {
-                cout << "Allocation via MPI " << mpiEls << " and pblacs " << myRC[1] << " is different" << endl;
-        }
-        MPI_File_open(MPI_COMM_WORLD, pivot_name.c_str(), MPI_MODE_WRONLY, MPI_INFO_NULL, &fH);
-        if (printRank && stdout)
-                cout << "MPI Allocation " << mpiEls << " , pblacs Allocation " << myRC[1] << endl;
-        t1 = MPI_Wtime();
-        MPI_File_set_view(fH, disp, MPI_INT, darray, "native", MPI_INFO_NULL);
-        MPI_File_write_all(fH, ipiv.data(), mpiEls, MPI_INT, MPI_STATUS_IGNORE);
-        MPI_File_close(&fH);
-        t2 = MPI_Wtime();
-        if (printRank && stdout)
-                cout << "Write time is " << t2 - t1 << endl;
-
-        return 1;
+            cout << "Complex changed pGrid" << endl;
+        pzgemr2d_(&m, &n, A->dataC.data(), &IA, &JA, A->desc, dataC.data(), &IB, &JB, desc, &(pG->icntxt));
+    }
 }
 
-int pMat::transpose(pMat *A)
+void pMat::changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb)
 {
-        transpose(A, this->M, this->N, 0, 0);
+    changeContext(A, m, n, ia, ja, ib, jb, true);
 }
 
-int pMat::transpose(pMat *A, int m, int n, int ia, int ja)
+void pMat::changeContext(pMat *A)
 {
-        int IA = ia + 1;
-        int JA = ja + 1;
-        cout << "Copying transpose" << endl;
-
-        if ((m != M) && (n != A->M))
-        {
-                cout << "transpose dimension mismatch" << endl;
-                cout << m << " " << M << " " << n << " " << A->M << endl;
-                return -1;
-        }
-        int i_one = 1;
-        double ONE = 1.0;
-        double ZERO = 0.0;
-        pdtran_(&m, &n, &ONE, A->dataD.data(), &IA, &JA, A->desc, &ZERO, dataD.data(), &i_one, &i_one, desc);
-}
-int pMat::changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb, bool stdout)
-{
-        int IA = ia + 1;
-        int JA = ja + 1;
-        int IB = ib + 1;
-        int JB = jb + 1;
-        if (stdout)
-                cout << "Copying Matrix" << endl
-                     << "m = " << m << " , "
-                     << "n = " << n << endl;
-        int i_one = 1;
-        if (type == 0)
-        {
-                if (stdout)
-                        cout << "Double changed pGrid" << endl;
-                pdgemr2d_(&m, &n, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, &(pG->icntxt));
-        }
-        if (type == 1)
-        {
-                if (stdout)
-                        cout << "Complex changed pGrid" << endl;
-                pzgemr2d_(&m, &n, A->dataC.data(), &IA, &JA, A->desc, dataC.data(), &IB, &JB, desc, &(pG->icntxt));
-        }
-}
-int pMat::changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb)
-{
-        changeContext(A, m, n, ia, ja, ib, jb, true);
-}
-int pMat::changeContext(pMat *A)
-{
-        changeContext(A, M, N, 0, 0, 0, 0, true);
-}
-int pMat::changeContext(pMat *A, bool stdout)
-{
-        changeContext(A, M, N, 0, 0, 0, 0, stdout);
+    changeContext(A, M, N, 0, 0, 0, 0, true);
 }
 
-int pMat::dMax(int dim, int rc, double &val, int &index)
+void pMat::changeContext(pMat *A, bool stdout)
 {
-        // int index = 0;
+    changeContext(A, M, N, 0, 0, 0, 0, stdout);
+}
 
-        if (dim == 0)
-        {
-                int IA = 1, JA = rc + 1, i_one = 1;
-                pdamax_(&M, &val, &index, dataD.data(), &IA, &JA, desc, &i_one);
-        }
-        if (dim == 1)
-        {
-                int IA = rc + 1, JA = 1, i_one = 1;
-                pdamax_(&N, &val, &index, dataD.data(), &IA, &JA, desc, &M);
-        }
+void pMat::dMax(int dim, int rc, double &val, int &index)
+{
 
-		index--; // return to C indexing
+    if (dim == 0)
+    {
+        int IA = 1, JA = rc + 1, i_one = 1;
+        pdamax_(&M, &val, &index, dataD.data(), &IA, &JA, desc, &i_one);
+    }
+    if (dim == 1)
+    {
+        int IA = rc + 1, JA = 1, i_one = 1;
+        pdamax_(&N, &val, &index, dataD.data(), &IA, &JA, desc, &M);
+    }
+
+    index--; // return to C indexing
 
 }
 
 // Computes global argmax of one-dimensional pMat
-int pMat::argmax_vec() {
+int pMat::argmax_vec()
+{
+    // only valid for "vectors" (one-dimensiona pMat)
+    int vecType;
+    if (N == 1) {
+        vecType = 0; // column vector
+    } else if (M == 1) {
+        vecType = 1; // row vector
+    } else {
+        cout << "pMat::argmax_vec only accepts one-dimensiona pMats" << endl;
+        cout << "This pMat has dimensions (" << M << ", " << N << ")" << endl;
+        throw(-1);
+    }
 
-		// only valid for "vectors" (one-dimensiona pMat)
-		int vecType;
-		if (N == 1) {
-			vecType = 0; // column vector
-		} else if (M == 1) {
-			vecType = 1; // row vector
-		} else {
-			cout << "pMat::argmax_vec only accepts one-dimensiona pMats" << endl;
-			cout << "This pMat has dimensions (" << M << ", " << N << ")" << endl;
-			throw(-1);
-		}
+    double maxLocal = 0.0;
+    double maxGlobal = 0.0;
+    int argMaxLocal = -1;
+    int argMaxGlobal = -1;
 
-		double maxLocal = 0.0;
-		double maxGlobal = 0.0;
-		int argMaxLocal = -1;
-		int argMaxGlobal = -1;
+    this->dMax(vecType, 0, maxLocal, argMaxLocal);
 
-		this->dMax(vecType, 0, maxLocal, argMaxLocal);
+    // Allreduce(MPI_MAX) the maximum value
+    MPI_Allreduce(&maxLocal, &maxGlobal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
-		// Allreduce(MPI_MAX) the maximum value
-		MPI_Allreduce(&maxLocal, &maxGlobal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    // if rank doesn't own the max, set argMaxLocal = -1 so that MPI_MAX can determine the correct argMaxGlobal
+    if (maxLocal != maxGlobal) {
+        argMaxLocal = -1;
+    }
+    MPI_Allreduce(&argMaxLocal, &argMaxGlobal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
-		// if rank doesn't own the max, set argMaxLocal = -1 so that MPI_MAX can determine the correct argMaxGlobal
-		if (maxLocal != maxGlobal) {
-			argMaxLocal = -1;
-		}
-		MPI_Allreduce(&argMaxLocal, &argMaxGlobal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-
-		return argMaxGlobal;
+    return argMaxGlobal;
 }
 
-int pMat::dSum(int dim, int rc, double &val)
+void pMat::dSum(int dim, int rc, double &val)
 {
 
-        if (dim == 0)
-        {
-                int IA = 1, JA = rc + 1, i_one = 1;
-                pdasum_(&M, &val, dataD.data(), &IA, &JA, desc, &i_one);
-        }
-        if (dim == 1)
-        {
-                int IA = rc + 1, JA = 1, i_one = 1;
-                pdasum_(&N, &val, dataD.data(), &IA, &JA, desc, &M);
-        }
+    if (dim == 0)
+    {
+        int IA = 1, JA = rc + 1, i_one = 1;
+        pdasum_(&M, &val, dataD.data(), &IA, &JA, desc, &i_one);
+    }
+    if (dim == 1)
+    {
+        int IA = rc + 1, JA = 1, i_one = 1;
+        pdasum_(&N, &val, dataD.data(), &IA, &JA, desc, &M);
+    }
 }
 
 void pMat::pinv(pMat *A)
 {
-        pMat *UU, *VV;
-        UU = new pMat(A->M, std::min(A->M, A->N), A->pG, false);
-        VV = new pMat(std::min(A->M, A->N), A->N, A->pG, false);
-        vector<double> SS(std::min(A->M, A->N), 0.0);
+    pMat *UU, *VV;
+    UU = new pMat(A->M, std::min(A->M, A->N), A->pG, false);
+    VV = new pMat(std::min(A->M, A->N), A->N, A->pG, false);
+    vector<double> SS(std::min(A->M, A->N), 0.0);
 
-        A->svd_run(A->M, A->N, 0, 0, UU, VV, SS, false);
-        this->matrix_Product('T', 'T', VV->N, UU->M, 1, VV, 0, 0, UU, 0, 0, 1.0 / SS[0], 0.0, 0, 0);
-        for (int i = 1; i < SS.size(); i++)
-        {
-                if (SS[i] > std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0])
-                        this->matrix_Product('T', 'T', VV->N, UU->M, 1, VV, i, 0, UU, 0, i, 1.0 / SS[i], 1.0, 0, 0);
-        }
-        delete UU;
-        delete VV;
+    A->svd_run(A->M, A->N, 0, 0, UU, VV, SS, false);
+    this->matrix_Product('T', 'T', VV->N, UU->M, 1, VV, 0, 0, UU, 0, 0, 1.0 / SS[0], 0.0, 0, 0);
+    for (int i = 1; i < SS.size(); i++)
+    {
+        if (SS[i] > std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0])
+            this->matrix_Product('T', 'T', VV->N, UU->M, 1, VV, i, 0, UU, 0, i, 1.0 / SS[i], 1.0, 0, 0);
+    }
+    delete UU;
+    delete VV;
 }
 
 // solve over-/under-determined linear system AX = B
 // on exit, solutions are written to columns of B
 // on exit, A is overwritten with QR decomposition info (pretty much destroyed)
-int pMat::leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int ja, int ib, int jb)
+void pMat::leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int ja, int ib, int jb)
 {
 
 	int info = 0;
@@ -1198,42 +1176,41 @@ int pMat::leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int
 	t2 = MPI_Wtime();
 	WORK.resize(0);
 
-	return 1;
-
 }
 
-int pMat::outerProductSum(pMat *U, char UT, pMat *VT, char VTT, std::vector<double> &S, int inv)
+void pMat::outerProductSum(pMat *U, char UT, pMat *VT, char VTT, std::vector<double> &S, int inv)
 {
-        if (inv == 1)
+    if (inv == 1)
+    {
+        this->matrix_Product(UT, VTT, U->M, VT->N, 1, U, 0, 0, VT, 0, 0, 1 / S[0], 0.0, 0, 0);
+        for (int i = 1; i < S.size(); i++)
         {
-                this->matrix_Product(UT, VTT, U->M, VT->N, 1, U, 0, 0, VT, 0, 0, 1 / S[0], 0.0, 0, 0);
-                for (int i = 1; i < S.size(); i++)
-                {
-                        this->matrix_Product(UT, VTT, U->M, VT->N, 1, U, 0, i, VT, i, 0, 1 / S[i], 1.0, 0, 0);
-                }
+            this->matrix_Product(UT, VTT, U->M, VT->N, 1, U, 0, i, VT, i, 0, 1 / S[i], 1.0, 0, 0);
         }
-        else
+    }
+    else
+    {
+        this->matrix_Product(UT, VTT, U->M, VT->N, 1, U, 0, 0, VT, 0, 0, S[0], 0.0, 0, 0);
+        for (int i = 1; i < S.size(); i++)
         {
-                this->matrix_Product(UT, VTT, U->M, VT->N, 1, U, 0, 0, VT, 0, 0, S[0], 0.0, 0, 0);
-                for (int i = 1; i < S.size(); i++)
-                {
-                        this->matrix_Product(UT, VTT, U->M, VT->N, 1, U, 0, i, VT, i, 0, S[i], 1.0, 0, 0);
-                }
+            this->matrix_Product(UT, VTT, U->M, VT->N, 1, U, 0, i, VT, i, 0, S[i], 1.0, 0, 0);
         }
+    }
 }
+
 ostream &operator<<(std::ostream &os, const pMat &p)
 {
-        std::cout << "Descriptor type: " << p.desc[0] << std::endl;
-        std::cout << "BLACS context: " << p.desc[1] << std::endl;
-        std::cout << "Global Rows: " << p.desc[2] << std::endl;
-        std::cout << "Global Cols: " << p.desc[3] << std::endl;
-        std::cout << "Row Blocking factor: " << p.desc[4] << std::endl;
-        std::cout << "Column Blocking factor: " << p.desc[5] << std::endl;
-        std::cout << "Process row where first row is: " << p.desc[6] << std::endl;
-        std::cout << "Process Col where first col is: " << p.desc[7] << std::endl;
-        std::cout << "Leading Dimension: " << p.desc[8] << std::endl;
-        std::cout << "Memory usage(data only) MB = " << p.MBs << std::endl;
-        return os;
+    std::cout << "Descriptor type: " << p.desc[0] << std::endl;
+    std::cout << "BLACS context: " << p.desc[1] << std::endl;
+    std::cout << "Global Rows: " << p.desc[2] << std::endl;
+    std::cout << "Global Cols: " << p.desc[3] << std::endl;
+    std::cout << "Row Blocking factor: " << p.desc[4] << std::endl;
+    std::cout << "Column Blocking factor: " << p.desc[5] << std::endl;
+    std::cout << "Process row where first row is: " << p.desc[6] << std::endl;
+    std::cout << "Process Col where first col is: " << p.desc[7] << std::endl;
+    std::cout << "Leading Dimension: " << p.desc[8] << std::endl;
+    std::cout << "Memory usage(data only) MB = " << p.MBs << std::endl;
+    return os;
 }
 
 // determine index of element in dataD corresponding to global indices (I, J)
@@ -1362,7 +1339,7 @@ bool operator==(pMat const &p1, pMat const &p2)
     return true;
 }
 
-int pMat::commCreate(MPI_Comm &col_comm, int dim)
+void pMat::commCreate(MPI_Comm &col_comm, int dim)
 {
     if (dim == 0)
     {

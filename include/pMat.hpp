@@ -25,6 +25,10 @@
 #endif*/
 #include <Eigen/Dense>
 
+#ifndef MAX_OPERATION_SIZE
+#define MAX_OPERATION_SIZE 400
+#endif
+
 /***
 *pMat: This file contains the headers for the PGrid and pMat classes.
 *These define how the code distributes data into the ScaLAPACK format
@@ -83,48 +87,48 @@ public:
 	void printMat();
 
 	// I/O
-	int write_bin(std::string filename);
-	int read_bin(std::string filename);
-    int write_ascii(std::string filename, std::string header);
+	void write_bin(std::string filename);
+	void read_bin(std::string filename);
+    void write_ascii(std::string filename, std::string header);
 	bool check_bin_size(std::string filename, int &mM, int &mN);
 
 	// PBLAS
-	int matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia, int ja, pMat *B, int ib, int jb, double alpha, double beta, int ic, int jc);
-	int matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int jb, double alpha, double beta);
-	int matrix_Product_sym(char uplo, char trans, int n, int k, double alpha, pMat *A, int ia, int ja, double beta, int ic, int jc);
-	int matrix_vec_product(char trans, int m, int n, double alpha, pMat *A, int ia, int ja, pMat *B, int ib, int jb,
+	void matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia, int ja, pMat *B, int ib, int jb, double alpha, double beta, int ic, int jc);
+	void matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int jb, double alpha, double beta);
+	void matrix_Product_sym(char uplo, char trans, int n, int k, double alpha, pMat *A, int ia, int ja, double beta, int ic, int jc);
+	void matrix_vec_product(char trans, int m, int n, double alpha, pMat *A, int ia, int ja, pMat *B, int ib, int jb,
 						   double beta, int ic, int jc);
-    int scale_col_row(double alpha, int idx, bool scaleRows);
+    void scale_col_row(double alpha, int idx, bool scaleRows);
     void matrix_elem_mult(char tA, int m, int n, double alpha, pMat *A, int ia, int ja, int ic, int jc);
 
 	// SVD
-	int svd_run(int, int, int, int, pMat *&, pMat *&, std::vector<double> &);
-	int svd_run(int, int, int, int, pMat *&, pMat *&, std::vector<double> &, bool);
+	void svd_run(int, int, int, int, pMat *&, pMat *&, std::vector<double> &);
+	void svd_run(int, int, int, int, pMat *&, pMat *&, std::vector<double> &, bool);
 
 	// MOS
-	int mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S);
-	int mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S, int modeStart, int modeEnd);
-	int mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S, int modeStart, int modeEnd,
+	void mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S);
+	void mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S, int modeStart, int modeEnd);
+	void mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S, int modeStart, int modeEnd,
 				int mosStep, PGrid *procGrid);
 
 	// QR decomposition
-	int qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv);
-	int qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv, std::string outdir, bool stdout);
-	int qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv, std::string outdir, std::string outfile, bool stdout);
+	void qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv);
+	void qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv, std::string outdir, bool stdout);
+	void qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv, std::string outdir, std::string outfile, bool stdout);
 
 	// Least-squares
-	int leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int ja, int ib, int jb);
+	void leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int ja, int ib, int jb);
 
 	// Utilities
-	int transpose(pMat *);
-	int transpose(pMat *, int, int, int, int);
-	int changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb, bool stdout);
-	int changeContext(pMat *, int, int, int, int, int, int);
-	int changeContext(pMat *);
-	int changeContext(pMat *, bool);
-	int dMax(int, int, double &, int &);
+	void transpose(pMat *);
+	void transpose(pMat *, int, int, int, int);
+	void changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb, bool stdout);
+	void changeContext(pMat *, int, int, int, int, int, int);
+	void changeContext(pMat *);
+	void changeContext(pMat *, bool);
+	void dMax(int, int, double &, int &);
 	int argmax_vec();
-	int dSum(int, int, double &);
+	void dSum(int, int, double &);
     double getElement(int I, int J);
 	double getLocalElement(int I, int J);
     double getLocalElement(int I, int J, double temp);
@@ -133,9 +137,9 @@ public:
     int getDataIndex(int I, int J);
 
 	// Other
-	int outerProductSum(pMat *U, char, pMat *VT, char, std::vector<double> &S, int inv);
+	void outerProductSum(pMat *U, char, pMat *VT, char, std::vector<double> &S, int inv);
 	void pinv(pMat *A);
-	int commCreate(MPI_Comm &col_com, int dim);
+	void commCreate(MPI_Comm &col_com, int dim);
 
 };
 
