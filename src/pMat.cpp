@@ -644,9 +644,8 @@ void pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<dou
             corMat->write_bin("corMat.bin");
             delete corMat;
         }
-
         // computing singular values and right singular vectors
-        if (mosStep == 2)
+        else if (mosStep == 2)
         {
             // configure corMat on proc 0
             std::string corMatString = "corMat.bin";
@@ -768,11 +767,12 @@ void pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<dou
             delete V;
 
         }
-
-        cout << "Invalid value of mosStep: " << mosStep << endl;
-        MPI_Abort(MPI_COMM_WORLD, -1);
+        else
+        {
+            cout << "Invalid value of mosStep: " << mosStep << endl;
+            MPI_Abort(MPI_COMM_WORLD, -1);
+        }
     }
-
     else
     {
         cout << "min M not supported yet" << endl;
