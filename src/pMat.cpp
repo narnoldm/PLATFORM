@@ -231,94 +231,93 @@ void pMat::printMat()
 
 int pMat::write_bin(std::string filename)
 {
-        MPI_Barrier(MPI_COMM_WORLD);
-        MPI_File fH = NULL;
-        MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fH);
-        if (printRank)
-        {
-                MPI_File_write(fH, &M, 1, MPI_INT, MPI_STATUS_IGNORE);
-                MPI_File_write(fH, &N, 1, MPI_INT, MPI_STATUS_IGNORE);
-                cout << "Write Start: " << filename << endl;
-                cout << "M=" << M << "mb=" << mb << "N=" << N << "nb=" << nb << endl;
-        }
-        MPI_File_close(&fH);
-        MPI_Barrier(MPI_COMM_WORLD);
-        int disp = 2 * sizeof(int);
-        int dims[2] = {M, N};
-        int distribs[2] = {MPI_DISTRIBUTE_CYCLIC, MPI_DISTRIBUTE_CYCLIC};
-        int dargs[2] = {mb, nb};
-        MPI_Datatype darray;
-        MPI_Type_create_darray(pG->size, pG->rank, 2, dims, distribs, dargs, pG->pdims, MPI_ORDER_FORTRAN, MPI_DOUBLE, &darray);
-        MPI_Type_commit(&darray);
-        int tsize, mpiEls;
-        MPI_Type_size(darray, &tsize);
-        mpiEls = tsize / (sizeof(double));
-        if (nelements != mpiEls)
-        {
-                cout << "Allocation via MPI " << mpiEls << " and pblacs " << nelements << " is different" << endl;
-                MPI_Abort(MPI_COMM_WORLD, -1);
-        }
-        double t2, t1;
-        MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_WRONLY, MPI_INFO_NULL, &fH);
-        if (printRank)
-                cout << "MPI Allocation " << mpiEls << " , pblacs Allocation " << nelements << endl;
-        t1 = MPI_Wtime();
-        MPI_File_set_view(fH, disp, MPI_DOUBLE, darray, "native", MPI_INFO_NULL);
-        MPI_File_write_all(fH, dataD.data(), mpiEls, MPI_DOUBLE, MPI_STATUS_IGNORE);
-        MPI_File_close(&fH);
-        t2 = MPI_Wtime();
-        if (printRank)
-                cout << "Write time is " << t2 - t1 << endl;
+    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_File fH = NULL;
+    MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fH);
+    if (printRank)
+    {
+        MPI_File_write(fH, &M, 1, MPI_INT, MPI_STATUS_IGNORE);
+        MPI_File_write(fH, &N, 1, MPI_INT, MPI_STATUS_IGNORE);
+        cout << "Write Start: " << filename << endl;
+        cout << "M=" << M << "mb=" << mb << "N=" << N << "nb=" << nb << endl;
+    }
+    MPI_File_close(&fH);
+    MPI_Barrier(MPI_COMM_WORLD);
+    int disp = 2 * sizeof(int);
+    int dims[2] = {M, N};
+    int distribs[2] = {MPI_DISTRIBUTE_CYCLIC, MPI_DISTRIBUTE_CYCLIC};
+    int dargs[2] = {mb, nb};
+    MPI_Datatype darray;
+    MPI_Type_create_darray(pG->size, pG->rank, 2, dims, distribs, dargs, pG->pdims, MPI_ORDER_FORTRAN, MPI_DOUBLE, &darray);
+    MPI_Type_commit(&darray);
+    int tsize, mpiEls;
+    MPI_Type_size(darray, &tsize);
+    mpiEls = tsize / (sizeof(double));
+    if (nelements != mpiEls)
+    {
+        cout << "Allocation via MPI " << mpiEls << " and pblacs " << nelements << " is different" << endl;
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+    double t2, t1;
+    MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_WRONLY, MPI_INFO_NULL, &fH);
+    if (printRank)
+        cout << "MPI Allocation " << mpiEls << " , pblacs Allocation " << nelements << endl;
+    t1 = MPI_Wtime();
+    MPI_File_set_view(fH, disp, MPI_DOUBLE, darray, "native", MPI_INFO_NULL);
+    MPI_File_write_all(fH, dataD.data(), mpiEls, MPI_DOUBLE, MPI_STATUS_IGNORE);
+    MPI_File_close(&fH);
+    t2 = MPI_Wtime();
+    if (printRank)
+        cout << "Write time is " << t2 - t1 << endl;
 }
 
 int pMat::read_bin(string filename)
 {
+    int rM, rN;
+    double t2, t1;
+    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_File fH;
+    MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fH);
+    MPI_File_read_all(fH, &rM, 1, MPI_INT, MPI_STATUS_IGNORE);
+    MPI_File_read_all(fH, &rN, 1, MPI_INT, MPI_STATUS_IGNORE);
+    MPI_File_close(&fH);
 
-        int rM, rN;
-        double t2, t1;
-        MPI_Barrier(MPI_COMM_WORLD);
-        MPI_File fH;
-        MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fH);
-        MPI_File_read_all(fH, &rM, 1, MPI_INT, MPI_STATUS_IGNORE);
-        MPI_File_read_all(fH, &rN, 1, MPI_INT, MPI_STATUS_IGNORE);
-        MPI_File_close(&fH);
+    if ((rN != N) || (rM != M))
+    {
+        cout << "bin file and matrix do not have same dimension" << endl
+            << "File M=" << rM << ", N=" << rN << endl
+            << "Matrix M=" << M << ", N=" << N << endl;
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+    int dims[2] = {M, N};
+    cout << "M = " << M << " N = " << N << endl;
+    int distribs[2] = {MPI_DISTRIBUTE_CYCLIC, MPI_DISTRIBUTE_CYCLIC};
+    int dargs[2] = {mb, nb};
+    MPI_Datatype darray;
+    MPI_Type_create_darray(pG->size, pG->rank, 2, dims, distribs, dargs, pG->pdims, MPI_ORDER_FORTRAN, MPI_DOUBLE, &darray);
+    MPI_Type_commit(&darray);
+    int disp = 2 * sizeof(int);
+    int tsize, mpiEls;
+    MPI_Type_size(darray, &tsize);
+    mpiEls = tsize / (sizeof(double));
+    //check size
+    if (nelements != mpiEls)
+    {
+        cout << "Allocation via MPI " << mpiEls << " and pblacs " << nelements << " is different" << endl;
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+    cout << "MPI Allocation " << mpiEls << " , pblacs Allocation " << nelements << endl;
+    cout << "Read Starting" << endl;
+    t1 = MPI_Wtime();
+    MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fH);
+    MPI_File_set_view(fH, disp, MPI_DOUBLE, darray, "native", MPI_INFO_NULL);
+    MPI_File_read_all(fH, dataD.data(), mpiEls, MPI_DOUBLE, MPI_STATUS_IGNORE);
+    MPI_File_close(&fH);
+    t2 = MPI_Wtime();
+    if (printRank)
+        cout << "read of " << filename << " took " << t2 - t1 << " seconds" << endl;
 
-        if ((rN != N) || (rM != M))
-        {
-                cout << "bin file and matrix do not have same dimension" << endl
-                     << "File M=" << rM << ", N=" << rN << endl
-                     << "Matrix M=" << M << ", N=" << N << endl;
-                MPI_Abort(MPI_COMM_WORLD, -1);
-        }
-        int dims[2] = {M, N};
-        cout << "M = " << M << " N = " << N << endl;
-        int distribs[2] = {MPI_DISTRIBUTE_CYCLIC, MPI_DISTRIBUTE_CYCLIC};
-        int dargs[2] = {mb, nb};
-        MPI_Datatype darray;
-        MPI_Type_create_darray(pG->size, pG->rank, 2, dims, distribs, dargs, pG->pdims, MPI_ORDER_FORTRAN, MPI_DOUBLE, &darray);
-        MPI_Type_commit(&darray);
-        int disp = 2 * sizeof(int);
-        int tsize, mpiEls;
-        MPI_Type_size(darray, &tsize);
-        mpiEls = tsize / (sizeof(double));
-        //check size
-        if (nelements != mpiEls)
-        {
-                cout << "Allocation via MPI " << mpiEls << " and pblacs " << nelements << " is different" << endl;
-                MPI_Abort(MPI_COMM_WORLD, -1);
-        }
-        cout << "MPI Allocation " << mpiEls << " , pblacs Allocation " << nelements << endl;
-        cout << "Read Starting" << endl;
-        t1 = MPI_Wtime();
-        MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fH);
-        MPI_File_set_view(fH, disp, MPI_DOUBLE, darray, "native", MPI_INFO_NULL);
-        MPI_File_read_all(fH, dataD.data(), mpiEls, MPI_DOUBLE, MPI_STATUS_IGNORE);
-        MPI_File_close(&fH);
-        t2 = MPI_Wtime();
-        if (printRank)
-                cout << "read of " << filename << " took " << t2 - t1 << " seconds" << endl;
-
-        return 1;
+    return 1;
 }
 
 int pMat::write_ascii(string filename, string header)

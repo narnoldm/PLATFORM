@@ -185,8 +185,30 @@ int main(int argc, char *argv[])
 
         string firstFile = dataset1->prefix + std::to_string(dataset1->snap0) + dataset1->suffix;
 
-        Uout->activateGEMSbin(firstFile.c_str());
-        Uout->batchWrite(U, "Spatial_Modes", "Spatial_Mode_", 0, modeEnd - modeStart + 1, 1, modeStart, 1, 0);
+        // determine output format
+        int outMode = -1;
+        bool writeModesSZPLT, writeModesBin;
+        inputFile.getParamBool("writeModesSZPLT", writeModesSZPLT, true);
+        inputFile.getParamBool("writeModesBin", writeModesBin, true);
+        if (writeModesSZPLT)
+        {
+            if (writeModesBin)
+            {
+                outMode = 0;
+            }
+            else
+            {
+                outMode = 1;
+            }
+        }
+        else if (writeModesBin)
+        {
+            outMode = 2;
+        }
+
+        // write modes to file
+        Uout->genHash(firstFile);
+        Uout->batchWrite(U, "Spatial_Modes", "Spatial_Mode_", 0, modeEnd - modeStart + 1, 1, modeStart, 1, 0, outMode);
     }
 
     cout.rdbuf(strm_buffer);
