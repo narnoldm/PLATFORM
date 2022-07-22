@@ -558,9 +558,14 @@ void tecIO::batchWrite_bin(pMat* dataMat, string dir, string fpref, int mStart, 
         MPI_Abort(MPI_COMM_WORLD, -1);
     }
 
-    int rank, size;
+    int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    // make output directory
+    assert(system(NULL)); // check if system commands work
+    if (!rank)
+        int ierr = system(("mkdir " + dir).c_str());
+
     const char* buffer;
     MPI_Offset offset = 0;
 
@@ -570,11 +575,10 @@ void tecIO::batchWrite_bin(pMat* dataMat, string dir, string fpref, int mStart, 
     int fileIndex;
     string filename;
 
-    int bufInt, bufDouble, dataIdx;
+    int bufInt, dataIdx;
+    double bufDouble;
     for (int k = mStart; k < mEnd; k = k + mSkip)
     {
-
-        cout << "Binary write " << (k + 1) << endl;
 
         fileIndex = fStart + (k - mStart) * fSkip;
         filename = dir + "/" + fpref + to_string(fileIndex) + ".bin";
@@ -589,30 +593,32 @@ void tecIO::batchWrite_bin(pMat* dataMat, string dir, string fpref, int mStart, 
             MPI_File_write_at_all(fh, 4, &bufInt, 1, MPI_INT, &status);
         }
 
-        for (int j = 0; j < numVars; ++j)
+        if (dataMat->pG->mycol == (k / dataMat->nb) % dataMat->pG->pcol)
         {
-            for (int i = 0; i < nCells; ++i)
+            cout << "Binary write " << (k + 1) << endl;
+            for (int j = 0; j < numVars; ++j)
             {
-                if (reorder)
+                for (int i = 0; i < nCells; ++i)
                 {
-                    dataIdx = dataMat->getDataIndex(j * nCells + idx[i], k);
-                }
-                else
-                {
-                    dataIdx = dataMat->getDataIndex(j * nCells + i, k);
-                }
+                    if (reorder)
+                    {
+                        dataIdx = dataMat->getDataIndex(j * nCells + i, k);
+                    }
+                    else
+                    {
+                        dataIdx = dataMat->getDataIndex(j * nCells + idx[i], k);
+                    }
 
-                // proc owns this index; write to file
-                if (dataIdx >= 0)
-                {
-                    bufDouble = dataMat->dataD[dataIdx];
-                    offset = 8 + (j * nCells + i) * sizeof(double);
-                    MPI_File_write_at_all(fh, offset, &bufDouble, 1, MPI_DOUBLE, &status);
+                    // proc owns this index; write to file
+                    if (dataIdx >= 0)
+                    {
+                        bufDouble = dataMat->dataD[dataIdx];
+                        offset = 8 + (j * nCells + i) * sizeof(double);
+                        MPI_File_write_at_all(fh, offset, &bufDouble, 1, MPI_DOUBLE, &status);
+                    }
                 }
             }
         }
-
-        MPI_Barrier(MPI_COMM_WORLD);
         MPI_File_close(&fh);
     }
 }
