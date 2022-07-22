@@ -332,7 +332,6 @@ void meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
         }
         MPI_Allreduce(MPI_IN_PLACE, tempR.data(), tempR.size(), MPI_DOUBLE, MPI_SUM, col_comms);
         // if process owns a piece of vector and is the first process in the process row/column
-        // cout << j << " " << procRowOrCol << " " << rowColCheck << " " << procRowOrColOpp << endl;
         if ((procRowOrCol == rowColCheck) && (procRowOrColOpp == 0))
         {
             fileIndex = fStart + (j - mStart) * fSkip;
@@ -580,21 +579,21 @@ void tecIO::batchWrite_bin(pMat* dataMat, string dir, string fpref, int mStart, 
     for (int k = mStart; k < mEnd; k = k + mSkip)
     {
 
-        fileIndex = fStart + (k - mStart) * fSkip;
-        filename = dir + "/" + fpref + to_string(fileIndex) + ".bin";
-        MPI_File_open(MPI_COMM_SELF, filename.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
-
-        // write header
-        if (rank == 0)
-        {
-            bufInt = dataMat->M;
-            MPI_File_write_at_all(fh, 0, &bufInt, 1, MPI_INT, &status);
-            bufInt = 1;
-            MPI_File_write_at_all(fh, 4, &bufInt, 1, MPI_INT, &status);
-        }
-
         if (dataMat->pG->mycol == (k / dataMat->nb) % dataMat->pG->pcol)
         {
+            fileIndex = fStart + (k - mStart) * fSkip;
+            filename = dir + "/" + fpref + to_string(fileIndex) + ".bin";
+            MPI_File_open(MPI_COMM_SELF, filename.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+
+            // write header
+            if (dataMat->pG->myrow == 0)
+            {
+                bufInt = dataMat->M;
+                MPI_File_write_at_all(fh, 0, &bufInt, 1, MPI_INT, &status);
+                bufInt = 1;
+                MPI_File_write_at_all(fh, 4, &bufInt, 1, MPI_INT, &status);
+            }
+
             cout << "Binary write " << (k + 1) << endl;
             for (int j = 0; j < numVars; ++j)
             {
@@ -618,8 +617,8 @@ void tecIO::batchWrite_bin(pMat* dataMat, string dir, string fpref, int mStart, 
                     }
                 }
             }
+            MPI_File_close(&fh);
         }
-        MPI_File_close(&fh);
     }
 }
 
