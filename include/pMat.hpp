@@ -89,7 +89,6 @@ public:
 	// I/O
 	void write_bin(std::string filename);
 	void read_bin(std::string filename);
-    void write_ascii(std::string filename, std::string header);
 	bool check_bin_size(std::string filename, int &mM, int &mN);
 
 	// PBLAS

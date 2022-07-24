@@ -52,8 +52,7 @@ public:
 class tecIO : public meta
 {
 public:
-    //child specific
-
+    // child specific
     std::vector<std::string> varName;
     std::vector<int> varIndex;
     std::vector<std::string> normID;
@@ -74,6 +73,7 @@ public:
     pMat* scalingDivVec = NULL;
     pMat* scalingSubVecFull = NULL;
 
+    std::vector<int> cellID;
     std::vector<int> idx;
 
     std::string meshFile;
@@ -102,6 +102,7 @@ public:
     virtual void writeSingle(int fileID, double *point, std::string fpref);
     virtual void writeSingle(int fileID, double *point, std::string fpref, int points, int mode);
     void batchWrite_bin(pMat* dataMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip);
+    void write_ascii(pMat* dataMat, std::string filename, std::string header);
 
     void addVar(std::string var, std::string &norm);
     int getVariableIndex(std::string var, std::string file);

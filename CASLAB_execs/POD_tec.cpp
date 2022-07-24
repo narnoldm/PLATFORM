@@ -47,6 +47,7 @@ int main(int argc, char *argv[])
     {
 
         evenMat = new pMat(dataset1->nPoints, dataset1->nSets, evenG, 0, 0, 0.0, false);
+        dataset1->activateReorder(dataset1->prefix + to_string(dataset1->snap0) + dataset1->suffix);
         dataset1->batchRead(evenMat);
 
         // read centering inputs
@@ -191,8 +192,7 @@ int main(int argc, char *argv[])
         Uout->nPoints = Uout->nCells * Uout->numVars;
 
         // for reordering output
-        string firstFile = dataset1->prefix + std::to_string(dataset1->snap0) + dataset1->suffix;
-        Uout->genHash(firstFile);
+        Uout->activateReorder(dataset1->prefix + to_string(dataset1->snap0) + dataset1->suffix);
 
         if (writeModesSZPLT)
         {

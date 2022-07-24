@@ -475,7 +475,7 @@ void tecIO::readSingleLowMem(string filename, pMat* dataMat, int colIdx)
                 cellIdx = j * maxReadSize + k;
                 if (reorder)
                 {
-                    dataIdx = dataMat->getDataIndex(i * nCells + idx[cellIdx], colIdx);
+                    dataIdx = dataMat->getDataIndex(i * nCells + cellID[cellIdx], colIdx);
                 }
                 else
                 {
@@ -547,7 +547,7 @@ void tecIO::readSingle(string filename, double *point)
     tecFileReaderClose(&fH);
 }
 
-// modification of pMat::write_bin() that uses idx and MPI_File_write_at_all() to guarantee write order
+// modification of batchWrite that uses idx and MPI_File_write_at_all() to guarantee write order
 void tecIO::batchWrite_bin(pMat* dataMat, string dir, string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip)
 {
     if ((numVars * nCells) != dataMat->M)
@@ -574,8 +574,7 @@ void tecIO::batchWrite_bin(pMat* dataMat, string dir, string fpref, int mStart, 
     int fileIndex;
     string filename;
 
-    int bufInt, dataIdx;
-    double bufDouble;
+    int bufInt, dataIdx, bufLen;
     for (int k = mStart; k < mEnd; k = k + mSkip)
     {
 
@@ -599,21 +598,38 @@ void tecIO::batchWrite_bin(pMat* dataMat, string dir, string fpref, int mStart, 
             {
                 for (int i = 0; i < nCells; ++i)
                 {
+                    // can do a little optimization since the memory is contiguous
                     if (reorder)
                     {
-                        dataIdx = dataMat->getDataIndex(j * nCells + i, k);
+                        // beginning of process block
+                        // up to end of block, or end of this variable's data
+                        if ((((j * nCells) + i) % dataMat->mb) == 0)
+                        {
+                            dataIdx = dataMat->getDataIndex(j * nCells + i, k);
+                            bufLen = min((long)dataMat->mb, nCells - (long)i);
+                        }
+                        // beginning of variable data
+                        // up to end of block
+                        else if (i == 0)
+                        {
+                            dataIdx = dataMat->getDataIndex(j * nCells + i, k);
+                            bufLen = min((long)dataMat->mb, dataMat->mb - (j * nCells + i) % dataMat->mb);
+                        }
+                        else
+                        {
+                            dataIdx = -1;
+                        }
                     }
                     else
                     {
                         dataIdx = dataMat->getDataIndex(j * nCells + idx[i], k);
+                        bufLen = 1;
                     }
 
-                    // proc owns this index; write to file
                     if (dataIdx >= 0)
                     {
-                        bufDouble = dataMat->dataD[dataIdx];
                         offset = 8 + (j * nCells + i) * sizeof(double);
-                        MPI_File_write_at_all(fh, offset, &bufDouble, 1, MPI_DOUBLE, &status);
+                        MPI_File_write_at_all(fh, offset, &(dataMat->dataD[dataIdx]), bufLen, MPI_DOUBLE, &status);
                     }
                 }
             }
@@ -777,6 +793,103 @@ void tecIO::writeSingle(int fileID, double *point, string fpref, int points, int
     }
 }
 
+void tecIO::write_ascii(pMat* dataMat, string filename, string header)
+{
+    // TODO: generalize
+    if (dataMat->N > 1)
+    {
+        cout << "write_ascii only works with column pMats right now" << endl;
+        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+    if (dataMat->block != 0)
+    {
+        cout << "only works with square block pMats" << endl;
+        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+
+    int rank, size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    const char* buffer;
+    MPI_Offset offset = 0;
+
+    // open file
+    MPI_Status status;
+    MPI_File fh;
+    MPI_File_open(MPI_COMM_SELF, filename.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+
+    // write header
+    header += "\n";
+    if (rank == 0)
+    {
+        buffer = header.c_str();
+        MPI_File_write_at_all(fh, offset, buffer, strlen(buffer), MPI_CHAR, &status);
+    }
+
+    // determine length of single line
+    ostringstream outstream;
+    double val = 1.0;
+    outstream << scientific << setprecision(numeric_limits<double>::digits10) << val << "\n";
+    int valLength = strlen((outstream.str()).c_str()) + 1; // add extra space for negative values
+    outstream.str("");
+    outstream.clear();
+
+    // TODO: this is all meaningless for general matrix write
+    int dataIdx;
+    if (dataMat->pG->mycol == 0)
+    {
+        int xi, li;
+        string tail;
+        string outstring;
+
+        for (int j = 0; j < numVars; ++j)
+        {
+            for (int i = 0; i < nCells; ++i)
+            {
+
+                if (reorder)
+                {
+                    dataIdx = dataMat->getDataIndex(j * nCells + i, 0);
+                }
+                else
+                {
+                    dataIdx = dataMat->getDataIndex(j * nCells + idx[i], 0);
+                }
+
+                if (dataIdx >= 0)
+                {
+                    val = dataMat->dataD[dataIdx];
+                    // pad non-negative numbers with an additional space
+                    if (val < 0.0)
+                    {
+                        tail = "\n";
+                    }
+                    else
+                    {
+                        tail = " \n";
+                    }
+                    outstream << scientific << setprecision(numeric_limits<double>::digits10) << val << tail;
+                    outstring = outstream.str();
+
+
+                    offset = strlen(header.c_str()) + (j * nCells + i) * valLength;
+
+                    buffer = outstring.c_str();
+                    MPI_File_write_at_all(fh, offset, buffer, strlen(buffer), MPI_CHAR, &status);
+                    outstream.str("");
+                    outstream.clear();
+                }
+            }
+        }
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_File_close(&fh);
+
+}
+
 void tecIO::addVar(string var, string &norm)
 {
     varName.push_back(var);
@@ -880,7 +993,7 @@ void tecIO::genHash(string filename)
 
     idx.resize(nCells, 0);
     iota(idx.begin(), idx.end(), 0);
-    vector<int> cellID(nCells);
+    cellID.resize(nCells);
     void *fH;
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -907,9 +1020,8 @@ void tecIO::genHash(string filename)
             cellID[i]--;
         }
 
-        cout << "Hash table built" << endl;
         stable_sort(idx.begin(), idx.end(), [&](int i, int j) { return cellID[i] < cellID[j]; });
-        cout << "Finish sort" << endl;
+        cout << "Hash table built" << endl;
     }
     else
     {
@@ -986,7 +1098,7 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
     if (writeToDisk)
     {
         // TODO: get SZPLT to output correctly, without silly fileID requirement
-        centerVec->write_ascii("centerProf.dat", "centerProf");
+        write_ascii(centerVec, "centerProf.dat", "centerProf");
         cout << "Centering files written" << endl;
     }
     MPI_Barrier(MPI_COMM_WORLD);
@@ -1155,8 +1267,8 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
     if (writeToDisk)
     {
         // TODO: get SZPLT to output correctly, without silly fileID requirement
-        scalingSubVec->write_ascii("scalingSubProf.dat", "scalingSubProf");
-        scalingDivVec->write_ascii("scalingDivProf.dat", "scalingDivProf");
+        write_ascii(scalingSubVec, "scalingSubProf.dat", "scalingSubProf");
+        write_ascii(scalingDivVec, "scalingDivProf.dat", "scalingDivProf");
 
         // if also centering, combine into single profile (useful for GEMS)
         if (isCentered)
@@ -1164,7 +1276,7 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
             scalingSubVecFull->matrix_Sum('N', nPoints, 1, centerVec, 0, 0, 0, 0, 1.0, 1.0);
             scalingSubVecFull->matrix_Sum('N', nPoints, 1, scalingSubVec, 0, 0, 0, 0, 1.0, 1.0);
             cout << "Writing combined subtractive scaling factors" << endl;
-            scalingSubVecFull->write_ascii("scalingSubProfFull.dat", "scalingSubProfFull");
+            write_ascii(scalingSubVecFull, "scalingSubProfFull.dat", "scalingSubProfFull");
         }
 
         cout << "Scaling files written" << endl;
