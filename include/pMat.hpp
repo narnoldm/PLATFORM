@@ -26,7 +26,7 @@
 #include <Eigen/Dense>
 
 #ifndef MAX_OPERATION_SIZE
-#define MAX_OPERATION_SIZE 400
+#define MAX_OPERATION_SIZE 10000
 #endif
 
 /***
@@ -94,6 +94,7 @@ public:
 	// PBLAS
 	void matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia, int ja, pMat *B, int ib, int jb, double alpha, double beta, int ic, int jc);
 	void matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int jb, double alpha, double beta);
+    void ATA_lowMem(int m, int n, double alpha, pMat* A, int ia, int ja, int ic, int jc);
 	void matrix_Product_sym(char uplo, char trans, int n, int k, double alpha, pMat *A, int ia, int ja, double beta, int ic, int jc);
 	void matrix_vec_product(char trans, int m, int n, double alpha, pMat *A, int ia, int ja, pMat *B, int ib, int jb,
 						   double beta, int ic, int jc);

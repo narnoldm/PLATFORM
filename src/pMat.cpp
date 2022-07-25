@@ -371,6 +371,72 @@ void pMat::matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia
     }
 }
 
+void pMat::ATA_lowMem(int m, int n, double alpha, pMat* A, int ia, int ja, int ic, int jc)
+{
+    int minMN = min(A->M - ia, A->N - ja);
+
+    // if no memory limitation, just compute normal inner product
+    if (minMN < MAX_OPERATION_SIZE)
+    {
+        this->matrix_Product('T', 'N', n - ja, m - ia, A->M, A, ia, ja, A, ia, ja, alpha, 0.0, ic, jc);
+    }
+    else
+    {
+        int numBlocks = ceil((float)minMN / (float)MAX_OPERATION_SIZE);
+        int numRowsBlock = (A->M - ia) / numBlocks;
+        int numColsBlock = (A->N - ja) / numBlocks;
+
+        int numRows_AT, numCols_AT, numRows_A, numCols_A;
+        int IA_AT, JA_AT, IA_A, JA_A;
+
+        // row block index of A^T
+        for (int i = 0; i < numBlocks; ++i)
+        {
+            IA_AT = ia + i * numRowsBlock;
+            if (i == (numBlocks - 1))
+                numRows_AT = A->M - i * numRowsBlock;
+            else
+                numRows_AT = numRowsBlock;
+
+            // column block index of A^T
+            for (int j = 0; j < numBlocks; ++j)
+            {
+                JA_AT = ja + j * numColsBlock;
+                if (j == (numBlocks - 1))
+                    numCols_AT = A->N - j * numColsBlock;
+                else
+                    numCols_AT = numColsBlock;
+
+                // row block index of A
+                for (int x = 0; x < numBlocks; ++x)
+                {
+                    IA_A = ia + x * numRowsBlock;
+                    if (x == (numBlocks - 1))
+                        numRows_A = A->M - x * numRowsBlock;
+                    else
+                        numRows_A = numRowsBlock;
+
+                    // column block index of A
+                    for (int y = 0; y < numBlocks; ++y)
+                    {
+                        JA_A = ja + y * numColsBlock;
+                        if (y == (numBlocks - 1))
+                            numCols_A = A->N - y * numColsBlock;
+                        else
+                            numCols_A = numColsBlock;
+
+                        this->matrix_Product('T', 'N', numCols_AT, numCols_A, numRows_AT, A, IA_AT, JA_AT, A, IA_A, JA_A, alpha, 1.0, JA_AT, JA_A);
+                        MPI_Barrier(MPI_COMM_WORLD);
+                    }
+                }
+            }
+
+        }
+
+    }
+
+}
+
 // symmetric matrix product A^T*A or A*A^T
 void pMat::matrix_Product_sym(char uplo, char trans, int n, int k, double alpha, pMat *A, int ia, int ja, double beta, int ic, int jc)
 {
@@ -552,8 +618,8 @@ void pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<dou
         if (mosStep == 1)
         {
             cout << "Calculating correlation matrix" << endl;
-            // corMat->matrix_Product_sym('U', 'T', minMN, M, 1.0, this, 0, 0, 0.0, 0, 0);
-            corMat->matrix_Product('T', 'N', minMN, minMN, M, this, 0, 0, this, 0, 0, 1.0, 0.0, 0, 0);
+            corMat->ATA_lowMem(minMN, minMN, 1.0, this, 0, 0, 0, 0);
+            // corMat->matrix_Product('T', 'N', minMN, minMN, M, this, 0, 0, this, 0, 0, 1.0, 0.0, 0, 0);
             cout << "Correlation matrix calculated" << endl;
 
             corMat->write_bin("corMat.bin");
@@ -576,20 +642,13 @@ void pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<dou
 
                 // map corMatp0 to Eigen data structure
                 Eigen::MatrixXd corMatEig = Eigen::Map<Eigen::MatrixXd>(corMatp0->dataD.data(), minMN, minMN);
-                // corMatEig = corMatEig.selfadjointView<Eigen::Upper>();
 
                 // compute eigensolve
-                // Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(corMatEig);
                 Eigen::EigenSolver<Eigen::MatrixXd> es(corMatEig);
 
                 Eigen::MatrixXcd VEig(minMN, minMN);
                 Eigen::VectorXcd SEig(minMN);
-                // Eigen::MatrixXd VEig(minMN,minMN);
-                // Eigen::VectorXd SEig(minMN);
 
-                // Eigen gives eigenvalues in ascending order, reverse for descending order
-                // SEig = es.eigenvalues().reverse();
-                // VEig = es.eigenvectors().rowwise().reverse();
                 SEig = es.eigenvalues();
                 VEig = es.eigenvectors();
 
