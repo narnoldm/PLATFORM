@@ -614,6 +614,7 @@ void tecIO::batchWrite_bin(pMat* dataMat, string dir, string fpref, int mStart, 
     assert(system(NULL)); // check if system commands work
     if (!rank)
         int ierr = system(("mkdir " + dir).c_str());
+    MPI_Barrier(MPI_COMM_WORLD);
 
     const char* buffer;
     MPI_Offset offset = 0;
