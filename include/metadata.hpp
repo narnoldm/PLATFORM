@@ -37,6 +37,7 @@ public:
     virtual void checkExists();
     virtual void readSingle(int fileID, double *point);
     virtual void readSingleLowMem(int fileID, pMat* dataMat, int colIdx);
+    virtual void readSingleLowMem(std::string filename, pMat* dataMat, int colIdx);
     virtual void writeSingle(int fileID, double *point, std::string fpref);
     virtual void writeSingle(int fileID, double *point, std::string fpref, int points, int mode);
     void batchWrite(pMat *loadMat);

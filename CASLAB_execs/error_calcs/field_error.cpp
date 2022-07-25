@@ -21,7 +21,8 @@ int main(int argc, char *argv[]) {
 
     int debug_proc = 0;
     inputFile.getParamInt("stdout_proc", debug_proc, 0);
-    if (rank != debug_proc) {
+    if (rank != debug_proc)
+    {
         cout.rdbuf(sink.rdbuf());
     }
 
@@ -29,6 +30,7 @@ int main(int argc, char *argv[]) {
 
     string fomInputString, romInputString, basisInputString;
     string centerFile, centerMethod, scaleFile, scaleMethod;
+    bool centerIsField, scaleIsField;
     bool center, scale, outProjField, outLatentCode, outAbsErrField;
     int errType;
 
@@ -48,26 +50,31 @@ int main(int argc, char *argv[]) {
     if ((errType == 1) || (errType == 3))
         projFOM = true;
 
-    if (projFOM) {
+    if (projFOM)
+    {
         // input token for spatial mode series
         inputFile.getParamString("basisInputString", basisInputString);
 
         // centering FOM data before projection
         inputFile.getParamBool("center", center);
-        if (center) {
+        if (center)
+        {
             // path to data centering profile
             // if not provided, use mean field
             inputFile.getParamString("centerFile", centerFile, "");
             inputFile.getParamString("centerMethod", centerMethod, "");
+            inputFile.getParamBool("centerIsField", centerIsField, false);
         }
 
         // normalizing FOM data before projection (after centering, if requested)
         inputFile.getParamBool("scale", scale);
-        if (scale) {
+        if (scale)
+        {
             // path to data normalization profile
             // if not provided, use normalization constants provided in fomInputString
             inputFile.getParamString("scaleFile", scaleFile, "");
             inputFile.getParamString("scaleMethod", scaleMethod, "");
+            inputFile.getParamBool("scaleIsField", scaleIsField, false);
         }
 
         inputFile.getParamBool("outProjField", outProjField, false);  // output unsteady projected FOM solutions
@@ -93,7 +100,8 @@ int main(int argc, char *argv[]) {
 
     // ROM dataset
     tecIO* setROM;
-    if (errType > 1) {
+    if (errType > 1)
+    {
         token.clear();
         tokenparse(romInputString, "|", token);
         setROM = new tecIO(token);
@@ -104,44 +112,51 @@ int main(int argc, char *argv[]) {
         assert (setFOM->nCells == setROM->nCells);
         assert (setFOM->numVars == setROM->numVars);
         assert (setFOM->nSets == setROM->nSets);
-
     }
 
     // basis dataset
     meta* setBasis;
-    if (projFOM) {
+    if (projFOM)
+    {
         token.clear();
         tokenparse(basisInputString, "|", token);
         setBasis = new meta(token);
 
         // error checking
         assert (setBasis->nPoints == setFOM->nPoints);
-
     }
 
     // output directories
     size_t fomDirPos = setFOM->prefix.find_last_of("/");
     fomDir = setFOM->prefix.substr(0, fomDirPos);
-    if (projFOM) {
+    if (projFOM)
+    {
         projDir = fomDir + "/projection/k" + to_string(setBasis->nSets);
-        if (outProjField || outLatentCode) {
+        if (outProjField || outLatentCode)
+        {
             if (!rank)
                 size_t ierr = system(("mkdir " + projDir).c_str());
         }
     }
 
-    if (errType > 1) {
+    if (errType > 1)
+    {
         size_t romDirPos = setROM->prefix.find_last_of("/");
         romDir = setROM->prefix.substr(0, romDirPos);
         errDir = romDir;
         errSuffix = "_" + to_string(setROM->snap0) + "_" + to_string(setROM->snapF) + "_" + to_string(setROM->snapSkip);
-        if (errType == 2) {
+        if (errType == 2)
+        {
             errSuffix = "_vs_raw" + errSuffix;
-        } else {
+        }
+        else
+        {
             errSuffix = "_vs_proj" + errSuffix;
             errDir += "/projection/k" + to_string(setBasis->nSets);
         }
-    } else {
+    }
+    else
+    {
         errDir = fomDir + "/projection/k" + to_string(setBasis->nSets);
         errSuffix = "_" + to_string(setFOM->snap0) + "_" + to_string(setFOM->snapF) + "_" + to_string(setFOM->snapSkip);
     }
@@ -158,26 +173,35 @@ int main(int argc, char *argv[]) {
 
     pMat *QComp, *QTruth_proj, *latentCode, *basis;
     // project FOM data if requested
-    if (projFOM) {
+    if (projFOM)
+    {
 
         // center data, if requested
-        if (center) {
-            if (centerFile == "") {
-                setFOM->calcCentering(QTruth, centerMethod);
-            } else {
-                setFOM->calcCentering(QTruth, centerFile);
+        if (center)
+        {
+            if (centerFile == "")
+            {
+                setFOM->calcCentering(QTruth, centerMethod, centerIsField, false);
             }
-            setFOM->centerData(QTruth);
+            else
+            {
+                setFOM->calcCentering(QTruth, centerFile, true, false);
+            }
+            setFOM->centerData(QTruth, false);
         }
 
         // scale data, if requested
-        if (scale) {
-            if (scaleFile == "") {
-                setFOM->calcScaling(QTruth, scaleMethod);
-            } else {
-                setFOM->calcScaling(QTruth, scaleFile);
+        if (scale)
+        {
+            if (scaleFile == "")
+            {
+                setFOM->calcScaling(QTruth, scaleMethod, scaleIsField, false);
             }
-            setFOM->scaleData(QTruth);
+            else
+            {
+                setFOM->calcScaling(QTruth, scaleFile, true, false);
+            }
+            setFOM->scaleData(QTruth, false);
         }
 
         if (outProjField)
@@ -194,20 +218,25 @@ int main(int argc, char *argv[]) {
         QTruth_proj->matrix_Product('N', 'N', basis->M, latentCode->N, basis->N, basis, 0, 0, latentCode, 0, 0, 1.0, 0.0, 0, 0);
 
         // de-scale and de-center, if normalization/centering was requested
-        if (scale) {
+        if (scale)
+        {
             setFOM->scaleData(QTruth_proj, true);
             if (errType == 1)
                 setFOM->scaleData(QTruth, true);
         }
-        if (center) {
+        if (center)
+        {
             setFOM->centerData(QTruth_proj, true);
             if (errType == 1)
                 setFOM->centerData(QTruth, true);
         }
 
-        if (errType == 1) {
+        if (errType == 1)
+        {
             QComp = QTruth_proj;
-        } else {
+        }
+        else
+        {
             // don't need original FOM solution any more
             destroyPMat(QTruth, false);
             QTruth = QTruth_proj;
@@ -227,7 +256,8 @@ int main(int argc, char *argv[]) {
         QComp = new pMat(setROM->nPoints, setROM->nSets, evenG, false);
 
     // load ROM data
-    if (errType > 1) {
+    if (errType > 1)
+    {
         setROM->batchRead(QComp);
     }
 

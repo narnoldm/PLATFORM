@@ -101,8 +101,58 @@ void meta::readSingle(int fileID, double *point)
 
 void meta::readSingleLowMem(int fileID, pMat* dataMat, int colIdx)
 {
-    cout << "No low-memory call for meta" << endl;
-    throw(-1);
+    string filename = prefix + to_string(fileID) + suffix;
+    readSingleLowMem(filename, dataMat, colIdx);
+}
+
+void meta::readSingleLowMem(string filename, pMat* dataMat, int colIdx)
+{
+
+    cout << filename << "\r" << flush;
+    // cout << "WARNING: meta low-memory read only works if any SZPLT is reordered" << endl;
+    // cout << "Make sure activateReorder has been called on any tecIO metadata objects" << endl;
+
+    long maxReadSize = min(nPoints, (long)MAX_IOVEC_SIZE);
+
+    vector<double> getD(maxReadSize);
+    int numLoops = ceil((float)nPoints / (float)maxReadSize);
+
+    // open file and read header
+    FILE *fid;
+    int header[2];
+    size_t warn;
+    fid = fopen((filename).c_str(), "rb");
+    warn = fread(&(header[0]), sizeof(int), 1, fid);
+    warn = fread(&(header[1]), sizeof(int), 1, fid);
+    if ((header[0] != nPoints) || (header[1] != 1))
+    {
+        cout << "Unexpected binary shape: " << header[0] << " " << header[1] << endl;
+        cout << "Should be: " << nPoints << " 1" << endl;
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+
+    // ingest file
+    int readSize, dataIdx;
+    for (int i = 0; i < numLoops; ++i)
+    {
+        if (i < numLoops - 1)
+            readSize = maxReadSize;
+        else
+            readSize = nPoints - maxReadSize * (numLoops - 1);
+
+        warn = fread(&(getD[0]), sizeof(double), readSize, fid);
+        for (int j = 0; j < readSize; ++j)
+        {
+            dataIdx = dataMat->getDataIndex(i * maxReadSize + j, colIdx);
+            if (dataIdx >= 0)
+            {
+                dataMat->dataD[dataIdx] = getD[j];
+            }
+        }
+    }
+
+    fclose(fid);
+
 }
 
 void meta::batchRead(pMat *loadMat)
