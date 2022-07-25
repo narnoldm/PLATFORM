@@ -830,14 +830,16 @@ void tecIO::write_ascii(pMat* dataMat, string filename, string header)
 
     // determine length of single line
     ostringstream outstream;
-    double val = 1.0;
+    // account for negative values, possible 3rd exponent digit, add padding where necessary
+    double val = -1.0e-200;
     outstream << scientific << setprecision(numeric_limits<double>::digits10) << val << "\n";
-    int valLength = strlen((outstream.str()).c_str()) + 1; // add extra space for negative values
+    int valLength = strlen((outstream.str()).c_str());
     outstream.str("");
     outstream.clear();
 
     // TODO: this is all meaningless for general matrix write
-    int dataIdx;
+    int dataIdx, padding;
+    double absval;
     if (dataMat->pG->mycol == 0)
     {
         int xi, li;
@@ -861,15 +863,18 @@ void tecIO::write_ascii(pMat* dataMat, string filename, string header)
                 if (dataIdx >= 0)
                 {
                     val = dataMat->dataD[dataIdx];
-                    // pad non-negative numbers with an additional space
-                    if (val < 0.0)
-                    {
-                        tail = "\n";
-                    }
-                    else
-                    {
-                        tail = " \n";
-                    }
+                    // pad with additional space if necessary
+                    padding = 0;
+                    tail = "";
+                    if (val > 0.0)
+                        padding++;
+                    absval = abs(val);
+                    if ((abs(val) > 1e-100) || (absval == 0.0))
+                        padding++;
+                    for (int k = 0; k < padding; ++k)
+                        tail += " ";
+                    tail += "\n";
+
                     outstream << scientific << setprecision(numeric_limits<double>::digits10) << val << tail;
                     outstring = outstream.str();
 
