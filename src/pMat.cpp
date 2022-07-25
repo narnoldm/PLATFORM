@@ -233,7 +233,7 @@ void pMat::write_bin(string filename)
         MPI_File_write(fH, &M, 1, MPI_INT, MPI_STATUS_IGNORE);
         MPI_File_write(fH, &N, 1, MPI_INT, MPI_STATUS_IGNORE);
         cout << "Write Start: " << filename << endl;
-        cout << "M=" << M << "mb=" << mb << "N=" << N << "nb=" << nb << endl;
+        cout << "M=" << M << ", mb=" << mb << ", N=" << N << ", nb=" << nb << endl;
     }
     MPI_File_close(&fH);
     MPI_Barrier(MPI_COMM_WORLD);

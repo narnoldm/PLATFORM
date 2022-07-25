@@ -838,7 +838,7 @@ void tecIO::write_ascii(pMat* dataMat, string filename, string header)
     outstream.clear();
 
     // TODO: this is all meaningless for general matrix write
-    int dataIdx, padding;
+    int dataIdx, padding, bufLen;
     double absval;
     if (dataMat->pG->mycol == 0)
     {
@@ -851,36 +851,74 @@ void tecIO::write_ascii(pMat* dataMat, string filename, string header)
             for (int i = 0; i < nCells; ++i)
             {
 
+                // can do a little optimization since the memory is contiguous
                 if (reorder)
                 {
-                    dataIdx = dataMat->getDataIndex(j * nCells + i, 0);
+                    // beginning of process block
+                    // up to end of block, or end of this variable's data
+                    if ((((j * nCells) + i) % dataMat->mb) == 0)
+                    {
+                        dataIdx = dataMat->getDataIndex(j * nCells + i, 0);
+                        bufLen = min((long)dataMat->mb, nCells - (long)i);
+                    }
+                    // beginning of variable data
+                    // up to end of block
+                    else if (i == 0)
+                    {
+                        dataIdx = dataMat->getDataIndex(j * nCells + i, 0);
+                        bufLen = min((long)dataMat->mb, dataMat->mb - (j * nCells + i) % dataMat->mb);
+                    }
+                    else
+                    {
+                        dataIdx = -1;
+                    }
                 }
                 else
                 {
                     dataIdx = dataMat->getDataIndex(j * nCells + idx[i], 0);
+                    bufLen = 1;
                 }
 
                 if (dataIdx >= 0)
                 {
-                    val = dataMat->dataD[dataIdx];
-                    // pad with additional space if necessary
                     padding = 0;
                     tail = "";
-                    if (val > 0.0)
-                        padding++;
-                    absval = abs(val);
-                    if ((abs(val) > 1e-100) || (absval == 0.0))
-                        padding++;
-                    for (int k = 0; k < padding; ++k)
-                        tail += " ";
-                    tail += "\n";
 
-                    outstream << scientific << setprecision(numeric_limits<double>::digits10) << val << tail;
+                    // add data to stream
+                    for (int k = 0; k < bufLen; ++k)
+                    {
+                        val = dataMat->dataD[dataIdx + k];
+
+                        // pad with additional space if necessary
+                        if (val > 1e-100)
+                        {
+                            padding = 2;
+                        }
+                        else
+                        {
+                            if (val == 0.0)
+                            {
+                                padding = 2;
+                            }
+                            else
+                            {
+                                if (val < -1e-100)
+                                    padding = 1;
+                                else
+                                    padding = 0;
+                            }
+                        }
+                        for (int l = 0; l < padding; ++l)
+                            tail += " ";
+                        tail += "\n";
+
+                        outstream << scientific << setprecision(numeric_limits<double>::digits10) << val << tail;
+
+                    }
+
+                    // write to file
                     outstring = outstream.str();
-
-
                     offset = strlen(header.c_str()) + (j * nCells + i) * valLength;
-
                     buffer = outstring.c_str();
                     MPI_File_write_at_all(fh, offset, buffer, strlen(buffer), MPI_CHAR, &status);
                     outstream.str("");
