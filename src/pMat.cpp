@@ -386,7 +386,7 @@ void pMat::ATA_lowMem(int m, int n, double alpha, pMat* A, int ia, int ja, int i
         int numRowsBlock = (A->M - ia) / numBlocks;
         int numColsBlock = (A->N - ja) / numBlocks;
 
-        int numRows_AT, numCols_AT, numRows_A, numCols_A;
+        int numRows_AT, numCols_AT, numCols_A;
         int IA_AT, JA_AT, IA_A, JA_A;
 
         // row block index of A^T
@@ -411,10 +411,6 @@ void pMat::ATA_lowMem(int m, int n, double alpha, pMat* A, int ia, int ja, int i
                 for (int x = 0; x < numBlocks; ++x)
                 {
                     IA_A = ia + x * numRowsBlock;
-                    if (x == (numBlocks - 1))
-                        numRows_A = A->M - x * numRowsBlock;
-                    else
-                        numRows_A = numRowsBlock;
 
                     // column block index of A
                     for (int y = 0; y < numBlocks; ++y)
@@ -426,7 +422,6 @@ void pMat::ATA_lowMem(int m, int n, double alpha, pMat* A, int ia, int ja, int i
                             numCols_A = numColsBlock;
 
                         this->matrix_Product('T', 'N', numCols_AT, numCols_A, numRows_AT, A, IA_AT, JA_AT, A, IA_A, JA_A, alpha, 1.0, JA_AT, JA_A);
-                        MPI_Barrier(MPI_COMM_WORLD);
                     }
                 }
             }
