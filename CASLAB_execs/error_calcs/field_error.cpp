@@ -205,7 +205,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (outProjField)
-            setFOM->batchWrite(QTruth, projDir, "fom_sol_raw_");
+            setFOM->batchWrite_bin(QTruth, projDir, "fom_sol_raw_");
 
         // load trial basis
         pMat* basis = new pMat(setBasis->nPoints, setBasis->nSets, evenG, false);
@@ -244,7 +244,7 @@ int main(int argc, char *argv[]) {
 
         // output projected field or latent code history, if requested
         if (outProjField)
-            setFOM->batchWrite(QTruth_proj, projDir, "proj_sol_");
+            setFOM->batchWrite_bin(QTruth_proj, projDir, "proj_sol_");
         if (outLatentCode)
             latentCode->write_bin(projDir + "/latentCode.bin");
 

@@ -102,6 +102,7 @@ public:
     virtual void readSingleLowMem(std::string filename, pMat* dataMat, int colIdx);
     virtual void writeSingle(int fileID, double *point, std::string fpref);
     virtual void writeSingle(int fileID, double *point, std::string fpref, int points, int mode);
+    void batchWrite_bin(pMat *loadMat, std::string dir, std::string fpref);
     void batchWrite_bin(pMat* dataMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip);
     void write_ascii(pMat* dataMat, std::string filename, std::string header);
 

@@ -597,6 +597,11 @@ void tecIO::readSingle(string filename, double *point)
     tecFileReaderClose(&fH);
 }
 
+void tecIO::batchWrite_bin(pMat *loadMat, string dir, string fpref)
+{
+    batchWrite_bin(loadMat, dir, fpref, 0, nSets, 1, snap0, snapSkip);
+}
+
 // modification of batchWrite that uses idx and MPI_File_write_at_all() to guarantee write order
 void tecIO::batchWrite_bin(pMat* dataMat, string dir, string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip)
 {
@@ -625,10 +630,12 @@ void tecIO::batchWrite_bin(pMat* dataMat, string dir, string fpref, int mStart, 
     int fileIndex;
     string filename;
 
-    int bufInt, dataIdx, bufLen;
+    int bufInt, dataIdx, dofIdx, bufLen;
+    double t1 = MPI_Wtime();
     for (int k = mStart; k < mEnd; k = k + mSkip)
     {
 
+        // check if process owns part of this column
         if (dataMat->pG->mycol == (k / dataMat->nb) % dataMat->pG->pcol)
         {
             fileIndex = fStart + (k - mStart) * fSkip;
@@ -649,44 +656,60 @@ void tecIO::batchWrite_bin(pMat* dataMat, string dir, string fpref, int mStart, 
             {
                 for (int i = 0; i < nCells; ++i)
                 {
-                    // can do a little optimization since the memory is contiguous
                     if (reorder)
                     {
-                        // beginning of process block
-                        // up to end of block, or end of this variable's data
-                        if ((((j * nCells) + i) % dataMat->mb) == 0)
-                        {
-                            dataIdx = dataMat->getDataIndex(j * nCells + i, k);
-                            bufLen = min((long)dataMat->mb, nCells - (long)i);
-                        }
-                        // beginning of variable data
-                        // up to end of block
-                        else if (i == 0)
-                        {
-                            dataIdx = dataMat->getDataIndex(j * nCells + i, k);
-                            bufLen = min((long)dataMat->mb, dataMat->mb - (j * nCells + i) % dataMat->mb);
-                        }
-                        else
-                        {
-                            dataIdx = -1;
-                        }
+                        dofIdx = j * nCells + i;
                     }
                     else
                     {
-                        dataIdx = dataMat->getDataIndex(j * nCells + idx[i], k);
-                        bufLen = 1;
+                        dofIdx = j * nCells + idx[i];
                     }
 
-                    if (dataIdx >= 0)
+                    // check if process owns part of this row
+                    if (dataMat->pG->myrow == (dofIdx / dataMat->mb) % dataMat->pG->prow)
                     {
-                        offset = 8 + (j * nCells + i) * sizeof(double);
-                        MPI_File_write_at_all(fh, offset, &(dataMat->dataD[dataIdx]), bufLen, MPI_DOUBLE, &status);
+                        dataIdx = dataMat->getDataIndex(dofIdx, k);
+
+                        // can do a little optimization since the memory is contiguous
+                        if (reorder)
+                        {
+                            // beginning of process block
+                            // up to end of block, or end of this variable's data
+                            if ((((j * nCells) + i) % dataMat->mb) == 0)
+                            {
+                                bufLen = min((long)dataMat->mb, nCells - (long)i);
+                            }
+                            // beginning of variable data
+                            // up to end of block
+                            else if (i == 0)
+                            {
+                                bufLen = min((long)dataMat->mb, dataMat->mb - (j * nCells + i) % dataMat->mb);
+                            }
+                            else
+                            {
+                                dataIdx = -1;
+                            }
+                        }
+                        else
+                        {
+                            bufLen = 1;
+                        }
+
+                        if (dataIdx >= 0)
+                        {
+                            offset = 8 + (j * nCells + i) * sizeof(double);
+                            MPI_File_write_at_all(fh, offset, &(dataMat->dataD[dataIdx]), bufLen, MPI_DOUBLE, &status);
+                        }
                     }
                 }
             }
             MPI_File_close(&fh);
         }
     }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    cout << "Binary batch write finished in " << MPI_Wtime() - t1 << " seconds" << endl;
+
 }
 
 void tecIO::writeSingle(int fileID, double *point, string fpref)
