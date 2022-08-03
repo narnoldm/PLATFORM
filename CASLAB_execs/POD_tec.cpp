@@ -2,14 +2,14 @@
 #include "param.hpp"
 #include "extern_func.hpp"
 
-using namespace ::std;
+using namespace :: std;
 int main(int argc, char *argv[])
 {
     MPI_Init(&argc, &argv);
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank); //Basic MPI intialization
     MPI_Comm_size(MPI_COMM_WORLD, &size);
-    std::ofstream sink("/dev/null");
+    ofstream sink("/dev/null");
     streambuf *strm_buffer = cout.rdbuf();
 
     paramMap inputFile("POD_tec.inp", rank);
@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
     inputFile.getParamInt("stdout_proc", debug_proc);
     if (rank != debug_proc)
     {
-        std::cout.rdbuf(sink.rdbuf());
+        cout.rdbuf(sink.rdbuf());
     }
 
     int mosStep = 0;
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
         Uout->prefix = "U";
         Uout->suffix = ".szplt";
         Uout->isInit = true;
-        Uout->meshFile = dataset1->prefix + std::to_string(dataset1->snap0) + dataset1->suffix;
+        Uout->meshFile = dataset1->prefix + to_string(dataset1->snap0) + dataset1->suffix;
         Uout->fixedMesh = true;
         Uout->getDimNodes();
         Uout->varName = dataset1->varName;

@@ -15,9 +15,21 @@ meta::meta(vector<string> &iToken)
 
     int offset = 7;
 
-    assert(iToken[0] == "input");
-    assert(iToken[1] == "binaryset");
-    assert(iToken.size() == offset);
+    if (iToken[0] != "input")
+    {
+        printf("First component of input token should be \"input\", was given as \"%s\"\n", (iToken[0]).c_str());
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+    if (iToken[1] != "tecplot")
+    {
+        printf("Second component of meta input token should be \"binaryset\", was given as \"%s\"\n", (iToken[1]).c_str());
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+    if (iToken.size() != offset)
+    {
+        printf("Meta input token should have %d components, given token has %d components\n", offset, (int)(iToken.size()));
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
     token.resize(iToken.size() - offset);
     for (int i = offset; i < iToken.size(); i++)
     {
@@ -40,7 +52,11 @@ void meta::init(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
     snapSkip = ts;
     prefix = iPrefix;
     suffix = iSuffix;
-    assert(snapF >= snap0);
+    if (snapF < snap0)
+    {
+        printf("snapF (%d) must be greater than or equal to snap0 (%d)\n", snapF, snap0);
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
     nSets = 0;
     for (int i = snap0; i <= snapF; i = i + snapSkip)
         nSets++;
@@ -54,8 +70,13 @@ void meta::init(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
 void meta::checkSize()
 {
     FILE *fid;
-    fid = fopen((prefix + to_string(snap0) + suffix).c_str(), "rb");
-    assert(fid != NULL);
+    string filename = prefix + to_string(snap0) + suffix;
+    fid = fopen(filename.c_str(), "rb");
+    if (fid == NULL)
+    {
+        printf("Could not open file at %s\n", filename.c_str());
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
     int header[2] = {0, 0};
     size_t warn;
     warn = fread(&(header[0]), sizeof(int), 1, fid);
@@ -70,14 +91,20 @@ void meta::checkExists()
 {
     FILE *fid;
     int rank;
+    string filename;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (!rank)
     {
         for (int i = snap0; i <= snapF; i = i + snapSkip)
         {
-            cout << (prefix + to_string(i) + suffix) << endl;
-            fid = fopen((prefix + to_string(i) + suffix).c_str(), "rb");
-            assert(fid != NULL);
+            filename = prefix + to_string(i) + suffix;
+            cout << filename << endl;
+            fid = fopen(filename.c_str(), "rb");
+            if (fid == NULL)
+            {
+                printf("Could not open file at %s\n", filename.c_str());
+                MPI_Abort(MPI_COMM_WORLD, -1);
+            }
             fclose(fid);
         }
     }
@@ -86,15 +113,24 @@ void meta::checkExists()
 void meta::readSingle(int fileID, double *point)
 {
     cout << "meta read " << fileID << endl;
-    cout<< (prefix + to_string(fileID) + suffix)<<endl;
+    string filename = prefix + to_string(fileID) + suffix;
+    cout << filename << endl;
     FILE *fid;
     fid = fopen((prefix + to_string(fileID) + suffix).c_str(), "rb");
     int header[2] = {0, 0};
     size_t warn;
     warn = fread(&(header[0]), sizeof(int), 1, fid);
     warn = fread(&(header[1]), sizeof(int), 1, fid);
-    assert(header[1] == 1);
-    assert(header[0] == nPoints);
+    if (header[0] != nPoints)
+    {
+        printf("Binary file at %s has leading dimension is %d, expected to be %d\n", filename.c_str(), header[0], (int)nPoints);
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+    if (header[1] != 1)
+    {
+        printf("Binary file at %s has leading dimension is %d, expected to be 1\n", filename.c_str(), header[1]);
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
     warn = fread(point, sizeof(double), nPoints, fid);
     fclose(fid);
 }
@@ -291,7 +327,12 @@ void meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
 void meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip, int dim, int mode)
 {
 
-    assert(system(NULL)); // check if system commands work
+    // check if system commands work
+    if (!system(NULL))
+    {
+        printf("Could not access system commands, please diagnose\n");
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
     if (mode > 2)
     {
         cout << "Invalid mode passed to batchWrite: " << mode << endl;
@@ -396,20 +437,36 @@ void meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
     cout << "batch Write took " << t2 - t1 << " secs" << endl;
 }
 
+/*
+    ===================
+    START tecIO METHODS
+    ===================
+*/
+
 tecIO::tecIO(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
 {
     init(t0, tf, ts, iPrefix, iSuffix);
 }
+
 tecIO::tecIO()
 {
     isInit = false;
 }
+
 tecIO::tecIO(vector<string> &iToken)
 {
 
     int offset = 7;
-    assert(iToken[0] == "input");
-    assert(iToken[1] == "tecplot");
+    if (iToken[0] != "input")
+    {
+        printf("First component of input token should be \"input\", was given as \"%s\"\n", (iToken[0]).c_str());
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+    if (iToken[1] != "tecplot")
+    {
+        printf("Second component of tecIO input token should be \"tecplot\", was given as \"%s\"\n", (iToken[1]).c_str());
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
 
     token.resize(iToken.size() - offset);
     for (int i = offset; i < iToken.size(); i++)
@@ -421,6 +478,7 @@ tecIO::tecIO(vector<string> &iToken)
     int its = stoi(iToken[6]);
     init(it0, itf, its, iToken[2], iToken[3]);
 }
+
 void tecIO::init(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
 {
     snap0 = t0;
@@ -428,21 +486,25 @@ void tecIO::init(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
     snapSkip = ts;
     prefix = iPrefix;
     suffix = iSuffix;
-    assert(snapF >= snap0);
+    if (snapF < snap0)
+    {
+        printf("snapF (%d) must be greater than or equal to snap0 (%d)\n", snapF, snap0);
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
     nSets = 0;
     varName.clear();
     varIndex.clear();
     for (int i = snap0; i <= snapF; i = i + snapSkip)
         nSets++;
     checkSize();
-    //checkExists();
     isInit = true;
-    cout << nPoints << " " << nSets << endl;
+    cout << "tecIO: " << nPoints << " " << nSets << endl;
 }
 
 tecIO::~tecIO()
 {
 }
+
 void tecIO::checkSize()
 {
     getDimNodes();
@@ -458,14 +520,20 @@ void tecIO::checkExists()
 {
     void *fH = NULL;
     int rank, size;
+    string filename;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     for (int i = snap0; i <= snapF; i = i + snapSkip)
     {
         if (i % size == rank)
         {
-            tecFileReaderOpen((prefix + to_string(i) + suffix).c_str(), &fH);
-            assert(fH != NULL);
+            filename = prefix + to_string(i) + suffix;
+            tecFileReaderOpen(filename.c_str(), &fH);
+            if (fH == NULL)
+            {
+                printf("Could not open file at %s \n", filename.c_str());
+                MPI_Abort(MPI_COMM_WORLD, -1);
+            }
             tecFileReaderClose(&fH);
         }
     }
@@ -556,7 +624,11 @@ void tecIO::readSingle(string filename, double *point)
     void *fH = NULL;
     tecFileReaderOpen(filename.c_str(), &fH);
     int type;
-    assert(fH != NULL);
+    if (fH == NULL)
+    {
+        printf("Could not open file at %s\n", filename.c_str());
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
     vector<float> get;
     vector<double> temp;
 
@@ -616,7 +688,12 @@ void tecIO::batchWrite_bin(pMat* dataMat, string dir, string fpref, int mStart, 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     // make output directory
-    assert(system(NULL)); // check if system commands work
+    // check if system commands work
+    if (!system(NULL))
+    {
+        printf("Could not access system commands, please diagnose\n");
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
     if (!rank)
         int ierr = system(("mkdir " + dir).c_str());
     MPI_Barrier(MPI_COMM_WORLD);
@@ -723,22 +800,27 @@ void tecIO::writeSingle(int fileID, double *point, string fpref, int points, int
     {
         void *infH = NULL;
         void *outfH = NULL;
+        string filename = prefix + to_string(fileID) + suffix;
         if (fixedMesh)
         {
             tecFileReaderOpen((meshFile).c_str(), &infH);
         }
         else
         {
-            tecFileReaderOpen((prefix + to_string(fileID) + suffix).c_str(), &infH);
+            tecFileReaderOpen(filename.c_str(), &infH);
         }
-        assert(infH != NULL);
+        if (infH == NULL)
+        {
+            printf("Could not open file at %s\n", filename.c_str());
+            MPI_Abort(MPI_COMM_WORLD, -1);
+        }
         int zoneType;
         long iMax, jMax, kMax;
         tecZoneGetType(infH, 1, &zoneType);
         tecZoneGetIJK(infH, 1, &iMax, &jMax, &kMax);
         if ((zoneType != 5) && (zoneType != 3))
         {
-            printf("Zone is weird/Not supported\n");
+            printf("Zone is weird/not supported\n");
             MPI_Abort(MPI_COMM_WORLD,-1);
         }
 
@@ -759,8 +841,15 @@ void tecIO::writeSingle(int fileID, double *point, string fpref, int points, int
         {
             varstr = varstr + "," + varName[i];
         }
-        tecFileWriterOpen((fpref + to_string(fileID) + suffix).c_str(), "Code out", varstr.c_str(), 1, 0, 1, NULL, &outfH);
-        assert(outfH != NULL);
+
+        filename = fpref + to_string(fileID) + suffix;
+        tecFileWriterOpen(filename.c_str(), "Code out", varstr.c_str(), 1, 0, 1, NULL, &outfH);
+        if (outfH == NULL)
+        {
+            printf("Could not open file at %s\n", filename.c_str());
+            MPI_Abort(MPI_COMM_WORLD, -1);
+        }
+
         vector<int> varTypes(dim + numVars);
         vector<int> valueLoc(dim + numVars);
         vector<int> passive(dim + numVars);
@@ -872,14 +961,12 @@ void tecIO::write_ascii(pMat* dataMat, string filename, string header)
     // TODO: generalize
     if (dataMat->N > 1)
     {
-        cout << "write_ascii only works with column pMats right now" << endl;
-        MPI_Barrier(MPI_COMM_WORLD);
+        printf("write_ascii only works with column pMats right now\n");
         MPI_Abort(MPI_COMM_WORLD, -1);
     }
     if (dataMat->block != 0)
     {
-        cout << "only works with square block pMats" << endl;
-        MPI_Barrier(MPI_COMM_WORLD);
+        printf("write_ascii only works with square block pMats\n");
         MPI_Abort(MPI_COMM_WORLD, -1);
     }
 
@@ -1016,7 +1103,11 @@ void tecIO::addVar(string var, string &norm)
     double temp;
     temp = stod(norm);
     scalingInput.push_back(temp);
-    assert(varName.size() == varIndex.size());
+    if (varName.size() != varIndex.size())
+    {
+        printf("Something went wrong with registering variable \"%s\". Was varIndex or varName modified inappropriately?\n", var.c_str());
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
     numVars = varName.size();
     cout << "metadata has registered " << numVars << " variable(s)" << endl;
 }
@@ -1086,7 +1177,11 @@ void tecIO::checkMeshDim(string filename)
     int id = 0;
     cout << filename << endl;
     tecFileReaderOpen(filename.c_str(), &fH);
-    assert(fH != NULL);
+    if (fH == NULL)
+    {
+        printf("Could not open file at %s\n", filename.c_str());
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
     tecZoneGetIJK(fH, 1, &iMax, &jMax, &kMax);
     cout << "iMax:" << iMax << ", jMax " << jMax << ", kMax " << kMax << endl;
     check = iMax;
@@ -1129,7 +1224,8 @@ void tecIO::genHash(string filename)
         }
         else
         {
-            MPI_Abort(MPI_COMM_WORLD,-1);
+            printf("genHash() can only read int32 cell_id values\n");
+            MPI_Abort(MPI_COMM_WORLD, -1);
         }
         tecFileReaderClose(&fH);
         for (int i = 0; i < nCells; i++)
@@ -1187,15 +1283,13 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
         }
         else
         {
-            cout << "Invalid centering file: " << centerMethod << endl;
-            MPI_Barrier(MPI_COMM_WORLD);
+            printf("Invalid centering file: %s\n", centerMethod.c_str());
             MPI_Abort(MPI_COMM_WORLD, -1);
         }
     }
     else
     {
-        cout << "Centering calculation has not been re-implemented" << endl;
-        MPI_Barrier(MPI_COMM_WORLD);
+        printf("Centering calculation has not been re-implemented\n");
         MPI_Abort(MPI_COMM_WORLD, -1);
     }
 
@@ -1205,8 +1299,7 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
     // expand constants to full field for convenience sake
     if (!isField)
     {
-        cout << "Distributing scalar centering values has not been re-implemented" << endl;
-        MPI_Barrier(MPI_COMM_WORLD);
+        printf("Distributing scalar centering values has not been re-implemented\n");
         MPI_Abort(MPI_COMM_WORLD, -1);
     }
 
@@ -1231,7 +1324,7 @@ void tecIO::centerData(pMat *dataMat, bool uncenter)
 {
     if (!centerVec)
     {
-        cout << "Centering isn't setup, call calcCentering first" << endl;
+        printf("Centering isn't setup, call calcCentering first\n");
         MPI_Abort(MPI_COMM_WORLD,-1);
     }
 
@@ -1285,8 +1378,7 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
 
     if ((scaleMethod == "sphere") && (isField))
     {
-        cout << "If choosing scaleMethod = sphere, you must set scaleIsField = false" << endl;
-        MPI_Barrier(MPI_COMM_WORLD);
+        printf("If choosing scaleMethod = sphere, you must set scaleIsField = false\n");
         MPI_Abort(MPI_COMM_WORLD, -1);
     }
     if ((scaleMethod == "standardize") && (!isField))
@@ -1339,8 +1431,7 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
         }
         else
         {
-            cout << "Could not find scaling files with prefix  " << scaleMethod << endl;
-            MPI_Barrier(MPI_COMM_WORLD);
+            printf("Could not find scaling files with prefix \"%s\"\n",scaleMethod.c_str());
             MPI_Abort(MPI_COMM_WORLD, -1);
         }
     }
@@ -1348,8 +1439,7 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
     {
         if (calc)
         {
-            cout << "Scaling calculation has not been re-implemented" << endl;
-            MPI_Barrier(MPI_COMM_WORLD);
+            printf("Scaling calculation has not been re-implemented\n");
             MPI_Abort(MPI_COMM_WORLD, -1);
         }
     }
@@ -1412,7 +1502,7 @@ void tecIO::scaleData(pMat *dataMat, bool unscale)
 
     if (!scalingDivVec || !scalingSubVec)
     {
-        cout << "Scaling isn't setup, call calcScaling first" << endl;
+        printf("Scaling isn't setup, call calcScaling first\n");
         MPI_Abort(MPI_COMM_WORLD,-1);
     }
 
