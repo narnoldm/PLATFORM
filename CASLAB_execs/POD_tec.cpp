@@ -33,13 +33,16 @@ int main(int argc, char *argv[])
     vector<string> token;
     tokenparse(input, "|", token);
 
+    string cellIDFile;
+    inputFile.getParamString("cellIDFile", cellIDFile, "");
+
     PGrid *evenG;
     evenG = new PGrid(rank, size, 0);
 
     pMat *evenMat;
 
     tecIO *dataset1;
-    dataset1 = new tecIO(token);
+    dataset1 = new tecIO(token, cellIDFile);
 
     double t1;
 
@@ -47,7 +50,7 @@ int main(int argc, char *argv[])
     {
 
         evenMat = new pMat(dataset1->nPoints, dataset1->nSets, evenG, 0, 0, 0.0, false);
-        dataset1->activateReorder(dataset1->prefix + to_string(dataset1->snap0) + dataset1->suffix);
+        dataset1->activateReorder();
         dataset1->batchRead(evenMat);
 
         // read centering inputs
@@ -190,9 +193,10 @@ int main(int argc, char *argv[])
         Uout->varIndex = dataset1->varIndex;
         Uout->numVars = Uout->varName.size();
         Uout->nPoints = Uout->nCells * Uout->numVars;
+        Uout->cellIDFile = dataset1->cellIDFile;
 
         // for reordering output
-        Uout->activateReorder(dataset1->prefix + to_string(dataset1->snap0) + dataset1->suffix);
+        Uout->activateReorder();
 
         if (writeModesSZPLT)
         {

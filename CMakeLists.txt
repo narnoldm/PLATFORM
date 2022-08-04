@@ -41,11 +41,6 @@ add_dependencies(Eigen Eigen3)
 
 
 
-
-
-
-
-
 #if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
 #message("${CMAKE_CXX_COMPILER_ID} detected")
 #set(isINTEL 1)
@@ -68,14 +63,8 @@ target_link_libraries(scalapack INTERFACE ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES} 
 #endif()
 
 
-
-
 add_subdirectory(3rd_Party/tecio/teciosrc)
 
 add_subdirectory(src)
 add_subdirectory(CASLAB_execs)
-
-
-
-
 

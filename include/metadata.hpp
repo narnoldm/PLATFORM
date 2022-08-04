@@ -74,6 +74,7 @@ public:
     pMat* scalingDivVec = NULL;
     pMat* scalingSubVecFull = NULL;
 
+    std::string cellIDFile;
     std::vector<int> cellID;
     std::vector<int> idx;
 
@@ -88,8 +89,9 @@ public:
 
     tecIO();
     tecIO(std::vector<std::string> &iToken);
+    tecIO(std::vector<std::string> &iToken, std::string cellIDFile);
     tecIO(int t0, int tf, int ts, std::string &iPrefix, std::string &iSuffix);
-    virtual void init(int t0, int tf, int ts, std::string &iPrefix, std::string &iSuffix);
+    virtual void init(int t0, int tf, int ts, std::string &iPrefix, std::string &iSuffix, std::string cellIDFile);
 
     ~tecIO();
     virtual void checkSize();
@@ -110,6 +112,7 @@ public:
     int getVariableIndex(std::string var, std::string file);
     void getDimNodes();
     void checkMeshDim(std::string filename);
+    void genHash();
     void genHash(std::string);
 
     // feature scaling routines
@@ -126,7 +129,9 @@ public:
     void centerData(pMat *dataMat, bool uncenter);
 
     // misc
-    void activateReorder(std::string);
+    void activateReorder();
+    void activateReorder(std::string cellIDF);
+
 };
 
 int compareMeta(meta* meta1, meta* meta2);

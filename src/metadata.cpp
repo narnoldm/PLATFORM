@@ -445,7 +445,7 @@ void meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
 
 tecIO::tecIO(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
 {
-    init(t0, tf, ts, iPrefix, iSuffix);
+    init(t0, tf, ts, iPrefix, iSuffix, "");
 }
 
 tecIO::tecIO()
@@ -454,6 +454,11 @@ tecIO::tecIO()
 }
 
 tecIO::tecIO(vector<string> &iToken)
+{
+    tecIO(iToken, "");
+}
+
+tecIO::tecIO(vector<string> &iToken, string cellIDF)
 {
 
     int offset = 7;
@@ -476,10 +481,10 @@ tecIO::tecIO(vector<string> &iToken)
     int it0 = stoi(iToken[4]);
     int itf = stoi(iToken[5]);
     int its = stoi(iToken[6]);
-    init(it0, itf, its, iToken[2], iToken[3]);
+    init(it0, itf, its, iToken[2], iToken[3], cellIDF);
 }
 
-void tecIO::init(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
+void tecIO::init(int t0, int tf, int ts, string &iPrefix, string &iSuffix, string cellIDF)
 {
     snap0 = t0;
     snapF = tf;
@@ -499,6 +504,28 @@ void tecIO::init(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
     checkSize();
     isInit = true;
     cout << "tecIO: " << nPoints << " " << nSets << endl;
+
+    // set cellIDFile
+    if (cellIDF == "")
+    {
+        // default to first file in sequence if not provided
+        cellIDFile = prefix + to_string(snap0) + suffix;
+    }
+    else
+    {
+        // TODO: allow to read cellID from binary file?
+        if (FILE *file = fopen(cellIDF.c_str(), "r"))
+        {
+            fclose(file);
+            cellIDFile = cellIDF;
+        }
+        else
+        {
+            printf("Could not find cellIDF at %s\n", cellIDF.c_str());
+            MPI_Abort(MPI_COMM_WORLD, -1);
+        }
+    }
+
 }
 
 tecIO::~tecIO()
@@ -1124,6 +1151,11 @@ int tecIO::getVariableIndex(string var, string file)
 
         char *vName = NULL;
         tecFileReaderOpen(file.c_str(), &fH);
+        if (fH == NULL)
+        {
+            printf("Could not open file at %s\n", file.c_str());
+            MPI_Abort(MPI_COMM_WORLD, -1);
+        }
         tecDataSetGetNumVars(fH, &fileVars);
         for (int i = 1; i <= fileVars; i++)
         {
@@ -1198,6 +1230,11 @@ void tecIO::checkMeshDim(string filename)
     tecFileReaderClose(&fH);
 }
 
+void tecIO::genHash()
+{
+    genHash("cellIDFile");
+}
+
 void tecIO::genHash(string filename)
 {
     if (idx.size() != 0)
@@ -1209,6 +1246,13 @@ void tecIO::genHash(string filename)
     void *fH;
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    // default to tecIO.cellIDFile if no argument provided to genHash
+    if (filename == "cellIDFile")
+    {
+        filename = cellIDFile;
+    }
+
     if (filename != "")
     {
         int var_index = 0;
@@ -1217,6 +1261,11 @@ void tecIO::genHash(string filename)
         // faster if every process loads cell_id instead of broadcasting
         int hashType;
         tecFileReaderOpen(filename.c_str(), &fH);
+        if (fH == NULL)
+        {
+            printf("Could not open file at %s\n", filename.c_str());
+            MPI_Abort(MPI_COMM_WORLD, -1);
+        }
         tecZoneVarGetType(fH, 1, var_index, &hashType);
         if (hashType == 3)
         {
@@ -1264,7 +1313,7 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
 {
 
     isCentered = true;
-    genHash(prefix + to_string(snap0) + suffix);
+    genHash();
     centerVec = new pMat(nPoints, 1, dataMat->pG, 0, 0, 0.0, false);
 
     cout << "Loading/calculating centering" << endl;
@@ -1371,7 +1420,7 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
 {
 
     isScaled = true;
-    genHash(prefix + to_string(snap0) + suffix);
+    genHash();
     scalingSubVec = new pMat(nPoints, 1, dataMat->pG, 0, 0, 0.0, false);
     scalingDivVec = new pMat(nPoints, 1, dataMat->pG, 0, 0, 0.0, false);
     scalingSubVecFull = new pMat(nPoints, 1, dataMat->pG, 0, 0, 0.0, false);
@@ -1758,6 +1807,11 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
         }
     }
 
+}
+
+void tecIO::activateReorder()
+{
+    activateReorder("cellIDFile");
 }
 
 void tecIO::activateReorder(string file)
