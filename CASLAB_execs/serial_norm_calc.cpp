@@ -3,7 +3,7 @@
 
 #include <limits>
 
-using namespace ::std;
+using namespace :: std;
 
 typedef numeric_limits<double> dbl;
 
@@ -18,40 +18,40 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank); //Basic MPI intialization
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    //silence output for non root MPI processes
-    std::ofstream sink("/dev/null");
-    streambuf *strm_buffer = cout.rdbuf();
+    if (rank)
+    {
+        printf("serial_norm must be run with one MPI process");
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+
     paramMap inputFile("POD_tec.inp", rank);
 
-    int debug_proc = 0;
-    inputFile.getParamInt("stdout_proc", debug_proc);
-
-    bool calcConsv = 0;
-    string avgFile = "";
-    bool readAvg = false;
-    bool subAvg = true;
-    inputFile.getParamBool("readAvg", readAvg);
-    if (readAvg) {
-        // TODO: subAvg = False should not require an avgFile, need to disentangle average calculation
-        inputFile.getParamBool("subAvg", subAvg);
-        inputFile.getParamString("avgFile", avgFile);
+    // must get centering from file, if centering
+    bool center, writeCentering;
+    string centerFile;
+    inputFile.getParamBool("center", center);
+    if (center) {
+        inputFile.getParamString("centerFile", centerFile);
+        inputFile.getParamBool("writeCentering", writeCentering, false);
     }
 
-    inputFile.getParamBool("calcConsv", calcConsv);
+    bool calcConsv;
+    inputFile.getParamBool("calcConsv", calcConsv, false);
 
-    if (rank != debug_proc)
-    {
-        std::cout.rdbuf(sink.rdbuf());
-    }
-    string input;
+    string input = "";
     inputFile.getParamString("inputString", input);
-
     cout << "input string is: " << input << endl;
     vector<string> tokens;
     tokenparse(input, "|", tokens);
 
-    tecIO *dataset1 = new tecIO(tokens);
-    //check for non standard input file name
+    string cellIDFile;
+    inputFile.getParamString("cellIDFile", cellIDFile, "");
+
+    PGrid *evenG;
+    evenG = new PGrid(rank, size, 0);
+
+    tecIO *dataset1;
+    dataset1 = new tecIO(tokens, cellIDFile);
 
     vector<double> data, average, norm, sum;
     int N = dataset1->nCells * dataset1->numVars;
@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 
     cout.precision(dbl::max_digits10);
 
-    if (!readAvg)
+    if (!center)
     {
         double val = 0.0;
         sum.resize(N);
@@ -100,8 +100,9 @@ int main(int argc, char *argv[])
     }
     else
     {
-        // load average file
-        dataset1->readSZPLTToVec(avgFile, dataset1->centerVec);
+
+        pMat* dataMat = new pMat(dataset1->nPoints, 1, evenG, 0, 0, 0.0, false);
+        dataset1->calcCentering(dataMat, centerFile, true, writeCentering);
 
         vector<int> normFactor_int;
         int nUniqueGroups;
@@ -165,7 +166,7 @@ int main(int argc, char *argv[])
         // compute magnitude data for average file
         int idx_full, idx_group;
         double magVal;
-        if (subAvg) {
+        if (center) {
             cout << "Calculating magnitudes for average file..." << endl;
             for (int j = 0; j < nUniqueGroups; ++j)
             {
@@ -178,14 +179,14 @@ int main(int argc, char *argv[])
                     // don't calculate magnitude if it's a single variable
                     if (groupRef[j].size() == 1)
                     {
-                        magVal = dataset1->centerVec[groupRef[j][0] * dataset1->nCells + iCell];
+                        magVal = dataset1->centerVec->dataD[groupRef[j][0] * dataset1->nCells + iCell];
                     }
                     else
                     {
                         for (int k = 0; k < groupRef[j].size(); ++k)
                         {
                             idx_full = groupRef[j][k] * dataset1->nCells + iCell;
-                            magVal += (dataset1->centerVec[idx_full]) * (dataset1->centerVec[idx_full]);
+                            magVal += (dataset1->centerVec->dataD[idx_full]) * (dataset1->centerVec->dataD[idx_full]);
                         }
                         magVal = sqrt(magVal);
                     }
@@ -199,7 +200,7 @@ int main(int argc, char *argv[])
             // TODO: shunt this off to a function to make it less confusing/cluttered
             if (calcConsv)
             {
-                
+
                 for (int iCell = 0; iCell < dataset1->nCells; ++iCell)
                 {
                     // collect data necessary to compute conservative variables
@@ -210,8 +211,8 @@ int main(int argc, char *argv[])
                     {
                         scalars[i] = dataAvg[(3 + i) * dataset1->nCells + iCell];
                     }
-                    density = dataset1->centerVec[densityIdx * dataset1->nCells + iCell];
-                    enthalpy = dataset1->centerVec[enthalpyIdx * dataset1->nCells + iCell];
+                    density = dataset1->centerVec->dataD[densityIdx * dataset1->nCells + iCell];
+                    enthalpy = dataset1->centerVec->dataD[enthalpyIdx * dataset1->nCells + iCell];
 
                     // calculate conserved variables, distribute into vector
                     calcConsVars(pressure, temperature, velMag, scalars, density, enthalpy, consvVals);
@@ -349,7 +350,6 @@ int main(int argc, char *argv[])
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
-    cout.rdbuf(strm_buffer);
     MPI_Finalize();
     return 0;
 }

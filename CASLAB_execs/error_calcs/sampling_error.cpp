@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
 	vector<string> token;
 
 	tokenparse(fieldInputString, "|", token);
-	tecIO* setField = new tecIO(token);
+	tecIO* setField = new tecIO(token, "");
 
 	token.clear();
 	tokenparse(basisInputString, "|", token);

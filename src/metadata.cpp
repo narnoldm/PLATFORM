@@ -453,11 +453,6 @@ tecIO::tecIO()
     isInit = false;
 }
 
-tecIO::tecIO(vector<string> &iToken)
-{
-    tecIO(iToken, "");
-}
-
 tecIO::tecIO(vector<string> &iToken, string cellIDF)
 {
 
@@ -503,7 +498,6 @@ void tecIO::init(int t0, int tf, int ts, string &iPrefix, string &iSuffix, strin
         nSets++;
     checkSize();
     isInit = true;
-    cout << "tecIO: " << nPoints << " " << nSets << endl;
 
     // set cellIDFile
     if (cellIDF == "")
@@ -526,6 +520,7 @@ void tecIO::init(int t0, int tf, int ts, string &iPrefix, string &iSuffix, strin
         }
     }
 
+    cout << "tecIO: " << nPoints << " (" << nCells << " * " << numVars << ") x " << nSets << endl;
 }
 
 tecIO::~tecIO()

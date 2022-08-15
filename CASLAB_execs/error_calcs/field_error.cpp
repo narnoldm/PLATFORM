@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
 
     // FOM dataset
     tokenparse(fomInputString, "|", token);
-    tecIO* setFOM = new tecIO(token);
+    tecIO* setFOM = new tecIO(token, "");
     setFOM->activateReorder();
 
     // ROM dataset
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
     {
         token.clear();
         tokenparse(romInputString, "|", token);
-        setROM = new tecIO(token);
+        setROM = new tecIO(token, "");
         setROM->activateReorder();
 
         // error checking
