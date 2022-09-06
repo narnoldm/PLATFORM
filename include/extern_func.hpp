@@ -1,10 +1,22 @@
+//H**********************************************************************
+// FILENAME :        extern_func.cpp              
+//
+// DESCRIPTION :
+//       Header file for external function interfaces 
+//       
+//
+// Univeristy of Michigan Ann Arbor 
+// Computational AeroSciences Laboratory
+// AUTHOR :    Nicholas Arnold-Medabalimi        
+// DATE :      6/17/2022
+//
+//H*/
+
 
 #ifndef EXTERN_FUNC_H
 #define EXTERN_FUNC_H
 
-/***
- * Ideally all external functions will be interfaced here
- * */
+
 
 #include <mpi.h>
 
@@ -27,10 +39,15 @@ extern "C" void Cblacs_gridexit(int ICONTXT);
 #ifndef USE_MKL
 /// BLAS routines
 
+
+///
+/// Complex structure if not using MKL
+///
 struct complex16
 {
-    double real;
-    double imag;
+    
+    double real;///< Real part of the complex number
+    double imag;///< Imaginary part of the complex number
 };
 
 extern "C" double cblas_dnrm2(const int n, const double *x, const int incx);
