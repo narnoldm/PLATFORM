@@ -24,11 +24,10 @@
 #endif*/
 #include <Eigen/Dense>
 
-/*** 
-*pMat: This file contains the headers for the PGrid and pMat classes.
-*These define how the code distributes data into the ScaLAPACK format
-* */
-
+/***
+ *pMat: This file contains the headers for the PGrid and pMat classes.
+ *These define how the code distributes data into the ScaLAPACK format
+ * */
 
 /***
  * pMat class is the underlying structure for all of PDP
@@ -38,22 +37,23 @@
 class pMat
 {
 public:
-	int myRC[2]={0,0}, desc[9]={0,0,0,0,0,0,0,0,0};
-	int M=0, N=0, mb=0, nb=0;
-	long MBs=0;
+	int myRC[2] = {0, 0};
+	int desc[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+	int M = 0, N = 0, mb = 0, nb = 0;
+	long MBs = 0;
 	std::vector<double> dataD;
 #ifdef USE_MKL
 	std::vector<MKL_Complex16> dataC;
 #else
 	std::vector<complex16> dataC;
 #endif
-	bool printRank=false;
-	bool isComp=false;
+	bool printRank = false;
+	bool isComp = false;
 	const int i_zero = 0;
 	const int i_one = 1;
 
-	int info=0, type=0, block=0, cycles=0;
-	long long nelements=0;
+	int info = 0, type = 0, block = 0, cycles = 0;
+	long long nelements = 0;
 	PGrid *pG;
 
 	pMat();
@@ -88,7 +88,7 @@ public:
 	int matrix_Product_sym(char uplo, char trans, int n, int k, double alpha, pMat *A, int ia, int ja, double beta, int ic, int jc);
 	int matrix_vec_product(char trans, int m, int n, double alpha, pMat *A, int ia, int ja, pMat *B, int ib, int jb,
 						   double beta, int ic, int jc);
-    int scale_col_row(double alpha, int idx, bool scaleRows);
+	int scale_col_row(double alpha, int idx, bool scaleRows);
 
 	// SVD
 	int svd_run(int, int, int, int, pMat *&, pMat *&, std::vector<double> &);
@@ -105,8 +105,8 @@ public:
 	int qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv, std::string outdir, bool stdout);
 	int qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv, std::string outdir, std::string outfile, bool stdout);
 
-	// Least-squares 
-	int leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int ja, int ib, int jb); 
+	// Least-squares
+	int leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int ja, int ib, int jb);
 
 	// Utilities
 	int transpose(pMat *);
@@ -118,16 +118,15 @@ public:
 	int dMax(int, int, double &, int &);
 	int argmax_vec();
 	int dSum(int, int, double &);
-    double getElement(int, int);
+	double getElement(int, int);
 	double getLocalElement(int I, int J);
-    double getLocalElement(int I, int J, double temp);
+	double getLocalElement(int I, int J, double temp);
 	void setElement(int I, int J, double val);
 
 	// Other
 	int outerProductSum(pMat *U, char, pMat *VT, char, std::vector<double> &S, int inv);
 	void pinv(pMat *A);
 	int commCreate(MPI_Comm &col_com, int dim);
-
 };
 
 void destroyPMat(pMat *);
