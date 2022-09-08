@@ -3,7 +3,7 @@
 ![Build Status](https://github.com/narnoldm/PLATFORM/actions/workflows/cmake.yml/badge.svg)
 
 
-<h1> PLATFORM <h1>
+# PLATFORM 
 
 
 # Abstract 
