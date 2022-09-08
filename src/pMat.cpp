@@ -70,7 +70,7 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init, bool stdout)
                 cout << "Creating Matrix" << endl
                      << "M=" << M << " N=" << N << endl;
         }
-        if (block == 0) //square blocks
+        if (block == 0) // square blocks
         {
                 nb = 128;
                 mb = nb;
@@ -84,7 +84,7 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init, bool stdout)
                         cout << "mb/nb = " << nb << endl;
                 MPI_Barrier(MPI_COMM_WORLD);
         }
-        else if (block == 1) //load blocks
+        else if (block == 1) // load blocks
         {
                 nb = 128;
                 mb = M;
@@ -97,7 +97,7 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init, bool stdout)
                 }
                 MPI_Barrier(MPI_COMM_WORLD);
         }
-        else if (block == 2) //p0 block
+        else if (block == 2) // p0 block
         {
                 nb = N;
                 mb = M;
@@ -108,13 +108,13 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init, bool stdout)
                 }
                 MPI_Barrier(MPI_COMM_WORLD);
         }
-        else if (block == 3) //synched block
+        else if (block == 3) // synched block
         {
                 nb = N / (pG->prow);
                 mb = M / (pG->pcol);
         }
         myRC[0] = numroc_(&M, &mb, &(pG->myrow), &i_zero, &(pG->prow));
-        //cout<<myRC[0]<<" "<<M<<" "<<mb<<" "<<pG->myrow<<" "<<pG->prow<<endl;
+        // cout<<myRC[0]<<" "<<M<<" "<<mb<<" "<<pG->myrow<<" "<<pG->prow<<endl;
 
         myRC[1] = numroc_(&N, &nb, &(pG->mycol), &i_zero, &(pG->pcol));
 
@@ -155,8 +155,8 @@ void pMat::setupMat(int m, int n, int t, int b, int c, double init, bool stdout)
         }
 
         descinit_(desc, &M, &N, &mb, &nb, &i_zero, &i_zero, &(pG->icntxt), &myRC[0], &info);
-        //for(int i=0;i<9;i++)
-        //        cout<<desc[i]<<endl;
+        // for(int i=0;i<9;i++)
+        //         cout<<desc[i]<<endl;
         if (info != 0)
         {
                 cout << "Error in descriptor setup in argument, info=" << -info << endl;
@@ -272,6 +272,8 @@ int pMat::write_bin(std::string filename)
         t2 = MPI_Wtime();
         if (printRank)
                 cout << "Write time is " << t2 - t1 << endl;
+
+        return true;
 }
 
 int pMat::read_bin(string filename)
@@ -304,7 +306,7 @@ int pMat::read_bin(string filename)
         int tsize, mpiEls;
         MPI_Type_size(darray, &tsize);
         mpiEls = tsize / (sizeof(double));
-        //check size
+        // check size
         if (nelements != mpiEls)
         {
                 cout << "Allocation via MPI " << mpiEls << " and pblacs " << nelements << " is different" << endl;
@@ -383,8 +385,6 @@ int pMat::matrix_Product(char tA, char tB, int m, int n, int k, pMat *A, int ia,
         return 0;
 }
 
-
-
 // symmetric matrix product A^T*A or A*A^T
 int pMat::matrix_Product_sym(char uplo, char trans, int n, int k, double alpha, pMat *A, int ia, int ja, double beta, int ic, int jc)
 {
@@ -461,30 +461,30 @@ int pMat::matrix_Sum(char tA, int m, int n, pMat *A, int ia, int ja, int ib, int
 // if scaleRow == true, scales row, otherwise scales column
 int pMat::scale_col_row(double alpha, int idx, bool scaleRow)
 {
-    int inc, len;
-    int ix, jx;
-    if (scaleRow)
-    {
-        len = N;
-        inc = M;
-        ix = idx + 1;
-        jx = 1;
-    }
-    else
-    {
-        len = M;
-        inc = 1;
-        ix = 1;
-        jx = idx + 1;
-    }
+        int inc, len;
+        int ix, jx;
+        if (scaleRow)
+        {
+                len = N;
+                inc = M;
+                ix = idx + 1;
+                jx = 1;
+        }
+        else
+        {
+                len = M;
+                inc = 1;
+                ix = 1;
+                jx = idx + 1;
+        }
 
-    pdscal_(&len, &alpha, dataD.data(), &ix, &jx, desc, &inc);
-
+        pdscal_(&len, &alpha, dataD.data(), &ix, &jx, desc, &inc);
+        return 1;
 }
 
 int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S)
 {
-        svd_run(M, N, ia, ja, U, VT, S, true);
+        return svd_run(M, N, ia, ja, U, VT, S, true);
 }
 
 int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S, bool stdout)
@@ -512,7 +512,7 @@ int pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
         if (stdout)
                 cout << "Work Allocated: " << LWORK / (1e6) * 8 << " MB per processor" << endl;
 
-        //SVD run
+        // SVD run
         MPI_Barrier(MPI_COMM_WORLD);
         t1 = MPI_Wtime();
         pdgesvd_(JOBU, JOBVT, &M, &N, dataD.data(), &IA, &JA, desc, S.data(), U->dataD.data(), &IA, &JA, U->desc, VT->dataD.data(), &i_one, &i_one, VT->desc, WORK.data(), &LWORK, &info);
@@ -617,7 +617,8 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
                                 // argsort singular values in descending order
                                 vector<size_t> idx(S.size());
                                 iota(idx.begin(), idx.end(), 0);
-                                stable_sort(idx.begin(), idx.end(), [&S](size_t i1, size_t i2) { return S[i1] < S[i2]; });
+                                stable_sort(idx.begin(), idx.end(), [&S](size_t i1, size_t i2)
+                                            { return S[i1] < S[i2]; });
                                 reverse(idx.begin(), idx.end());
 
                                 // sort singular values and right singular vectors
@@ -700,6 +701,7 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
                 cout << "min M not supported yet" << endl;
                 MPI_Abort(MPI_COMM_WORLD, -1);
         }
+        return 1;
 }
 
 // mos_run for full run
@@ -708,7 +710,7 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
 
         int modeStart = 1;
         int modeEnd = N;
-        mos_run(M, N, ia, ja, U, VT, S, modeStart, modeEnd);
+        return mos_run(M, N, ia, ja, U, VT, S, modeStart, modeEnd);
 }
 
 int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S, int modeStart, int modeEnd)
@@ -763,7 +765,8 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
                         // argsort singular values in ascending order
                         vector<size_t> idx(S.size());
                         iota(idx.begin(), idx.end(), 0);
-                        stable_sort(idx.begin(), idx.end(), [&S](size_t i1, size_t i2) { return S[i1] < S[i2]; });
+                        stable_sort(idx.begin(), idx.end(), [&S](size_t i1, size_t i2)
+                                    { return S[i1] < S[i2]; });
 
                         reverse(idx.begin(), idx.end()); // reverse order to get singular values in descending order
 
@@ -820,15 +823,18 @@ int pMat::mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<doub
                 cout << "min M not supported yet" << endl;
                 MPI_Abort(MPI_COMM_WORLD, -1);
         }
+
+        return 1;
 }
 
 int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv)
 {
-    qr_run(m, n, ia, ja, ipiv, "./", "P.bin", true);
+        return qr_run(m, n, ia, ja, ipiv, "./", "P.bin", true);
 }
 
-int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string outdir, bool stdout) {
-	qr_run(m, n, ia, ja, ipiv, outdir, "P.bin", stdout);
+int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string outdir, bool stdout)
+{
+        return qr_run(m, n, ia, ja, ipiv, outdir, "P.bin", stdout);
 }
 
 int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string outdir, string outfile, bool stdout)
@@ -923,7 +929,7 @@ int pMat::qr_run(int m, int n, int ia, int ja, std::vector<int> &ipiv, string ou
 
 int pMat::transpose(pMat *A)
 {
-        transpose(A, this->M, this->N, 0, 0);
+        return transpose(A, this->M, this->N, 0, 0);
 }
 
 int pMat::transpose(pMat *A, int m, int n, int ia, int ja)
@@ -942,6 +948,7 @@ int pMat::transpose(pMat *A, int m, int n, int ia, int ja)
         double ONE = 1.0;
         double ZERO = 0.0;
         pdtran_(&m, &n, &ONE, A->dataD.data(), &IA, &JA, A->desc, &ZERO, dataD.data(), &i_one, &i_one, desc);
+        return 1;
 }
 int pMat::changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb, bool stdout)
 {
@@ -966,18 +973,19 @@ int pMat::changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb, b
                         cout << "Complex changed pGrid" << endl;
                 pzgemr2d_(&m, &n, A->dataC.data(), &IA, &JA, A->desc, dataC.data(), &IB, &JB, desc, &(pG->icntxt));
         }
+        return 1;
 }
 int pMat::changeContext(pMat *A, int m, int n, int ia, int ja, int ib, int jb)
 {
-        changeContext(A, m, n, ia, ja, ib, jb, true);
+        return changeContext(A, m, n, ia, ja, ib, jb, true);
 }
 int pMat::changeContext(pMat *A)
 {
-        changeContext(A, M, N, 0, 0, 0, 0, true);
+        return changeContext(A, M, N, 0, 0, 0, 0, true);
 }
 int pMat::changeContext(pMat *A, bool stdout)
 {
-        changeContext(A, M, N, 0, 0, 0, 0, stdout);
+        return changeContext(A, M, N, 0, 0, 0, 0, stdout);
 }
 
 int pMat::dMax(int dim, int rc, double &val, int &index)
@@ -995,42 +1003,49 @@ int pMat::dMax(int dim, int rc, double &val, int &index)
                 pdamax_(&N, &val, &index, dataD.data(), &IA, &JA, desc, &M);
         }
 
-		index--; // return to C indexing
-
+        index--; // return to C indexing
+        return 1;
 }
 
 // Computes global argmax of one-dimensional pMat
-int pMat::argmax_vec() {
+int pMat::argmax_vec()
+{
 
-		// only valid for "vectors" (one-dimensiona pMat)
-		int vecType;
-		if (N == 1) {
-			vecType = 0; // column vector
-		} else if (M == 1) {
-			vecType = 1; // row vector
-		} else {
-			cout << "pMat::argmax_vec only accepts one-dimensiona pMats" << endl;
-			cout << "This pMat has dimensions (" << M << ", " << N << ")" << endl;
-			throw(-1);
-		}
+        // only valid for "vectors" (one-dimensiona pMat)
+        int vecType;
+        if (N == 1)
+        {
+                vecType = 0; // column vector
+        }
+        else if (M == 1)
+        {
+                vecType = 1; // row vector
+        }
+        else
+        {
+                cout << "pMat::argmax_vec only accepts one-dimensiona pMats" << endl;
+                cout << "This pMat has dimensions (" << M << ", " << N << ")" << endl;
+                throw(-1);
+        }
 
-		double maxLocal = 0.0;
-		double maxGlobal = 0.0;
-		int argMaxLocal = -1;
-		int argMaxGlobal = -1;
+        double maxLocal = 0.0;
+        double maxGlobal = 0.0;
+        int argMaxLocal = -1;
+        int argMaxGlobal = -1;
 
-		this->dMax(vecType, 0, maxLocal, argMaxLocal);
+        this->dMax(vecType, 0, maxLocal, argMaxLocal);
 
-		// Allreduce(MPI_MAX) the maximum value
-		MPI_Allreduce(&maxLocal, &maxGlobal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+        // Allreduce(MPI_MAX) the maximum value
+        MPI_Allreduce(&maxLocal, &maxGlobal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
-		// if rank doesn't own the max, set argMaxLocal = -1 so that MPI_MAX can determine the correct argMaxGlobal
-		if (maxLocal != maxGlobal) {
-			argMaxLocal = -1;
-		}
-		MPI_Allreduce(&argMaxLocal, &argMaxGlobal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+        // if rank doesn't own the max, set argMaxLocal = -1 so that MPI_MAX can determine the correct argMaxGlobal
+        if (maxLocal != maxGlobal)
+        {
+                argMaxLocal = -1;
+        }
+        MPI_Allreduce(&argMaxLocal, &argMaxGlobal, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
-		return argMaxGlobal;
+        return argMaxGlobal;
 }
 
 int pMat::dSum(int dim, int rc, double &val)
@@ -1046,6 +1061,11 @@ int pMat::dSum(int dim, int rc, double &val)
                 int IA = rc + 1, JA = 1, i_one = 1;
                 pdasum_(&N, &val, dataD.data(), &IA, &JA, desc, &M);
         }
+        else
+        {
+                return 0;
+        }
+        return 1;
 }
 
 void pMat::pinv(pMat *A)
@@ -1063,8 +1083,8 @@ void pMat::pinv(pMat *A)
         this->matrix_Product('T', 'T', VV->N, UU->M, 1, VV, 0, 0, UU, 0, 0, 1.0 / SS[0], 0.0, 0, 0);
         for (int i = 1; i < SS.size(); i++)
         {
-                //check tolerance
-                // cout << "tol check " << SS[i] << " " << std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0] << "\r";
+                // check tolerance
+                //  cout << "tol check " << SS[i] << " " << std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0] << "\r";
                 if (SS[i] > std::numeric_limits<double>::epsilon() * std::max(A->M, A->N) * SS[0])
                         this->matrix_Product('T', 'T', VV->N, UU->M, 1, VV, i, 0, UU, 0, i, 1.0 / SS[i], 1.0, 0, 0);
         }
@@ -1078,35 +1098,35 @@ void pMat::pinv(pMat *A)
 int pMat::leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int ja, int ib, int jb)
 {
 
-	int info = 0;
-	vector<double> WORK(1);
-	int LWORK = -1;
-	int IA = ia + 1;
-	int JA = ja + 1;
-	int IB = ib + 1;
-	int JB = jb + 1;
+        int info = 0;
+        vector<double> WORK(1);
+        int LWORK = -1;
+        int IA = ia + 1;
+        int JA = ja + 1;
+        int IB = ib + 1;
+        int JB = jb + 1;
 
-	// get LWORK and WORK
-	pdgels_(&trans, &m, &n, &nrhs, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, WORK.data(), &LWORK, &info);
+        // get LWORK and WORK
+        pdgels_(&trans, &m, &n, &nrhs, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, WORK.data(), &LWORK, &info);
 
-	if (info < 0) {
-		cout << "Error in least-squares solve setup in argument: " << -info << endl;
-		throw(-1);
-	}
+        if (info < 0)
+        {
+                cout << "Error in least-squares solve setup in argument: " << -info << endl;
+                throw(-1);
+        }
 
-	// set up real run
-	LWORK = WORK[0];
-	WORK.resize(LWORK);
+        // set up real run
+        LWORK = WORK[0];
+        WORK.resize(LWORK);
 
-	// least squares solve
-	double t1, t2;
-	t1 = MPI_Wtime();
-	pdgels_(&trans, &m, &n, &nrhs, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, WORK.data(), &LWORK, &info);
-	t2 = MPI_Wtime();
-	WORK.resize(0);
+        // least squares solve
+        double t1, t2;
+        t1 = MPI_Wtime();
+        pdgels_(&trans, &m, &n, &nrhs, A->dataD.data(), &IA, &JA, A->desc, dataD.data(), &IB, &JB, desc, WORK.data(), &LWORK, &info);
+        t2 = MPI_Wtime();
+        WORK.resize(0);
 
-	return 1;
-
+        return 1;
 }
 
 int pMat::outerProductSum(pMat *U, char UT, pMat *VT, char VTT, std::vector<double> &S, int inv)
@@ -1127,6 +1147,7 @@ int pMat::outerProductSum(pMat *U, char UT, pMat *VT, char VTT, std::vector<doub
                         this->matrix_Product(UT, VTT, U->M, VT->N, 1, U, 0, i, VT, i, 0, S[i], 1.0, 0, 0);
                 }
         }
+        return 1;
 }
 ostream &operator<<(std::ostream &os, const pMat &p)
 {
@@ -1169,7 +1190,7 @@ double pMat::getElement(int I, int J)
 // otherwise returns input value of temp (zero by default)
 double pMat::getLocalElement(int I, int J)
 {
-    return getLocalElement(I, J, 0.0);
+        return getLocalElement(I, J, 0.0);
 }
 
 double pMat::getLocalElement(int I, int J, double temp)
@@ -1206,7 +1227,7 @@ void pMat::setElement(int I, int J, double val)
                 assert(((m * nb + y) * myRC[0] + l * mb + x) < nelements);
                 dataD[(m * nb + y) * myRC[0] + l * mb + x] = val;
         }
-		MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Barrier(MPI_COMM_WORLD);
 }
 
 bool operator==(pMat const &p1, pMat const &p2)
@@ -1275,4 +1296,6 @@ int pMat::commCreate(MPI_Comm &col_comm, int dim)
         }
         else
                 MPI_Abort(MPI_COMM_WORLD, -1);
+
+        return 1;
 }
