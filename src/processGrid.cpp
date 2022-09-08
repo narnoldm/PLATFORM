@@ -41,12 +41,6 @@ PGrid::PGrid(int r, int s, int type)
         MPI_Barrier(MPI_COMM_WORLD);
         delete[] order;
 }
-PGrid::PGrid(int r, int s)
-{
-
-
-
-}
 PGrid::~PGrid()
 {
         cout << "clearing pblacs buffers" << endl;

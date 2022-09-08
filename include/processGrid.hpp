@@ -32,13 +32,14 @@ public:
 	int pdims[2];
 	/// rank to be allowed to std out
 	bool printRank;
-	/// mpi rank and size
-	int rank, size;
+	/// mpi rank 
+	int rank;
+	/// mpi size
+	int size;
 
-	PGrid(int, int, int); //Constructor
-    PGrid(int, int);
-	~PGrid();
-	int getDim(int);
+	PGrid(int, int, int); ///<Constructor of PBLACS Process Grid (int rank, int size, int type=0(rectangular),1(linear),2(1x))
+	~PGrid(); ///<Destructor of PBLACS Process Grid
+	int getDim(int); ///<Get the dimension of the process grid in the specified dimension
 };
 
 #endif
