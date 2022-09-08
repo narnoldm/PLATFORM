@@ -85,7 +85,7 @@ void meta::checkExists()
 bool meta::readSingle(int fileID, double *point)
 {
     cout << "meta read " << fileID << endl;
-    cout<< (prefix + to_string(fileID) + suffix)<<endl;
+    cout << (prefix + to_string(fileID) + suffix) << endl;
     FILE *fid;
     fid = fopen((prefix + to_string(fileID) + suffix).c_str(), "rb");
     int header[2] = {0, 0};
@@ -100,8 +100,8 @@ bool meta::readSingle(int fileID, double *point)
 
 bool meta::batchRead(pMat *loadMat)
 {
-    double t1,t2; 
-    t1=MPI_Wtime();
+    double t1, t2;
+    t1 = MPI_Wtime();
     if (loadMat->mb == nPoints)
     {
         int iP = 0;
@@ -153,8 +153,10 @@ bool meta::batchRead(pMat *loadMat)
         }
         tempR.clear();
     }
-    t2=MPI_Wtime();
-    cout<<"batch Read took "<<t2-t1<<" secs"<<endl;
+    t2 = MPI_Wtime();
+    cout << "batch Read took " << t2 - t1 << " secs" << endl;
+
+    return true;
 }
 
 bool meta::batchRead(pMat *loadMat, int ii)
@@ -207,11 +209,14 @@ bool meta::batchRead(pMat *loadMat, int ii)
         }
         tempR.clear();
     }
+
+    return true;
 }
 
 bool meta::writeSingle(int fileID, double *point, string fpref)
 {
     writeSingle(fileID, point, fpref, nPoints);
+    return true;
 }
 
 bool meta::writeSingle(int fileID, double *point, string fpref, int points)
@@ -230,19 +235,19 @@ bool meta::writeSingle(int fileID, double *point, string fpref, int points)
 
 bool meta::batchWrite(pMat *loadMat)
 {
-    batchWrite(loadMat, "out/", prefix);
+    return batchWrite(loadMat, "out/", prefix);
 }
 bool meta::batchWrite(pMat *loadMat, string dir, string fpref)
 {
-    batchWrite(loadMat, dir, fpref, 0, nSets, 1);
+    return batchWrite(loadMat, dir, fpref, 0, nSets, 1);
 }
 bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int nModes)
 {
-    batchWrite(loadMat, dir, fpref, 0, nModes, 1);
+    return batchWrite(loadMat, dir, fpref, 0, nModes, 1);
 }
 bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int mEnd, int mSkip)
 {
-    batchWrite(loadMat, dir, fpref, mStart, mEnd, mSkip, snap0, snapSkip, 0);
+    return batchWrite(loadMat, dir, fpref, mStart, mEnd, mSkip, snap0, snapSkip, 0);
 }
 
 // Write columns or rows of loadMat to individual binary files
@@ -257,7 +262,7 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
 bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip, int dim)
 {
 
-    assert(system(NULL)); //check if system commands work
+    assert(system(NULL)); // check if system commands work
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (!rank)
@@ -307,7 +312,7 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
         }
         else
         {
-            rowColCheck = (j / loadMat->mb) % loadMat->pG->prow;  // process row index
+            rowColCheck = (j / loadMat->mb) % loadMat->pG->prow; // process row index
         }
         if (procRowOrCol == rowColCheck)
         {
@@ -328,12 +333,12 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
             {
                 for (int i = 0; i < nSets; i++)
                 {
-                    int xi = currentIdx % loadMat->mb;  // local block row index
+                    int xi = currentIdx % loadMat->mb;                       // local block row index
                     int li = currentIdx / (loadMat->pG->prow * loadMat->mb); // subblock row index
-                    int mi = i / (loadMat->pG->pcol * loadMat->nb); // subblock column index
-                    int localcol = mi * loadMat->nb + i % loadMat->nb; // local data column index
+                    int mi = i / (loadMat->pG->pcol * loadMat->nb);          // subblock column index
+                    int localcol = mi * loadMat->nb + i % loadMat->nb;       // local data column index
 
-                    if (loadMat->pG->mycol == (i / loadMat->nb) % loadMat->pG->pcol)  // process column index
+                    if (loadMat->pG->mycol == (i / loadMat->nb) % loadMat->pG->pcol) // process column index
                     {
                         tempR[i] = loadMat->dataD[localcol * loadMat->myRC[0] + li * loadMat->mb + xi];
                     }
@@ -356,6 +361,7 @@ bool meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
     MPI_Comm_free(&col_comms);
     t2 = MPI_Wtime();
     cout << "batch Write took " << t2 - t1 << " secs" << endl;
+    return true;
 }
 
 void meta::miscProcessing(pMat *Mat)
@@ -402,7 +408,7 @@ void tecIO::init(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
     for (int i = snap0; i <= snapF; i = i + snapSkip)
         nSets++;
     checkSize();
-    //checkExists();
+    // checkExists();
     isInit = true;
     cout << nPoints << " " << nSets << endl;
 }
@@ -464,7 +470,7 @@ bool tecIO::readSingle(int fileID, double *point)
         }
         if (reorder)
         {
-            //cout << "reording slice" << endl;
+            // cout << "reording slice" << endl;
             std::vector<double> temp(nCells, 0.0);
             for (int j = 0; j < nCells; j++)
             {
@@ -473,17 +479,18 @@ bool tecIO::readSingle(int fileID, double *point)
             for (int j = 0; j < nCells; j++)
             {
                 point[i * nCells + j] = temp[idx[j]];
-                //hash[j]=j;
+                // hash[j]=j;
             }
             temp.clear();
         }
     }
     tecFileReaderClose(&fH);
+    return true;
 }
 
 bool tecIO::writeSingle(int fileID, double *point, string fpref)
 {
-    writeSingle(fileID, point, fpref, nPoints);
+    return writeSingle(fileID, point, fpref, nPoints);
 }
 
 bool tecIO::writeSingle(int fileID, double *point, string fpref, int points)
@@ -506,7 +513,7 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref, int points)
     if ((zoneType != 5) && (zoneType != 3))
     {
         printf("Zone is weird/Not supported\n");
-        MPI_Abort(MPI_COMM_WORLD,-1);
+        MPI_Abort(MPI_COMM_WORLD, -1);
     }
 
     std::string varstr = "";
@@ -559,7 +566,7 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref, int points)
     vector<double> ndDat;
     for (int i = 0; i < dim; i++)
     {
-        if (varTypes[i] == 1) //float
+        if (varTypes[i] == 1) // float
         {
             nfDat.resize(iMax);
             tecZoneVarGetFloatValues(infH, 1, i + 1, 1, iMax, nfDat.data());
@@ -627,6 +634,7 @@ bool tecIO::writeSingle(int fileID, double *point, string fpref, int points)
         }
         fclose(fid);
     }
+    return true;
 }
 void tecIO::miscProcessing(pMat *Mat)
 {
@@ -645,7 +653,7 @@ bool tecIO::writeSingleFile(std::string filename, std::vector<std::string> &fvar
     if ((zoneType != 5) && (zoneType != 3))
     {
         printf("Zone is weird/Not supported\n");
-        MPI_Abort(MPI_COMM_WORLD,-1);
+        MPI_Abort(MPI_COMM_WORLD, -1);
     }
 
     std::string varstr = "";
@@ -698,7 +706,7 @@ bool tecIO::writeSingleFile(std::string filename, std::vector<std::string> &fvar
     vector<double> ndDat;
     for (int i = 0; i < dim; i++)
     {
-        if (varTypes[i] == 1) //float
+        if (varTypes[i] == 1) // float
         {
             nfDat.resize(iMax);
             tecZoneVarGetFloatValues(infH, 1, i + 1, 1, iMax, nfDat.data());
@@ -741,6 +749,8 @@ bool tecIO::writeSingleFile(std::string filename, std::vector<std::string> &fvar
     valueLoc.clear();
     passive.clear();
     shareVar.clear();
+
+    return true;
 }
 void tecIO::addVar(string var, string &norm)
 {
@@ -787,7 +797,7 @@ int tecIO::getVariableIndex(string var, string file)
         if (tecIndex == 0)
         {
             cout << "Var not found :" << var << endl;
-            MPI_Abort(MPI_COMM_WORLD,-1);
+            MPI_Abort(MPI_COMM_WORLD, -1);
         }
     }
     MPI_Bcast(&tecIndex, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -865,7 +875,7 @@ void tecIO::genHash(string filename)
             }
             else
             {
-                MPI_Abort(MPI_COMM_WORLD,-1);
+                MPI_Abort(MPI_COMM_WORLD, -1);
             }
             tecFileReaderClose(&fH);
             for (int i = 0; i < nCells; i++)
@@ -878,7 +888,8 @@ void tecIO::genHash(string filename)
 
         MPI_Bcast(idx.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Bcast(cellID.data(), nCells, MPI_INT, 0, MPI_COMM_WORLD);
-        stable_sort(idx.begin(), idx.end(), [&](int i, int j) { return cellID[i] < cellID[j]; });
+        stable_sort(idx.begin(), idx.end(), [&](int i, int j)
+                    { return cellID[i] < cellID[j]; });
     }
     else
     {
@@ -918,11 +929,11 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
         // TODO: allow reading from small vector
         // TODO: allow reading from ASCII file
         isField = true;
-        if (centerMethod.substr(centerMethod.size()-6, 6) == ".szplt")
+        if (centerMethod.substr(centerMethod.size() - 6, 6) == ".szplt")
         {
             readSZPLTToVec(centerMethod, centerVec);
         }
-        else if (centerMethod.substr(centerMethod.size()-4, 4) == ".dat")
+        else if (centerMethod.substr(centerMethod.size() - 4, 4) == ".dat")
         {
             readDATToVec(centerMethod, centerVec);
         }
@@ -1042,7 +1053,7 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
         vector<double> centerVals(numVars);
         copy(centerVec.begin(), centerVec.end(), centerVals.begin());
         centerVec.resize(nPoints, 0.0);
-        for (int k = 0; k < numVars; ++k) 
+        for (int k = 0; k < numVars; ++k)
         {
             for (int i = 0; i < nCells; ++i)
             {
@@ -1067,7 +1078,6 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
         cout << "Centering files written" << endl;
     }
     MPI_Barrier(MPI_COMM_WORLD);
-
 }
 
 void tecIO::centerData(pMat *dataMat)
@@ -1080,7 +1090,7 @@ void tecIO::centerData(pMat *dataMat, bool uncenter)
     if (centerVec.size() == 0)
     {
         cout << "Centering isn't setup, call calcCentering first" << endl;
-        MPI_Abort(MPI_COMM_WORLD,-1);
+        MPI_Abort(MPI_COMM_WORLD, -1);
     }
 
     if (uncenter)
@@ -1126,15 +1136,14 @@ void tecIO::centerData(pMat *dataMat, bool uncenter)
     {
         cout << "Data centered" << endl;
     }
-
 }
 
-void tecIO::calcScaling(pMat* dataMat, string scaleMethod)
+void tecIO::calcScaling(pMat *dataMat, string scaleMethod)
 {
     calcScaling(dataMat, scaleMethod, false);
 }
 
-void tecIO::calcScaling(pMat* dataMat, string scaleMethod, bool isField)
+void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField)
 {
     calcScaling(dataMat, scaleMethod, isField, true);
 }
@@ -1218,7 +1227,7 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
         cout << "Scaling allocated" << endl;
 
         // need a copy of data for standardization
-        pMat* dataMatCopy;
+        pMat *dataMatCopy;
         if (scaleMethod == "standardize")
         {
             dataMatCopy = new pMat(nPoints, nSets, dataMat->pG, 0, 0, 0.0, false);
@@ -1259,8 +1268,8 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
 
                     // calculate average
                     calcGroupQuant(dataMat, val1, valVec1, k, "avg", isField);
-                    pMat* avgVecP0 = new pMat(nCells, 1, dataMat->pG, 0, 2, 0.0, false);
-                    pMat* avgVec = new pMat(nCells, 1, dataMat->pG, 0, 0, 0.0, false);
+                    pMat *avgVecP0 = new pMat(nCells, 1, dataMat->pG, 0, 2, 0.0, false);
+                    pMat *avgVec = new pMat(nCells, 1, dataMat->pG, 0, 0, 0.0, false);
                     int rank;
                     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                     if (!rank)
@@ -1307,7 +1316,6 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
 
                     // compute variance
                     calcGroupQuant(dataMatCopy, val2, valVec2, k, "avg", isField);
-
                 }
                 else if (scaleMethod == "sphere")
                 {
@@ -1353,7 +1361,6 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
                         scalingDivVec[k] = val2;
                     }
                 }
-
             }
             else
             {
@@ -1415,7 +1422,7 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
         copy(scalingDivVec.begin(), scalingDivVec.end(), divVals.begin());
         scalingSubVec.resize(nPoints, 0.0);
         scalingDivVec.resize(nPoints, 0.0);
-        for (int k = 0; k < numVars; ++k) 
+        for (int k = 0; k < numVars; ++k)
         {
             for (int i = 0; i < nCells; ++i)
             {
@@ -1427,7 +1434,7 @@ void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool wr
 
     // prevent divisive factors close to zero
     // really only happens when min and max are same, implying field is uniform
-    for (int k = 0; k < numVars; ++k) 
+    for (int k = 0; k < numVars; ++k)
     {
         for (int i = 0; i < nCells; ++i)
         {
@@ -1521,7 +1528,8 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
     vector<double> valVec(nCells);
 
     // prefill aggregate vector
-    if (methodName == "min") {
+    if (methodName == "min")
+    {
         fill(valVec.begin(), valVec.end(), HUGE_VAL);
     }
     else if (methodName == "max")
@@ -1550,7 +1558,7 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
         {
             if (methodName == "min")
             {
-                groupVal = HUGE_VAL; 
+                groupVal = HUGE_VAL;
             }
             else if (methodName == "max")
             {
@@ -1636,7 +1644,6 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
             val = sqrt(val);
             outVal = max(outVal, val);
         }
-
     }
 
     // only collected local elements, so need to reduce
@@ -1701,7 +1708,6 @@ void tecIO::calcGroupQuant(pMat *dataMat, double &outVal, vector<double> &outVec
             outVal /= nCells;
         }
     }
-
 }
 
 void tecIO::readDATToVec(std::string filename, std::vector<double> &vec)
@@ -1811,7 +1817,6 @@ void tecIO::vecToCellIDOrder(vector<double> &vecIn, vector<double> &vecOut)
             vecOut[i * nCells + j] = vecIn[i * nCells + idx[j]];
         }
     }
-    
 }
 
 void tecIO::activateGEMSbin(string file)
@@ -1827,30 +1832,30 @@ void tecIO::activateReorder(string file)
 }
 
 // check if metadata for two meta objects are the same, EXCEPT for file numbers
-int compareMeta(meta* meta1, meta* meta2)
+int compareMeta(meta *meta1, meta *meta2)
 {
 
-	// check path members
-	if ( (meta1->prefix == meta2->prefix) && (meta1->suffix == meta2->suffix) )
+    // check path members
+    if ((meta1->prefix == meta2->prefix) && (meta1->suffix == meta2->suffix))
     {
 
-		if ( (meta1->snap0 == meta2->snap0) && 
-			 (meta1->snapF == meta2->snapF) &&
-			 (meta1->snapSkip == meta2->snapSkip) )
+        if ((meta1->snap0 == meta2->snap0) &&
+            (meta1->snapF == meta2->snapF) &&
+            (meta1->snapSkip == meta2->snapSkip))
         {
-			// objects are identical
-			return(1);
-		}
+            // objects are identical
+            return (1);
+        }
         else
         {
-			// objects differ only in the file counts
-			return(2);
-		}
-		return(true);
-
-	} else {
-		// objects are totally different
-		return(0);
-	}
-
+            // objects differ only in the file counts
+            return (2);
+        }
+        return (true);
+    }
+    else
+    {
+        // objects are totally different
+        return (0);
+    }
 }
