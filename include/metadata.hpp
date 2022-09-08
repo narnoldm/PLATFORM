@@ -32,10 +32,14 @@
 class meta
 {
 public:
-    int snap0, snapF, snapSkip;     ///< The indexing of the filenames snap0 through snapF with a skip of snapSkip
+    int snap0;                      ///< The indexing of the filenames starting snapshot
+    int snapF;                      ///< The indexing of the filenames end snapshot (inclusive)
+    int snapSkip;                   ///< The indexing stide
     bool isInit = false;            ///< Flag to indicate if the meta data has been initialized
-    long nPoints, nSets;            ///< The number of points and number of files (nSets)
-    std::string prefix, suffix;     ///< The prefix and suffix of the filenames
+    long nPoints;                   ///< The number of Ponts in the file
+    long nSets;                     ///< The number of files (nSets)
+    std::string prefix;             ///< The prefix of the file name (this should include path to file usually)
+    std::string suffix;             ///< The prefix and suffix of the filenames (.dat, .bin, .szplt etc)
     std::vector<std::string> token; ///< The input token used to initalize meta
 
     meta();                                                                                ///< Default constructor
@@ -44,20 +48,20 @@ public:
     virtual ~meta();                                                                       ///< Destructor
     virtual void init(int t0, int tf, int ts, std::string &iPrefix, std::string &iSuffix); ///< Initialize meta
 
-    virtual void checkSize();                                                                                                   ///< Check the size of a single file
-    virtual void checkExists();                                                                                                 ///< Check if the files exist
-    virtual bool readSingle(int fileID, double *point);                                                                         ///< Read a single file
-    virtual bool writeSingle(int fileID, double *point, std::string fpref);                                                     ///< Write a single file
-    virtual bool writeSingle(int fileID, double *point, std::string fpref, int points);                                         ///< Write a single file if points is diiferent from initalized meta
-    virtual void miscProcessing(pMat *Mat);                                                                                     ///< Perform misc processing on the data (not used in parent meta)
-    bool batchWrite(pMat *loadMat);                                                                                             ///< Write the data to the full set of files using defaults
-    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int nModes);                                             ///< Write a subset of the files
-    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip);                        ///< Write a subset of the files
-    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip); ///< Write a subset of the files
-    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref);                                                         ///< Write the data to the full set of files using specified names
-    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip, int dim);
-    bool batchRead(pMat *loadMat);         ///< Read the data from the full set of files using defaults
-    bool batchRead(pMat *loadMat, int ii); ///< Read the data from the full set of files using defaults
+    virtual void checkSize();                                                                                                            ///< Check the size of a single file
+    virtual void checkExists();                                                                                                          ///< Check if the files exist
+    virtual bool readSingle(int fileID, double *point);                                                                                  ///< Read a single file
+    virtual bool writeSingle(int fileID, double *point, std::string fpref);                                                              ///< Write a single file
+    virtual bool writeSingle(int fileID, double *point, std::string fpref, int points);                                                  ///< Write a single file if points is diiferent from initalized meta
+    virtual void miscProcessing(pMat *Mat);                                                                                              ///< Perform misc processing on the data (not used in parent meta)
+    bool batchWrite(pMat *loadMat);                                                                                                      ///< Write the data to the full set of files using defaults
+    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int nModes);                                                      ///< Write a subset of the files
+    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip);                                 ///< Write a subset of the files
+    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip);          ///< Write a subset of the files
+    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref);                                                                  ///< Write the data to the full set of files using specified names
+    bool batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip, int dim); ///< Write a subset of the files with option for row output
+    bool batchRead(pMat *loadMat);                                                                                                       ///< Read the data from the full set of files using defaults
+    bool batchRead(pMat *loadMat, int ii);                                                                                               ///< Read the data from the full set of files using defaults
 };
 
 ///
