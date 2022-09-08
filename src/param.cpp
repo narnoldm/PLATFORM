@@ -3,18 +3,12 @@
 paramMap::paramMap(std::string file)
 {
         filename = file;
-        keys.clear();
-        intParam.clear();
-        doubleParam.clear();
 }
 paramMap::paramMap(std::string file, int r)
 {
         isMPI = true;
         rank = r;
         filename = file;
-        keys.clear();
-        intParam.clear();
-        doubleParam.clear();
 }
 
 bool paramMap::getParamInt(std::string parastr, int &Param) {
