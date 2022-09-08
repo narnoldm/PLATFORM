@@ -29,7 +29,7 @@ Additionally in the cases where one of the given dimensions of small
 method of snapshots() can be utilized. (however at wall time costs
 due to file I/O) However as attempts are made to apply these methods 
 to large problems other tools must be used to overcome the memory 
-and I/O problem. PDP aims to make overcoming these issues easier
+and I/O problem. PLATFORM aims to make overcoming these issues easier
 without users needing to understand the depths of distributed
 linear algebra computing.
 
