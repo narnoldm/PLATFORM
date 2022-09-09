@@ -1,7 +1,7 @@
 
 
 ![Build Status](https://github.com/narnoldm/PLATFORM/actions/workflows/cmake.yml/badge.svg)
-
+![Documentation Status](https://github.com/narnoldm/PLATFORM/actions/workflows/main.yml/badge.svg)
 
 # PLATFORM 
 
