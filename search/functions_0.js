@@ -1,0 +1,5 @@
+var searchData=
+[
+  ['batchread_0',['batchRead',['../classmeta.html#ade3af4b34a52c14d0665d5750b3def72',1,'meta::batchRead(pMat *loadMat)'],['../classmeta.html#a30ba7bb4f06219a71de7ae5d427de588',1,'meta::batchRead(pMat *loadMat, int ii)']]],
+  ['batchwrite_1',['batchWrite',['../classmeta.html#a7400932a952e7b3a694cbda1836be404',1,'meta::batchWrite(pMat *loadMat)'],['../classmeta.html#a7d3f2ffd0231bf6462a4833307870110',1,'meta::batchWrite(pMat *loadMat, std::string dir, std::string fpref, int nModes)'],['../classmeta.html#a9ecd015ce285c9c478faf56da5b26bef',1,'meta::batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip)'],['../classmeta.html#af6f72cea298d5ebba79781044bf9dee1',1,'meta::batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip)'],['../classmeta.html#a9b660d8749164ec9b63ecfe86d9b76d0',1,'meta::batchWrite(pMat *loadMat, std::string dir, std::string fpref)'],['../classmeta.html#a2334c51f8c1d18c36bac218c37b5037c',1,'meta::batchWrite(pMat *loadMat, std::string dir, std::string fpref, int mStart, int mEnd, int mSkip, int fStart, int fSkip, int dim)']]]
+];
