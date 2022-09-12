@@ -541,12 +541,17 @@ void pMat::scale_col_row(double alpha, int idx, bool scaleRow)
 
 }
 
-void pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S)
+void pMat::svd_run(pMat *U, pMat *VT, vector<double> &S)
 {
-        svd_run(M, N, ia, ja, U, VT, S, true);
+    svd_run(M, N, 0, 0, U, VT, S, true);
 }
 
-void pMat::svd_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, vector<double> &S, bool stdout)
+void pMat::svd_run(int M, int N, int ia, int ja, pMat *U, pMat *VT, vector<double> &S)
+{
+    svd_run(M, N, ia, ja, U, VT, S, true);
+}
+
+void pMat::svd_run(int M, int N, int ia, int ja, pMat *U, pMat *VT, vector<double> &S, bool stdout)
 {
     int info = 0;
     string computeFlag = "V";
@@ -1115,7 +1120,13 @@ void pMat::pinv(pMat *A)
 // solve over-/under-determined linear system AX = B
 // on exit, solutions are written to columns of B
 // on exit, A is overwritten with QR decomposition info (pretty much destroyed)
-void pMat::leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int ja, int ib, int jb)
+
+void pMat::leastSquares(pMat *A)
+{
+    leastSquares('N', M, N, A->N, A, 0, 0, 0, 0);
+}
+
+void pMat::leastSquares(char trans, int m, int n, int nrhs, pMat *A, int ia, int ja, int ib, int jb)
 {
 
 	int info = 0;

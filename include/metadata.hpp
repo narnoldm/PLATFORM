@@ -88,8 +88,10 @@ public:
     long nCells;
 
     tecIO();
+    tecIO(std::vector<std::string> &iToken);
     tecIO(std::vector<std::string> &iToken, std::string cellIDFile);
     tecIO(int t0, int tf, int ts, std::string &iPrefix, std::string &iSuffix);
+    tecIO(int t0, int tf, int ts, std::string &iPrefix, std::string &iSuffix, std::string &cellIDF);
     virtual void init(int t0, int tf, int ts, std::string &iPrefix, std::string &iSuffix, std::string cellIDFile);
 
     ~tecIO();

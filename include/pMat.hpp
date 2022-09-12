@@ -102,8 +102,9 @@ public:
     void matrix_elem_mult(char tA, int m, int n, double alpha, pMat *A, int ia, int ja, int ic, int jc);
 
 	// SVD
-	void svd_run(int, int, int, int, pMat *&, pMat *&, std::vector<double> &);
-	void svd_run(int, int, int, int, pMat *&, pMat *&, std::vector<double> &, bool);
+    void svd_run(pMat* U, pMat* VT, std::vector<double> &S);
+    void svd_run(int M, int N, int ia, int ja, pMat *U, pMat *VT, std::vector<double> &S);
+	void svd_run(int M, int N, int ia, int ja, pMat *U, pMat *VT, std::vector<double> &S, bool stdout);
 
 	// MOS
 	void mos_run(int M, int N, int ia, int ja, pMat *&U, pMat *&VT, std::vector<double> &S);
@@ -117,7 +118,8 @@ public:
 	void qr_run(int n, int m, int ia, int ja, std::vector<int> &ipiv, std::string outdir, std::string outfile, bool stdout);
 
 	// Least-squares
-	void leastSquares(char trans, int m, int n, int nrhs, pMat *&A, int ia, int ja, int ib, int jb);
+	void leastSquares(pMat *A);
+    void leastSquares(char trans, int m, int n, int nrhs, pMat *A, int ia, int ja, int ib, int jb);
 
 	// Utilities
 	void transpose(pMat *);

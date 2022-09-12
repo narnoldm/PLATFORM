@@ -448,6 +448,11 @@ tecIO::tecIO(int t0, int tf, int ts, string &iPrefix, string &iSuffix)
     init(t0, tf, ts, iPrefix, iSuffix, "");
 }
 
+tecIO::tecIO(int t0, int tf, int ts, string &iPrefix, string &iSuffix, string &cellIDF)
+{
+    init(t0, tf, ts, iPrefix, iSuffix, cellIDF);
+}
+
 tecIO::tecIO()
 {
     isInit = false;
@@ -1309,6 +1314,7 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
 
     isCentered = true;
     genHash();
+
     centerVec = new pMat(nPoints, 1, dataMat->pG, 0, 0, 0.0, false);
 
     cout << "Loading/calculating centering" << endl;
@@ -1322,7 +1328,9 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
         isField = true;
         if (centerMethod.substr(centerMethod.size()-6, 6) == ".szplt")
         {
-            readSingleLowMem(centerMethod, centerVec, 0);
+            tecIO* centerMeta = new tecIO(1, 1, 1, prefix, suffix, cellIDFile);
+            centerMeta->genHash();
+            centerMeta->readSingleLowMem(centerMethod, centerVec, 0);
             cout << endl;
         }
         else

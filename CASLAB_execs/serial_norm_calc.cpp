@@ -311,6 +311,7 @@ int main(int argc, char *argv[])
         }
 
         // print in a user-friendly fashion
+        cout << endl;
         for (int i = 0; i < dataset1->numVars; ++i)
         {
 

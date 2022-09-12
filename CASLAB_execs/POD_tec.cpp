@@ -99,12 +99,12 @@ int main(int argc, char *argv[])
             inputFile.getParamBool("writeScaling", writeScaling, true);
             if ((scaleFile == "") && (scaleMethod == ""))
             {
-                cout << "Must provide centerFile or centerMethod if center = true" << endl;
+                cout << "Must provide scaleFile or scaleMethod if scale = true" << endl;
                 throw(-1);
             }
             if ((scaleFile != "") && (scaleMethod != ""))
             {
-                cout << "Can only set centerFile OR centerMethod if center = true" << endl;
+                cout << "Can only set scaleFile OR scaleMethod if center = true" << endl;
                 throw(-1);
             }
 
