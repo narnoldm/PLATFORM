@@ -38,7 +38,7 @@ linear algebra computing.
 
 PLATFORM is a MPI code and will require a valid MPI installation. 
 The code has been tested with Intel MPI, OpenMPI, and MPICH.
-Additionally PDP is built upon the distributed 
+PLATFORM is built upon the distributed 
 linear algebra frame work of ScaLAPACK and its associated 
 libraries. 
 
