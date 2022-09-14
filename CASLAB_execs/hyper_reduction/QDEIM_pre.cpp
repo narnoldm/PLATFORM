@@ -76,6 +76,7 @@ int main(int argc, char *argv[])
     bool modesDiff = false;
     int numModesSol = 0;
     string firstFileSnaps;
+    string cellIDFile;
     meta *datasetSol;
     tecIO *solScaling;
     tecIO *resScaling;
@@ -121,6 +122,7 @@ int main(int argc, char *argv[])
         scaleIsField = false;
         inputFile.getParamString("solScaleFile", scaleFile, "");
         inputFile.getParamString("solScaleInput", scaleInput, "");
+        inputFile.getParamString("cellIDFile", cellIDFile, "");
         if (scaleFile != "")
         {
             scaleIsField = true;
@@ -135,7 +137,7 @@ int main(int argc, char *argv[])
             MPI_Abort(MPI_COMM_WORLD, -1);
         }
         tokenparse(scaleInput, "|", token);
-        solScaling = new tecIO(token);
+        solScaling = new tecIO(token, cellIDFile);
         solScaling->calcScaling(NULL, scaleFile, scaleIsField, false);
 
         // residual scaling (R matrix)
@@ -156,7 +158,7 @@ int main(int argc, char *argv[])
             MPI_Abort(MPI_COMM_WORLD, -1);
         }
         tokenparse(scaleInput, "|", token);
-        resScaling = new tecIO(token);
+        resScaling = new tecIO(token, cellIDFile);
         resScaling->calcScaling(NULL, scaleFile, scaleIsField, false);
 
         // RHS scaling
@@ -179,17 +181,17 @@ int main(int argc, char *argv[])
                 MPI_Abort(MPI_COMM_WORLD, -1);
             }
             tokenparse(scaleInput, "|", token);
-            rhsScaling = new tecIO(token);
+            rhsScaling = new tecIO(token, cellIDFile);
             rhsScaling->calcScaling(NULL, scaleFile, scaleIsField, false);
         }
 
         // pre-compute R^-1 * P and R^-1 * G
-        for (int i = 0; i < nDOF; ++i)
+        for (int i = 0; i < solScaling->scalingDivVec->dataD.size(); ++i)
         {
-            solScaling->scalingDivVec[i] = solScaling->scalingDivVec[i] / resScaling->scalingDivVec[i];
+            solScaling->scalingDivVec->dataD[i] = solScaling->scalingDivVec->dataD[i] / resScaling->scalingDivVec->dataD[i];
             if (regressorFormat == 2)
             {
-                rhsScaling->scalingDivVec[i] = rhsScaling->scalingDivVec[i] / resScaling->scalingDivVec[i];
+                rhsScaling->scalingDivVec->dataD[i] = rhsScaling->scalingDivVec->dataD[i] / resScaling->scalingDivVec->dataD[i];
             }
         }
 
@@ -585,15 +587,16 @@ int main(int argc, char *argv[])
         }
 
         // compute R^-1 * G * URes
-        for (int i = 0; i < nDOF; ++i)
+        for (int j = 0; j < URes->N; ++j)
         {
-            URes->scale_col_row(rhsScaling->scalingDivVec[i], i, true);
+            URes->matrix_elem_mult('N', URes->M, 1, 1.0, rhsScaling->scalingDivVec, 0, 0, 0, j);
         }
 
+
         // compute R^1 * P * USol
-        for (int i = 0; i < nDOF; ++i)
+        for (int j = 0; j < URes->N; ++j)
         {
-            USol->scale_col_row(solScaling->scalingDivVec[i], i, true);
+            USol->matrix_elem_mult('N', USol->M, 1, 1.0, solScaling->scalingDivVec, 0, 0, 0, j);
         }
 
         // USol^T * P * R^-2 * G * URes
@@ -649,13 +652,12 @@ int main(int argc, char *argv[])
         if (regressorFormat == 0)
         {
             // this represents the full residual regressor
-            datasetResOut->batchWrite(pinvURes_samp, "./", "pinv_res_", 0, numModesRes, 1, 1, 1, 1);
+            datasetResOut->batchWrite(pinvURes_samp, "./", "pinv_res_", 0, numModesRes, 1, 1, 1, 1, 2);
         }
         else
         {
             // this represents the RHS regressor
-            pinvURes_samp->write_bin("pinv_rhs_full.bin");
-            datasetResOut->batchWrite(pinvURes_samp, "./", "pinv_rhs_", 0, numModesRes, 1, 1, 1, 1);
+            datasetResOut->batchWrite(pinvURes_samp, "./", "pinv_rhs_", 0, numModesRes, 1, 1, 1, 1, 2);
 
             // write USol^T * P * R^-2 * G * URes
             USolT_URes->write_bin("USolT_URes.bin");
@@ -675,7 +677,7 @@ int main(int argc, char *argv[])
             datasetSolOut->suffix = ".bin";
             datasetSolOut->isInit = true;
             datasetSolOut->nPoints = numModesSol;
-            datasetSolOut->batchWrite(pinvUSol_samp, "./", "pinv_sol_", 0, numModesSol, 1, 1, 1, 1);
+            datasetSolOut->batchWrite(pinvUSol_samp, "./", "pinv_sol_", 0, numModesSol, 1, 1, 1, 1, 2);
         }
     }
     else
@@ -688,7 +690,7 @@ int main(int argc, char *argv[])
         datasetResOut->suffix = ".bin";
         datasetResOut->isInit = true;
         datasetResOut->nPoints = numModesSol;
-        datasetResOut->batchWrite(pinvURes_samp, "./", "pinv_rhs_", 0, numModesSol, 1, 1, 1, 1);
+        datasetResOut->batchWrite(pinvURes_samp, "./", "pinv_rhs_", 0, numModesSol, 1, 1, 1, 1, 2);
     }
 
     t1_end = MPI_Wtime();

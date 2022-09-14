@@ -20,7 +20,7 @@ meta::meta(vector<string> &iToken)
         printf("First component of input token should be \"input\", was given as \"%s\"\n", (iToken[0]).c_str());
         MPI_Abort(MPI_COMM_WORLD, -1);
     }
-    if (iToken[1] != "tecplot")
+    if (iToken[1] != "binaryset")
     {
         printf("Second component of meta input token should be \"binaryset\", was given as \"%s\"\n", (iToken[1]).c_str());
         MPI_Abort(MPI_COMM_WORLD, -1);
@@ -389,14 +389,17 @@ void meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
         {
             rowColCheck = (j / loadMat->mb) % loadMat->pG->prow;  // process row index
         }
+
         if (procRowOrCol == rowColCheck)
         {
             if (dim == 0)
             {
                 for (int i = 0; i < nPoints; i++)
                 {
-                    int xi = i % loadMat->mb;
-                    int li = i / (loadMat->pG->prow * loadMat->mb);
+                    // currentIdx: running count of columns that process has output so far
+
+                    int xi = i % loadMat->mb; // local row index within sub-block
+                    int li = i / (loadMat->pG->prow * loadMat->mb); // block row index
 
                     if (loadMat->pG->myrow == (i / loadMat->mb) % loadMat->pG->prow)
                     {
@@ -408,14 +411,17 @@ void meta::batchWrite(pMat *loadMat, string dir, string fpref, int mStart, int m
             {
                 for (int i = 0; i < nSets; i++)
                 {
-                    int xi = currentIdx % loadMat->mb;  // local block row index
-                    int li = currentIdx / (loadMat->pG->prow * loadMat->mb); // subblock row index
-                    int mi = i / (loadMat->pG->pcol * loadMat->nb); // subblock column index
-                    int localcol = mi * loadMat->nb + i % loadMat->nb; // local data column index
+                    // currentIdx: running count of rows that process has output so far
 
-                    if (loadMat->pG->mycol == (i / loadMat->nb) % loadMat->pG->pcol)  // process column index
+                    int xi = currentIdx % loadMat->mb; // local row index within sub-block
+                    int yi = i / (loadMat->pG->pcol * loadMat->nb); // block column index
+                    int li = yi * loadMat->nb + i % loadMat->nb; // local data column index
+                    int mi = currentIdx / loadMat->mb; // local data row index
+
+                    // if process owns part of this column
+                    if (loadMat->pG->mycol == (i / loadMat->nb) % loadMat->pG->pcol)
                     {
-                        tempR[i] = loadMat->dataD[localcol * loadMat->myRC[0] + li * loadMat->mb + xi];
+                        tempR[i] = loadMat->dataD[li * loadMat->myRC[0] + mi * loadMat->mb + xi];
                     }
                 }
             }
