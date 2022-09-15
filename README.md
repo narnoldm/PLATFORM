@@ -5,7 +5,7 @@
 
 # PLATFORM 
 
-![](doc/fig/GTMC_PVCmode.gif | width=100)
+<img src="doc/fig/GTMC_PVCmode.gif" width="250" height="250"/>
 
 # Abstract 
 
