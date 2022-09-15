@@ -5,7 +5,7 @@
 
 # PLATFORM 
 
-![](doc/fig/GTMC_PVCmode.gif)
+![](doc/fig/GTMC_PVCmode.gif){width=50%}
 
 # Abstract 
 
