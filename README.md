@@ -1,11 +1,13 @@
 
 
 ![Build Status](https://github.com/narnoldm/PLATFORM/actions/workflows/cmake.yml/badge.svg)
-
+![Documentation Status](https://github.com/narnoldm/PLATFORM/actions/workflows/main.yml/badge.svg)
+[![pages-build-deployment](https://github.com/narnoldm/PLATFORM/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/narnoldm/PLATFORM/actions/workflows/pages/pages-build-deployment)
 
 # PLATFORM 
 
 <img src="doc/fig/GTMC_PVCmode.gif" width="250" height="250"/>
+[Documentation](https://narnoldm.github.io/PLATFORM/)
 
 # Abstract 
 
