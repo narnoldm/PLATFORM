@@ -1,8 +1,12 @@
 var searchData=
 [
-  ['meshfile_0',['meshFile',['../classtecIO.html#a29aac211f925aa61a1e3ea91f6829d14',1,'tecIO']]],
-  ['meta_1',['meta',['../classmeta.html',1,'meta'],['../classmeta.html#a63ad3379066eb6b7c8bf7a7ea9ee0783',1,'meta::meta()'],['../classmeta.html#a46720133da8e5cc08d9c70715fe9f082',1,'meta::meta(std::vector&lt; std::string &gt; &amp;iToken)'],['../classmeta.html#a37f3256bb18fbe4a8d2e4f79d1c9c630',1,'meta::meta(int t0, int tf, int ts, std::string &amp;iPrefix, std::string &amp;iSuffix)']]],
-  ['miscprocessing_2',['miscProcessing',['../classmeta.html#a5ae51d7bfbd7939500df8766c460a47e',1,'meta::miscProcessing()'],['../classtecIO.html#a9c0974f232bf646eac31e52b870ad60f',1,'tecIO::miscProcessing()']]],
-  ['mycol_3',['mycol',['../classPGrid.html#a3a57ebb37024b09581cf1d60d6f7cef9',1,'PGrid']]],
-  ['myrow_4',['myrow',['../classPGrid.html#a30c088ee6c6ada5062034f81e8b68715',1,'PGrid']]]
+  ['icntxt_0',['icntxt',['../classPGrid.html#a46076bfaedbd49c6225cc030f7574611',1,'PGrid']]],
+  ['idx_1',['idx',['../classtecIO.html#a61c35738ec16e7c61da1368148adbf16',1,'tecIO']]],
+  ['imag_2',['imag',['../structcomplex16.html#a960ffac445c141ca3669365c478da193',1,'complex16']]],
+  ['init_3',['init',['../classmeta.html#a4cf56caaf807523b0ef85647adb4ff03',1,'meta::init()'],['../classtecIO.html#a1fa537f8ab70a6cf47bdbbec5c6506be',1,'tecIO::init()']]],
+  ['installation_4',['Installation',['../installation.html',1,'']]],
+  ['iscentered_5',['isCentered',['../classtecIO.html#a8e504386f4ed9b8f84e4f209014c06c6',1,'tecIO']]],
+  ['isinit_6',['isInit',['../classmeta.html#a4b2cea2f5a2f2386264c3109377fa9ea',1,'meta']]],
+  ['ismpi_7',['isMPI',['../classparamMap.html#afe873dd87616f5a25ce5d4bb14fb8211',1,'paramMap']]],
+  ['isscaled_8',['isScaled',['../classtecIO.html#a2c48c1833b0e89901065c5fe6a2083d1',1,'tecIO']]]
 ];

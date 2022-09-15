@@ -1,5 +1,12 @@
 var searchData=
 [
-  ['tecio_0',['tecIO',['../classtecIO.html',1,'tecIO'],['../classtecIO.html#aec0bef800eea2b5a290646ba1eafb069',1,'tecIO::tecIO()'],['../classtecIO.html#aadfa9a3272d83514455378a466fb0635',1,'tecIO::tecIO(std::vector&lt; std::string &gt; &amp;iToken)'],['../classtecIO.html#a19960bd76c7ac806ec08c8f33f9f29d3',1,'tecIO::tecIO(int t0, int tf, int ts, std::string &amp;iPrefix, std::string &amp;iSuffix)']]],
-  ['token_1',['token',['../classmeta.html#ab2a23fdbd32f7c2c2c87fe0ee4d4fbcc',1,'meta']]]
+  ['scalinginput_0',['scalingInput',['../classtecIO.html#a653b9f99a2754a9e596abb55b5048bff',1,'tecIO']]],
+  ['scalingisfield_1',['scalingIsField',['../classtecIO.html#aee71a951b884d3117eaca6944de2343c',1,'tecIO']]],
+  ['scalingsubvecfull_2',['scalingSubVecFull',['../classtecIO.html#ac20b1897d2091061f4ce1827756d5d5e',1,'tecIO']]],
+  ['size_3',['size',['../classPGrid.html#ae4dd66b5e53ed8cb6b66f5ffb1e6a86f',1,'PGrid']]],
+  ['snap0_4',['snap0',['../classmeta.html#ac8e06d2f2bba52e24255515bcbad284a',1,'meta']]],
+  ['snapf_5',['snapF',['../classmeta.html#a006f3cab2d9e6327cf7817edd0012eb5',1,'meta']]],
+  ['snapskip_6',['snapSkip',['../classmeta.html#aeb53fa4728508ac44d8a71ebf97f3b21',1,'meta']]],
+  ['suffix_7',['suffix',['../classmeta.html#a970ebf7944b7ef3b85f549b7b752f4d6',1,'meta']]],
+  ['sysinfo_8',['sysInfo',['../classsysInfo.html',1,'']]]
 ];

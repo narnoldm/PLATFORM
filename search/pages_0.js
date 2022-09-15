@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['platform_20v3_2e1_0',['PLATFORM v3.1',['../index.html',1,'']]]
+  ['example1_0',['Example1',['../example1.html',1,'']]]
 ];
