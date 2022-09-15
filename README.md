@@ -83,6 +83,11 @@ The documentation can be viewed on the github pages site or generated locally by
 doxygen doxygen.input
 ```
 
+# Examples 
+
+COMING SOON
+
+
 # Questions or Issues
 
 If you have any questions or issues please open an issue on the github page and I will do my best to resolve it. 
