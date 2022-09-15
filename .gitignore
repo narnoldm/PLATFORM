@@ -1,3 +1,4 @@
 
 build/*
 doxygen_out/*
+.vscode/*
