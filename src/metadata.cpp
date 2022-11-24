@@ -584,7 +584,8 @@ void tecIO::readSingleLowMem(string filename, pMat* dataMat, int colIdx)
 
     if (dataMat->M != nPoints)
     {
-        cout << "readSingleLowMem only reads to columns for now" << endl;
+        cout << "readSingleLowMem only reads to columns for now ("
+            << dataMat->M << "!= " << nPoints << ")" << endl;
         throw(-1);
     }
 
@@ -1321,6 +1322,7 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
     isCentered = true;
     genHash();
 
+    cout << "nPoints: " << nPoints << endl;
     centerVec = new pMat(nPoints, 1, dataMat->pG, 0, 0, 0.0, false);
 
     cout << "Loading/calculating centering" << endl;
@@ -1334,9 +1336,10 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
         isField = true;
         if (centerMethod.substr(centerMethod.size()-6, 6) == ".szplt")
         {
-            tecIO* centerMeta = new tecIO(1, 1, 1, prefix, suffix, cellIDFile);
-            centerMeta->genHash();
-            centerMeta->readSingleLowMem(centerMethod, centerVec, 0);
+            readSingleLowMem(centerMethod, centerVec, 0);
+            // tecIO* centerMeta = new tecIO(1, 1, 1, prefix, suffix, cellIDFile);
+            // centerMeta->genHash();
+            // centerMeta->readSingleLowMem(centerMethod, centerVec, 0);
             cout << endl;
         }
         else
