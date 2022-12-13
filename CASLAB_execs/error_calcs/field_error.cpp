@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
 
     // ----- INPUT PARAMETERS -----
 
-    string fomInputString, romInputString, basisInputString;
+    string cellIDFile, fomInputString, romInputString, basisInputString;
     string centerFile, centerMethod, scaleFile, scaleMethod;
     bool centerIsField, scaleIsField;
     bool center, scale, outProjField, outLatentCode, outAbsErrField;
@@ -38,8 +38,14 @@ int main(int argc, char *argv[]) {
     // 2: compute error between FOM and ROM solution
     // 3: compute error between projected FOM and ROM solution
     inputFile.getParamInt("errType", errType);
+    if (!((errType > 0) || (errType <= 4))) {
+        cout << "Invalid errType: " << errType << endl;
+        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
 
     inputFile.getParamString("fomInputString", fomInputString);  // input token for FOM data series
+    inputFile.getParamString("cellIDFile", cellIDFile, "");
 
     // input token for ROM data series
     if (errType > 1)
@@ -95,7 +101,7 @@ int main(int argc, char *argv[]) {
 
     // FOM dataset
     tokenparse(fomInputString, "|", token);
-    tecIO* setFOM = new tecIO(token, "");
+    tecIO* setFOM = new tecIO(token, cellIDFile);
     setFOM->activateReorder();
 
     // ROM dataset
@@ -104,7 +110,7 @@ int main(int argc, char *argv[]) {
     {
         token.clear();
         tokenparse(romInputString, "|", token);
-        setROM = new tecIO(token, "");
+        setROM = new tecIO(token, cellIDFile);
         setROM->activateReorder();
 
         // error checking

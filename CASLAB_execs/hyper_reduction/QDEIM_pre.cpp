@@ -367,8 +367,8 @@ int main(int argc, char *argv[])
     // ----- QR SAMPLING ----- //
 
     string qrSampBin_res, qrSampBin_sol;
-    if ((sampType != 3) && (sampType != 4))
-    {
+    //if ((sampType != 3) && (sampType != 4))
+    //{
         t1_start = MPI_Wtime();
 
         qr_sampling(inputFile, "qrSampBinRes", "P_res", nCells, URes_T, gP, samplingPoints);
@@ -384,7 +384,7 @@ int main(int argc, char *argv[])
         MPI_Barrier(MPI_COMM_WORLD);
         t1_end = MPI_Wtime();
         aggregateTiming(t1_end - t1_start, timingOutput, "QR decomposition");
-    }
+    //}
     destroyPMat(URes_T, false);
     if (regressorFormat == 2)
         destroyPMat(USol_T, false);

@@ -741,6 +741,9 @@ void tecIO::batchWrite_bin(pMat* dataMat, string dir, string fpref, int mStart, 
     int fileIndex;
     string filename;
 
+    MPI_Comm fileComm;
+    MPI_Comm_split(MPI_COMM_WORLD, dataMat->pG->mycol, rank, &fileComm);
+
     int bufInt, dataIdx, dofIdx, bufLen;
     double t1 = MPI_Wtime();
     for (int k = mStart; k < mEnd; k = k + mSkip)
@@ -749,20 +752,22 @@ void tecIO::batchWrite_bin(pMat* dataMat, string dir, string fpref, int mStart, 
         // check if process owns part of this column
         if (dataMat->pG->mycol == (k / dataMat->nb) % dataMat->pG->pcol)
         {
+
             fileIndex = fStart + (k - mStart) * fSkip;
             filename = dir + "/" + fpref + to_string(fileIndex) + ".bin";
-            MPI_File_open(MPI_COMM_SELF, filename.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+            //MPI_File_open(MPI_COMM_SELF, filename.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+            MPI_File_open(fileComm, filename.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
 
             // write header
             if (dataMat->pG->myrow == 0)
             {
+                printf(("Binary write " + to_string(k+1) + "\n").c_str());
                 bufInt = dataMat->M;
-                MPI_File_write_at_all(fh, 0, &bufInt, 1, MPI_INT, &status);
+                MPI_File_write_at(fh, 0, &bufInt, 1, MPI_INT, &status);
                 bufInt = 1;
-                MPI_File_write_at_all(fh, 4, &bufInt, 1, MPI_INT, &status);
+                MPI_File_write_at(fh, 4, &bufInt, 1, MPI_INT, &status);
             }
 
-            cout << "Binary write " << (k + 1) << endl;
             for (int j = 0; j < numVars; ++j)
             {
                 for (int i = 0; i < nCells; ++i)
@@ -809,7 +814,7 @@ void tecIO::batchWrite_bin(pMat* dataMat, string dir, string fpref, int mStart, 
                         if (dataIdx >= 0)
                         {
                             offset = 8 + (j * nCells + i) * sizeof(double);
-                            MPI_File_write_at_all(fh, offset, &(dataMat->dataD[dataIdx]), bufLen, MPI_DOUBLE, &status);
+                            MPI_File_write_at(fh, offset, &(dataMat->dataD[dataIdx]), bufLen, MPI_DOUBLE, &status);
                         }
                     }
                 }
@@ -818,6 +823,7 @@ void tecIO::batchWrite_bin(pMat* dataMat, string dir, string fpref, int mStart, 
         }
     }
 
+    printf((to_string(rank) + " rank finished\n").c_str());
     MPI_Barrier(MPI_COMM_WORLD);
     cout << "Binary batch write finished in " << MPI_Wtime() - t1 << " seconds" << endl;
 
