@@ -819,7 +819,6 @@ void daxy( PBTYP_T* TYPE, char* CONJUG, int M, int N, char* ALPHA,
                     /*
                     *  Local addition
                     */
-                    cout << "local addition" << endl;
                     if( AisRow )
                         mult( AnR, AnpD, ALPHA, Mptr( A, Aii, Ajj, Ald, size ), Ald,
                             Mptr( B, Bii, Bjj, Bld, size ), Bld );

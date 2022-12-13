@@ -30,19 +30,31 @@ int main(int argc, char *argv[]) {
 
     string cellIDFile, fomInputString, romInputString, basisInputString;
     string centerFile, centerMethod, scaleFile, scaleMethod;
-    bool centerIsField, scaleIsField;
+    bool calcMags, centerIsField, scaleIsField;
     bool center, scale, outProjField, outLatentCode, outAbsErrField;
     int errType;
+    string magsInput;
+    vector<string> magsToken;
 
     // 1: compute error between FOM and projected FOM solution
     // 2: compute error between FOM and ROM solution
     // 3: compute error between projected FOM and ROM solution
     inputFile.getParamInt("errType", errType);
-    if (!((errType > 0) || (errType <= 4))) {
+
+    if (!((errType > 0) && (errType <= 4))) {
         cout << "Invalid errType: " << errType << endl;
         MPI_Barrier(MPI_COMM_WORLD);
         MPI_Abort(MPI_COMM_WORLD, -1);
     }
+
+    // calculating magnitudes
+    inputFile.getParamBool("calcMags", calcMags, false);
+    if (calcMags)
+    {
+        inputFile.getParamString("magsInput", magsInput);
+        tokenparse(magsInput, "|", magsToken);
+    }
+
 
     inputFile.getParamString("fomInputString", fomInputString);  // input token for FOM data series
     inputFile.getParamString("cellIDFile", cellIDFile, "");
@@ -150,21 +162,28 @@ int main(int argc, char *argv[]) {
         size_t romDirPos = setROM->prefix.find_last_of("/");
         romDir = setROM->prefix.substr(0, romDirPos);
         errDir = romDir;
-        errSuffix = "_" + to_string(setROM->snap0) + "_" + to_string(setROM->snapF) + "_" + to_string(setROM->snapSkip);
+
         if (errType == 2)
         {
-            errSuffix = "_vs_raw" + errSuffix;
+            errSuffix = "_vs_raw";
         }
         else
         {
-            errSuffix = "_vs_proj" + errSuffix;
+            errSuffix = "_vs_proj";
             errDir += "/projection/k" + to_string(setBasis->nSets);
         }
+
+        if (calcMags)
+            errSuffix += "_mag";
+
+        errSuffix += "_" + to_string(setROM->snap0) + "_" + to_string(setROM->snapF) + "_" + to_string(setROM->snapSkip);
     }
     else
     {
         errDir = fomDir + "/projection/k" + to_string(setBasis->nSets);
-        errSuffix = "_" + to_string(setFOM->snap0) + "_" + to_string(setFOM->snapF) + "_" + to_string(setFOM->snapSkip);
+        if (calcMags)
+            errSuffix += "_mag";
+        errSuffix += "_" + to_string(setFOM->snap0) + "_" + to_string(setFOM->snapF) + "_" + to_string(setFOM->snapSkip);
     }
     if (!rank)
         size_t ierr = system(("mkdir -p " + errDir).c_str());
@@ -271,7 +290,7 @@ int main(int argc, char *argv[]) {
 
     // ----- COMPUTE ERROR, WRITE OUTPUTS -----
 
-    calc_abs_and_l2_error(QTruth, QComp, setFOM, errDir, errSuffix, outAbsErrField);
+    calc_abs_and_l2_error(QTruth, QComp, setFOM, errDir, errSuffix, outAbsErrField, calcMags, magsToken);
 
     // ----- FINISH COMPUTE ERROR, WRITE OUTPUTS -----
 
