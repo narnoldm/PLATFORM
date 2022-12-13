@@ -96,7 +96,7 @@ public:
 
     ~tecIO();
     virtual void checkSize();
-    virtual void checkExists();
+    bool checkExists(bool failErr);
 
     // I/O
     virtual void readSingle(int fileID, double *point);

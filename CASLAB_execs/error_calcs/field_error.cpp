@@ -118,18 +118,26 @@ int main(int argc, char *argv[]) {
 
     // ROM dataset
     tecIO* setROM;
+    bool romFinished = true;
     if (errType > 1)
     {
         token.clear();
         tokenparse(romInputString, "|", token);
         setROM = new tecIO(token, cellIDFile);
-        setROM->activateReorder();
 
         // error checking
         assert (setFOM->dim == setROM->dim);
         assert (setFOM->nCells == setROM->nCells);
         assert (setFOM->numVars == setROM->numVars);
         assert (setFOM->nSets == setROM->nSets);
+
+        // check that ROM didn't explode (missing files)
+        romFinished = setROM->checkExists(false);
+        if (romFinished)
+        {
+            setROM->activateReorder();
+        }
+
     }
 
     // basis dataset
@@ -188,15 +196,23 @@ int main(int argc, char *argv[]) {
     if (!rank)
         size_t ierr = system(("mkdir -p " + errDir).c_str());
 
+    // initialize here, since goto throws an error otherwise
+    pMat *QTruth, *QComp, *QTruth_proj, *latentCode, *basis;
+
+    // skip loading and calculations if ROM failed
+    if (!romFinished)
+        cout << "ROM exploded! Writing NaN files..." << endl;
+        MPI_Barrier(MPI_COMM_WORLD);
+        goto romExploded;
+
     // ----- FINISH PREPROCESSING -----
 
     // ----- DATA LOADING -----
 
     // load FOM data
-    pMat* QTruth = new pMat(setFOM->nPoints, setFOM->nSets, evenG, false);
+    QTruth = new pMat(setFOM->nPoints, setFOM->nSets, evenG, false);
     setFOM->batchRead(QTruth);
 
-    pMat *QComp, *QTruth_proj, *latentCode, *basis;
     // project FOM data if requested
     if (projFOM)
     {
@@ -289,16 +305,23 @@ int main(int argc, char *argv[]) {
     // ----- FINISH DATA LOADING -----
 
     // ----- COMPUTE ERROR, WRITE OUTPUTS -----
+    romExploded:
 
-    calc_abs_and_l2_error(QTruth, QComp, setFOM, errDir, errSuffix, outAbsErrField, calcMags, magsToken);
+    if (!romFinished)
+    {
+        write_failed_abs_and_l2_error(setFOM, errDir, errSuffix, calcMags, magsToken);
+    }
+    else
+    {
+        calc_abs_and_l2_error(QTruth, QComp, setFOM, errDir, errSuffix, outAbsErrField, calcMags, magsToken);
+        MPI_Barrier(MPI_COMM_WORLD);
+        destroyPMat(QTruth, false);
+        destroyPMat(QComp, false);
+    }
 
     // ----- FINISH COMPUTE ERROR, WRITE OUTPUTS -----
 
     // cleanup
-    MPI_Barrier(MPI_COMM_WORLD);
-    destroyPMat(QTruth, false);
-    destroyPMat(QComp, false);
-
     cout.rdbuf(strm_buffer);
     MPI_Finalize();
     return 0;

@@ -2,6 +2,118 @@
 
 using namespace :: std;
 
+void write_failed_abs_and_l2_error(tecIO* setData, string errDir, string errSuffix, bool mags, vector<string> magsToken)
+{
+    // do some pre-processing if calculating magnitudes
+    int numVars;
+    vector<int> magFactor_int;
+    int nUniqueGroups;
+    vector<vector<int>> groupRef;
+    vector<string> varNames;
+    if (mags)
+    {
+
+        // get sorted list of unique norm factors
+        magFactor_int.resize((setData->numVars));
+        for (int i = 0; i < setData->numVars; ++i)
+        {
+            magFactor_int[i] = stoi(magsToken[i]);
+            if (i > 0)
+            {
+                if (magFactor_int[i] < magFactor_int[i-1])
+                {
+                    cout << "magsInput must be strictly non-decreasing" << endl;
+                    MPI_Barrier(MPI_COMM_WORLD);
+                    MPI_Abort(MPI_COMM_WORLD, -1);
+                }
+            }
+        }
+
+        std::sort(magFactor_int.begin(), magFactor_int.end());                  // sort
+        auto last = std::unique(magFactor_int.begin(), magFactor_int.end());    // get unique elements
+        magFactor_int.erase(last, magFactor_int.end());
+
+        nUniqueGroups = magFactor_int.size();
+
+        groupRef.resize(nUniqueGroups);
+        varNames.resize(nUniqueGroups);
+        numVars = nUniqueGroups;
+
+        // get indices within dataset for variables in each group
+        for (int i = 0; i < setData->numVars; ++i)
+        {
+            for (int j = 0; j < nUniqueGroups; ++j)
+            {
+                if (stoi(magsToken[i]) == magFactor_int[j])
+                {
+                    groupRef[j].push_back(i);
+                    varNames[j] += setData->varName[i];
+                }
+            }
+        }
+
+        for (int j = 0; j < nUniqueGroups; ++j)
+        {
+            if (groupRef[j].size() > 1)
+            {
+                varNames[j] += "Mag";
+            }
+        }
+
+        if (numVars == setData->numVars)
+        {
+            cout << "Requested magnitude calculations, but no matching variables" << endl;
+            MPI_Barrier(MPI_COMM_WORLD);
+            MPI_Abort(MPI_COMM_WORLD, -1);
+        }
+    }
+    else
+    {
+        numVars = setData->numVars;
+        varNames = setData->varName;
+    }
+
+    int rank;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (rank == 0) {
+        ofstream out;
+        string outFile;
+        outFile = errDir + "/abs_avg_sum_err" + errSuffix + ".dat";
+		out.open(outFile, ios::trunc);
+		for (int i = 0; i < numVars; ++i) {
+            out << varNames[i] + ": nan" << endl;
+        }
+        out << "Average: nan" << endl;
+        out.close();
+
+        outFile = errDir + "/abs_rel_sum_err" + errSuffix + ".dat";
+		out.open(outFile, ios::trunc);
+		for (int i = 0; i < numVars; ++i) {
+            out << varNames[i] + ": nan" << endl;
+        }
+        out << "Average: nan" << endl;
+        out.close();
+
+        outFile = errDir + "/l2_avg_sum_err" + errSuffix + ".dat";
+		out.open(outFile, ios::trunc);
+		for (int i = 0; i < numVars; ++i) {
+            out << varNames[i] + ": nan" << endl;
+        }
+        out << "Average: nan" << endl;
+        out.close();
+
+        outFile = errDir + "/l2_rel_sum_err" + errSuffix + ".dat";
+		out.open(outFile, ios::trunc);
+		for (int i = 0; i < numVars; ++i) {
+            out << varNames[i] + ": nan" << endl;
+        }
+        out << "Average: nan" << endl;
+        out.close();
+
+    }
+
+}
+
 void calc_integrated_error(pMat* dataMat, vector<string>& varNames, string outFile) {
 
     int rank;

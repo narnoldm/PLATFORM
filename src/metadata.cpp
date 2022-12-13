@@ -549,13 +549,15 @@ void tecIO::checkSize()
     nPoints = nCells * numVars;
 }
 
-void tecIO::checkExists()
+bool tecIO::checkExists(bool failErr)
 {
     void *fH = NULL;
     int rank, size;
     string filename;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
+    int notExist = 0;
+    int notExistAll;
     for (int i = snap0; i <= snapF; i = i + snapSkip)
     {
         if (i % size == rank)
@@ -564,12 +566,31 @@ void tecIO::checkExists()
             tecFileReaderOpen(filename.c_str(), &fH);
             if (fH == NULL)
             {
-                printf("Could not open file at %s \n", filename.c_str());
-                MPI_Abort(MPI_COMM_WORLD, -1);
+                if (failErr)
+                {
+                    printf("Could not open file at %s \n", filename.c_str());
+                    MPI_Abort(MPI_COMM_WORLD, -1);
+                }
+                else
+                {
+                    notExist = 1;
+                    break;
+                }
             }
             tecFileReaderClose(&fH);
         }
     }
+
+    MPI_Allreduce(&notExist, &notExistAll, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    if (notExistAll > 0) {
+        cout << "Some Tecplot files not found" << endl;
+        return false;
+    }
+    else
+    {
+        return true;
+    }
+
 }
 
 // alternative to readSingle that doesn't require a huge vector
