@@ -201,9 +201,11 @@ int main(int argc, char *argv[]) {
 
     // skip loading and calculations if ROM failed
     if (!romFinished)
+    {
         cout << "ROM exploded! Writing NaN files..." << endl;
         MPI_Barrier(MPI_COMM_WORLD);
         goto romExploded;
+    }
 
     // ----- FINISH PREPROCESSING -----
 
