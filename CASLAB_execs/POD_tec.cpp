@@ -129,28 +129,21 @@ int main(int argc, char *argv[])
     if ((mosStep == 0) || (mosStep == 3))
     {
         int nModes = modeEnd - modeStart + 1;
-        U = new pMat(dataset1->nPoints, nModes, evenG, 0, 0, 0.0);
-        VT = new pMat(dataset1->nSets, dataset1->nSets, evenG, 0, 0, 0.0);
+        U = new pMat(dataset1->nPoints, nModes, evenG, 0, 0, 0.0, false);
+        VT = new pMat(dataset1->nSets, dataset1->nSets, evenG, 0, 0, 0.0, false);
     }
     if ((mosStep == 0) || (mosStep == 2) || (mosStep == 3))
     {
         S.resize(dataset1->nSets);
     }
 
-    if ((dataset1->nPoints / dataset1->nSets >= 100) || (mosStep > 0))
+    if (mosStep == 0)
     {
-        if (mosStep == 0)
-        {
-            evenMat->mos_run(dataset1->nPoints, dataset1->nSets, 0, 0, U, VT, S);
-        }
-        else
-        {
-            evenMat->mos_run(dataset1->nPoints, dataset1->nSets, 0, 0, U, VT, S, modeStart, modeEnd, mosStep, evenG);
-        }
+        evenMat->mos_run(dataset1->nPoints, dataset1->nSets, 0, 0, U, VT, S, modeStart, modeEnd);
     }
     else
     {
-        evenMat->svd_run(dataset1->nPoints, dataset1->nSets, 0, 0, U, VT, S);
+        evenMat->mos_run(dataset1->nPoints, dataset1->nSets, 0, 0, U, VT, S, modeStart, modeEnd, mosStep, evenG);
     }
 
     if ((mosStep == 0) || (mosStep == 2))
