@@ -148,26 +148,18 @@ void calc_magnitude_data(pMat* dataMat, pMat* dataMatMags, tecIO* setData, vecto
 {
     // NOTE: this assumes that the data has been reordered already
 
-    // get sign to retain correct sign for non-magnitude quantities
-    pMat* signMat = new pMat(dataMat->M, dataMat->N, dataMat->pG, false);
+    // square
     for (int j = 0; j < dataMat->dataD.size(); ++j)
     {
-        if (dataMat->dataD[j] < 0)
-        {
-            signMat->dataD[j] = -1;
-        }
-        else
-        {
-            signMat->dataD[j] = 1;
-        }
+        dataMat->dataD[j] = dataMat->dataD[j] * dataMat->dataD[j];
     }
+
 
     // square and add for each group
     for (int j = 0; j < groupRef.size(); ++j)
     {
         for (int k = 0; k < groupRef[j].size(); ++k)
         {
-            dataMat->matrix_elem_mult('N', setData->nCells, setData->nSets, 1.0, dataMat, groupRef[j][k] * setData->nCells, 0, groupRef[j][k] * setData->nCells, 0);
             dataMatMags->matrix_Sum('N', setData->nCells, setData->nSets, dataMat, groupRef[j][k] * setData->nCells, 0, j * setData->nCells, 0, 1.0, 1.0);
         }
     }
@@ -177,17 +169,6 @@ void calc_magnitude_data(pMat* dataMat, pMat* dataMatMags, tecIO* setData, vecto
     {
         dataMatMags->dataD[j] = sqrt(dataMatMags->dataD[j]);
     }
-
-    // restore sign of non-magnitude quantities
-    for (int j = 0; j < groupRef.size(); ++j)
-    {
-        if (groupRef[j].size() == 1)
-        {
-            dataMatMags->matrix_elem_mult('N', setData->nCells, setData->nSets, 1.0, signMat, groupRef[j][0] * setData->nCells, 0, j * setData->nCells, 0);
-        }
-    }
-
-    destroyPMat(signMat, false);
 
 }
 
