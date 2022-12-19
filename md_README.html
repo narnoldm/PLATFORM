@@ -94,6 +94,25 @@ Documentation</h1>
 <p >The documentation can be viewed on the github pages site or generated locally by running doxygen</p>
 <div class="fragment"><div class="line">doxygen doxygen.input</div>
 </div><!-- fragment --><h1><a class="anchor" id="autotoc_md9"></a>
+Testing</h1>
+<p >To run the test suite enter the test directory in the build folder and launch the cmake tests</p>
+<div class="fragment"><div class="line">cd tests</div>
+<div class="line">ctest </div>
+</div><!-- fragment --><p> if your mpi execute command is not mpirun you will need to specify it in the test source CMakeLists.txt file</p>
+<h1><a class="anchor" id="autotoc_md10"></a>
+Examples</h1>
+<p >We have two main example cases. Both of these aren't large enough to require the use of PLATFORM but represent general code usage.</p>
+<h2><a class="anchor" id="autotoc_md11"></a>
+Example 1:</h2>
+<p >The first example uses the standard metadata class to read raw binary and show how one would write a cpp file using the PLATFORM routines.</p>
+<h2><a class="anchor" id="autotoc_md12"></a>
+Example 2:</h2>
+<p >The second example case uses the Tecio metadata extension to read in tecplot data set files and generate the basis modes using the parallelized SVD.</p>
+<div class="fragment"><div class="line">cd examples/example2</div>
+<div class="line">mpirun -np &lt;num processes&gt; ../../build/bin/POD POD_tec.inp</div>
+</div><!-- fragment --><p> This is the out of the box tecplot POD example. This executes the method of snapshots on the same dataset files used for the test suite and can be visualized using Tecplot.</p>
+<p >Both of these examples are based on the umich deepblue data set and documentation are availible <a href="https://deepblue.lib.umich.edu/data/concern/data_sets/6w924c14h?locale=en">here</a> Both example cases just use a small subset of this dataset to show the functionality of the code. </p>
+<h1><a class="anchor" id="autotoc_md13"></a>
 Questions or Issues</h1>
 <p >If you have any questions or issues please open an issue on the github page and I will do my best to resolve it. </p>
 </div></div><!-- contents -->
