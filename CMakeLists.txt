@@ -75,6 +75,7 @@ add_subdirectory(3rd_Party/tecio/teciosrc)
 add_subdirectory(src)
 add_subdirectory(CASLAB_execs)
 
+add_subdirectory(tests)
 
 
 

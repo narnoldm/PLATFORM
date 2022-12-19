@@ -85,9 +85,16 @@ doxygen doxygen.input
 
 # Examples 
 
-COMING SOON
+We have two prebuilt examples that can be run. 
 
 
+The first example uses the standard metadata class to read raw binary in 2 different formats.
+
+The second example case uses the Tecio metadata extension to read in tecplot data set files.
+
+
+Both of these examples are based on the umich deepblue data set and documentation are availible [here](https://deepblue.lib.umich.edu/data/concern/data_sets/6w924c14h?locale=en)
+Both example cases just use a small subset of this dataset to show the functionality of the code. 
 # Questions or Issues
 
 If you have any questions or issues please open an issue on the github page and I will do my best to resolve it. 
