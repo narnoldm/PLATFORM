@@ -83,10 +83,21 @@ The documentation can be viewed on the github pages site or generated locally by
 doxygen doxygen.input
 ```
 
+
+# Testing 
+
+To run the test suite enter the test directory in the build folder and launch the cmake tests
+
+```bash 
+cd tests
+ctest 
+```
+if your mpi execute command is not mpirun you will need to specify it in the test source CMakeLists.txt file
+
+
 # Examples 
 
 We have two prebuilt examples that can be run. 
-
 
 The first example uses the standard metadata class to read raw binary in 2 different formats.
 
