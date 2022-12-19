@@ -24,7 +24,7 @@ scaleMethod =
 ! 1: A^T * A calculation
 ! 2: eigendecompostiion of A^T * A
 ! 3: spatial mode calculations
-mosStep = 3
+mosStep = 0
 
 ! Mode output window
 modeStart = 1

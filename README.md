@@ -114,7 +114,6 @@ This is the out of the box tecplot POD example. This executes the method of snap
 
 
 
-
 Both of these examples are based on the umich deepblue data set and documentation are availible [here](https://deepblue.lib.umich.edu/data/concern/data_sets/6w924c14h?locale=en)
 Both example cases just use a small subset of this dataset to show the functionality of the code. 
 # Questions or Issues
