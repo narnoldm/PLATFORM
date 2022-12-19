@@ -97,11 +97,22 @@ if your mpi execute command is not mpirun you will need to specify it in the tes
 
 # Examples 
 
-We have two prebuilt examples that can be run. 
+We have two main example cases. Both of these aren't large enough to require the use of PLATFORM but represent general code usage.
 
-The first example uses the standard metadata class to read raw binary in 2 different formats.
 
-The second example case uses the Tecio metadata extension to read in tecplot data set files.
+## Example 1:
+The first example uses the standard metadata class to read raw binary and show how one would write a cpp file using the PLATFORM routines. 
+
+## Example 2:
+The second example case uses the Tecio metadata extension to read in tecplot data set files and generate the basis modes using the parallelized SVD.
+
+```bash 
+cd examples/example2
+mpirun -np <num processes> ../../build/bin/POD POD_tec.inp
+```
+This is the out of the box tecplot POD example. This executes the method of snapshots on the same dataset files used for the test suite and can be visualized using Tecplot. 
+
+
 
 
 Both of these examples are based on the umich deepblue data set and documentation are availible [here](https://deepblue.lib.umich.edu/data/concern/data_sets/6w924c14h?locale=en)
