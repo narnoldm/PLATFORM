@@ -1,0 +1,34 @@
+stdout_proc = 0
+
+! Data input
+inputString=input|tecplot|../../tests/test_wd/testtec/gemsma_cmb_|.szplt|150000|151000|10|Static_Pressure|-1
+
+! Centering
+center = false
+centerIsField = true
+centerFile = 
+
+! accepts "avg" and "avgmag"
+centerMethod = "avg"
+
+! Scaling
+scale = false
+scaleIsField = true
+scaleFile =
+
+! accepts "minmax", "standardize", and "sphere"
+scaleMethod = 
+
+! Method of snapshots option
+! 0: all in one-shot
+! 1: A^T * A calculation
+! 2: eigendecompostiion of A^T * A
+! 3: spatial mode calculations
+mosStep = 0
+
+! Mode output window
+modeStart = 1
+modeEnd = 5
+
+
+
