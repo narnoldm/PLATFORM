@@ -24,8 +24,8 @@ PLATFORM uses CMake to configure and build. Detailed instructions can be found [
 
 \section example Example Cases
  
- An example case is provide in the examples directory for how to use the code to read in binary data and perform a POD decomposition [Example 1](@ref example1)
+ An example case is provide in the examples directory for how to use the code to read in binary data [Example 1](@ref example1)
 
-
+ The second example shows out of the box functionality in computing the POD of an availible dataset [Example 2](@ref example2)
 
  
