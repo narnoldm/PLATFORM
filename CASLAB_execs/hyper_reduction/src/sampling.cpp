@@ -509,7 +509,7 @@ void gnat_oversampling_peherstorfer(vector<pMat*> U_vec, int sampMethod, int nCe
         {
             gnat_oversampling_peherstorfer_metric(U_vec[j], U_samp_vec[j], lsSol_vec[j], i, rVec, rVecSum, nonUniqueVec, numCurrentDOFs);
         }
-        tD3 += (MPI_Wtime() - tD_start);
+        tD1 += (MPI_Wtime() - tD_start);
 
     }
 
@@ -787,7 +787,7 @@ void gnat_oversampling_carlberg(vector<pMat*> U_vec, int sampMethod, int nCells,
         {
             gnat_oversampling_carlberg_metric(U_vec[j], U_samp_vec[j], lsSol_vec[j], i, rVec, rVecSum, nonUniqueVec, numCurrentDOFs);
         }
-        tD3 += (MPI_Wtime() - tD_start);
+        tD1 += (MPI_Wtime() - tD_start);
 
     }
 

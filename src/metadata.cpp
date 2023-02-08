@@ -602,6 +602,11 @@ void tecIO::readSingleLowMem(int fileID, pMat* dataMat, int colIdx)
 
 void tecIO::readSingleLowMem(string filename, pMat* dataMat, int colIdx)
 {
+    readSingleLowMem(filename, dataMat, colIdx, false);
+}
+
+void tecIO::readSingleLowMem(string filename, pMat* dataMat, int colIdx, bool hasmesh)
+{
 
     if (dataMat->M != nPoints)
     {
@@ -622,9 +627,20 @@ void tecIO::readSingleLowMem(string filename, pMat* dataMat, int colIdx)
     int numCellLoops = ceil((float)nCells / (float)maxReadSize);
     int readSize, cellIdx;
 
+    int varstart;
+    if (hasmesh)
+    {
+        // MUST REMOVE, DO NOT COMMIT
+        varstart = 3;
+    }
+    else
+    {
+        varstart = 0;
+    }
+
     for (int i = 0; i < numVars; i++)
     {
-        tecZoneVarGetType(fH, 1, varIndex[i], &type);
+        tecZoneVarGetType(fH, 1, varIndex[i]+varstart, &type);
         for (int j = 0; j < numCellLoops; j++)
         {
 
@@ -635,12 +651,12 @@ void tecIO::readSingleLowMem(string filename, pMat* dataMat, int colIdx)
 
             if (type == 1)
             {
-                tecZoneVarGetFloatValues(fH, 1, varIndex[i], j * maxReadSize + 1, readSize, getF.data());
+                tecZoneVarGetFloatValues(fH, 1, varIndex[i]+varstart, j * maxReadSize + 1, readSize, getF.data());
                 copy(getF.begin(), getF.end(), getD.begin());
             }
             else if (type == 2)
             {
-                tecZoneVarGetDoubleValues(fH, 1, varIndex[i], j * maxReadSize + 1, readSize, getD.data());
+                tecZoneVarGetDoubleValues(fH, 1, varIndex[i]+varstart, j * maxReadSize + 1, readSize, getD.data());
             }
 
             for (int k = 0; k < readSize; ++k)
@@ -1345,6 +1361,11 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField)
 
 void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool writeToDisk)
 {
+    calcCentering(dataMat, centerMethod, isField, true, false);
+}
+
+void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool writeToDisk, bool hasNewMesh)
+{
 
     isCentered = true;
     genHash();
@@ -1363,7 +1384,7 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
         isField = true;
         if (centerMethod.substr(centerMethod.size()-6, 6) == ".szplt")
         {
-            readSingleLowMem(centerMethod, centerVec, 0);
+            readSingleLowMem(centerMethod, centerVec, 0, hasNewMesh);
             // tecIO* centerMeta = new tecIO(1, 1, 1, prefix, suffix, cellIDFile);
             // centerMeta->genHash();
             // centerMeta->readSingleLowMem(centerMethod, centerVec, 0);
@@ -1379,6 +1400,13 @@ void tecIO::calcCentering(pMat *dataMat, string centerMethod, bool isField, bool
     {
         printf("Centering calculation has not been re-implemented\n");
         MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+
+    double checkVal;
+    for (int i = 0; i < numVars; ++i)
+    {
+        checkVal = centerVec->getElement(i * nCells, 0);
+        cout << "Check center var " << i + 1 << ": " << checkVal << endl;
     }
 
     // update global param
@@ -1457,12 +1485,17 @@ void tecIO::calcScaling(pMat* dataMat, string scaleMethod, bool isField)
 
 void tecIO::calcScaling(pMat *dataMat, string scaleMethod, bool isField, bool writeToDisk)
 {
+    calcScaling(dataMat->pG, scaleMethod, isField, writeToDisk);
+}
+
+void tecIO::calcScaling(PGrid *pg, string scaleMethod, bool isField, bool writeToDisk)
+{
 
     isScaled = true;
     genHash();
-    scalingSubVec = new pMat(nPoints, 1, dataMat->pG, 0, 0, 0.0, false);
-    scalingDivVec = new pMat(nPoints, 1, dataMat->pG, 0, 0, 0.0, false);
-    scalingSubVecFull = new pMat(nPoints, 1, dataMat->pG, 0, 0, 0.0, false);
+    scalingSubVec = new pMat(nPoints, 1, pg, 0, 0, 0.0, false);
+    scalingDivVec = new pMat(nPoints, 1, pg, 0, 0, 0.0, false);
+    scalingSubVecFull = new pMat(nPoints, 1, pg, 0, 0, 0.0, false);
 
     if ((scaleMethod == "sphere") && (isField))
     {

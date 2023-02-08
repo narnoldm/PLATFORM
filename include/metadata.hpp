@@ -103,6 +103,7 @@ public:
     virtual void readSingle(std::string filename, double *point);
     virtual void readSingleLowMem(int fileID, pMat* dataMat, int colIdx);
     virtual void readSingleLowMem(std::string filename, pMat* dataMat, int colIdx);
+    virtual void readSingleLowMem(std::string filename, pMat* dataMat, int colIdx, bool hasmesh);
     virtual void writeSingle(int fileID, double *point, std::string fpref);
     virtual void writeSingle(int fileID, double *point, std::string fpref, int points, int mode);
     void batchWrite_bin(pMat *loadMat, std::string dir, std::string fpref);
@@ -121,9 +122,11 @@ public:
     void calcCentering(pMat *dataMat, std::string centerMethod);
     void calcCentering(pMat *dataMat, std::string centerMethod, bool isField);
     void calcCentering(pMat *dataMat, std::string centerMethod, bool isField, bool writeToDisk);
+    void calcCentering(pMat *dataMat, std::string centerMethod, bool isField, bool writeToDisk, bool hasNewMesh);
     void calcScaling(pMat *dataMat, std::string scaleMethod);
     void calcScaling(pMat *dataMat, std::string scaleMethod, bool isField);
     void calcScaling(pMat *dataMat, std::string scaleMethod, bool isField, bool writeToDisk);
+    void calcScaling(PGrid *pg, std::string scaleMethod, bool isField, bool writeToDisk);
     void scaleData(pMat *dataMat);
     void scaleData(pMat *dataMat, bool unscale);
     void centerData(pMat *dataMat);

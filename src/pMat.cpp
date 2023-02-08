@@ -974,7 +974,7 @@ void pMat::transpose(pMat *A, int m, int n, int ia, int ja)
 {
     int IA = ia + 1;
     int JA = ja + 1;
-    cout << "Copying transpose" << endl;
+    //cout << "Copying transpose" << endl;
 
     if ((m != M) && (n != A->M))
     {

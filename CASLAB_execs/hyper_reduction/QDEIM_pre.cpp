@@ -23,9 +23,9 @@ int main(int argc, char *argv[])
     string timingOutput = "timings.dat";
 
     // clear timing file if it already exists
-    ofstream out;
-    out.open(timingOutput, ofstream::out | ofstream::trunc);
-    out.close();
+    //ofstream out;
+    //out.open(timingOutput, ofstream::out | ofstream::trunc);
+    //out.close();
 
     t0_start = MPI_Wtime(); // full program timing
 
@@ -35,6 +35,9 @@ int main(int argc, char *argv[])
     {
         cout.rdbuf(sink.rdbuf());
     }
+
+    bool justSampleIdxs;
+    inputFile.getParamBool("justSampleIdxs", justSampleIdxs, false);
 
     // Gappy POD regressor output format, based on GEMS ROM type
     // 0: Full residual ([P^T URes]^+, where URes is the full residual basis)
@@ -138,7 +141,7 @@ int main(int argc, char *argv[])
         }
         tokenparse(scaleInput, "|", token);
         solScaling = new tecIO(token, cellIDFile);
-        solScaling->calcScaling(NULL, scaleFile, scaleIsField, false);
+        solScaling->calcScaling(evenG, scaleFile, scaleIsField, false);
 
         // residual scaling (R matrix)
         scaleIsField = false;
@@ -159,7 +162,7 @@ int main(int argc, char *argv[])
         }
         tokenparse(scaleInput, "|", token);
         resScaling = new tecIO(token, cellIDFile);
-        resScaling->calcScaling(NULL, scaleFile, scaleIsField, false);
+        resScaling->calcScaling(evenG, scaleFile, scaleIsField, false);
 
         // RHS scaling
         if (regressorFormat == 2)
@@ -182,7 +185,7 @@ int main(int argc, char *argv[])
             }
             tokenparse(scaleInput, "|", token);
             rhsScaling = new tecIO(token, cellIDFile);
-            rhsScaling->calcScaling(NULL, scaleFile, scaleIsField, false);
+            rhsScaling->calcScaling(evenG, scaleFile, scaleIsField, false);
         }
 
         // pre-compute R^-1 * P and R^-1 * G
@@ -196,16 +199,19 @@ int main(int argc, char *argv[])
         }
 
         cout << "Solution inner product scaling factors:" << endl;
+        double outFac;
         for (int i = 0; i < nVars; ++i)
         {
-            cout << (i + 1) << ": " << solScaling->scalingDivVec[i * nCells] << endl;
+            outFac = solScaling->scalingDivVec->getElement(i * nCells, 0);
+            cout << (i + 1) << ": " << outFac << endl;
         }
         if (regressorFormat == 2)
         {
             cout << "RHS inner product scaling factors:" << endl;
             for (int i = 0; i < nVars; ++i)
             {
-                cout << (i + 1) << ": " << rhsScaling->scalingDivVec[i * nCells] << endl;
+                outFac = rhsScaling->scalingDivVec->getElement(i * nCells, 0);
+                cout << (i + 1) << ": " << outFac << endl;
             }
         }
 
@@ -563,6 +569,13 @@ int main(int argc, char *argv[])
     cout << "Broadcasting points..." << endl;
     MPI_Bcast(gP.data(), gP.size(), MPI_INT, 0, MPI_COMM_WORLD);
 
+    if (justSampleIdxs)
+    {
+        cout << "Only calculating samples, not operators. Exiting" << endl;
+        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Abort(MPI_COMM_WORLD, -1);
+    }
+
     // ##### FINISH SAMPLING ##### //
 
     // ##### OPERATOR PRECOMPUTING ##### //
@@ -594,7 +607,7 @@ int main(int argc, char *argv[])
 
 
         // compute R^1 * P * USol
-        for (int j = 0; j < URes->N; ++j)
+        for (int j = 0; j < USol->N; ++j)
         {
             USol->matrix_elem_mult('N', USol->M, 1, 1.0, solScaling->scalingDivVec, 0, 0, 0, j);
         }

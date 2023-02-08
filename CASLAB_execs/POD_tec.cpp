@@ -36,6 +36,9 @@ int main(int argc, char *argv[])
     string cellIDFile;
     inputFile.getParamString("cellIDFile", cellIDFile, "");
 
+    bool centerHasNewMesh;
+    inputFile.getParamBool("centerHasNewMesh", centerHasNewMesh, false);
+
     PGrid *evenG;
     evenG = new PGrid(rank, size, 0);
 
@@ -77,7 +80,7 @@ int main(int argc, char *argv[])
             t1 = MPI_Wtime();
             if (centerFile != "")
             {
-                dataset1->calcCentering(evenMat, centerFile, true, writeCentering);
+                dataset1->calcCentering(evenMat, centerFile, true, writeCentering, centerHasNewMesh);
             }
             else
             {
