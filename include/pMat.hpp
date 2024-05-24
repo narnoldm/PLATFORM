@@ -13,6 +13,7 @@
 #include <sstream>
 #include <algorithm>
 #include <numeric>
+#include <assert.h>
 
 //#include "extern_func.hpp"
 #include "processGrid.hpp"
