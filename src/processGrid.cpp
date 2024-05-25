@@ -29,13 +29,13 @@ PGrid::PGrid(int r, int s, int type)
                 pdims[0] = 1;
                 pdims[1] = 1;
         }
-        cout << rank << " " << size;
+        cout << rank << " " << size << endl;
         cout << "initializing Cblacs" << endl;
         Cblacs_pinfo(&rank, &size);
         Cblacs_get(-1, 0, &icntxt);
         Cblacs_gridinit(&icntxt, order, pdims[0], pdims[1]);
         Cblacs_gridinfo(icntxt, &pcol, &prow, &myrow, &mycol);
-        cout << "Processor Grid M(cols)=" << pdims[0] << " N(rows)=" << pdims[1] << endl;
+        cout << "Processor Grid M(cols)= " << pdims[0] << " N(rows)= " << pdims[1] << endl;
         cout << "local processor row" << myrow << " and column " << mycol << endl;
         cout << "PBLACS is row major by default and everything is else is Column major (because reasons)" << endl;
         MPI_Barrier(MPI_COMM_WORLD);
