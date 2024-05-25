@@ -7,6 +7,9 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 add_executable(POD POD_tec.cpp)
 target_link_libraries(POD meta param)
 
+add_executable(POD_bin bin_POD.cpp)
+target_link_libraries(POD_bin meta param)
+
 add_executable(projEr projEr.cpp)
 target_link_libraries(projEr param meta)
 
